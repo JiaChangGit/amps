@@ -37,8 +37,8 @@ int main(int argc, char* argv[]) {
   InputFile5D inputFile5D;
   InputFile5D_test inputFile5D_test;
   Timer timer;
-  const char* LoadRule5D_test_path = "./loadRule5D_test.txt";
-  const char* LoadPacket5D_test_path = "./loadPacket5D_test.txt";
+  const char* LoadRule5D_test_path = "./INFO/loadRule5D_test.txt";
+  const char* LoadPacket5D_test_path = "./INFO/loadPacket5D_test.txt";
 
   static struct option long_options[] = {
       {"ruleset", required_argument, NULL, 'r'},
