@@ -2,34 +2,28 @@
  * @file input.cpp
  * @brief
  * @author jiachang (jiachanggit@gmail.com)
- * @version 1.5
- * @date 2024-02-11
+ * @version 1.0
+ * @date 2025-02-20
  *
- * @copyright Copyright (c) 2024  JIA-CHANG
+ * @copyright Copyright (c) 2025  JIA-CHANG
  *
  * @par dialog:
  * <table>
  * <tr><th>Date       <th>Version <th>Author  <th>Description
- * <tr><td>2024-02-11 <td>1.5     <td>jiachang     <td>load rule-set and
+ * <tr><td>2025-02-20 <td>1.0     <td>jiachang     <td>load rule-set and
  * trace-set
  * </table>
- */
-/*
- * @title: input_v1.cpp
- * @author: Jia-Chang, Chang
- * @date: 2023-12-09
  */
 
 #include "input.hpp"
 
-void InputFile5D::loadRule5D(std::vector<Rule5D> &rule, const char *fileName) {
+void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
   FILE *fp = NULL;
   fp = fopen(fileName, "r");
   if (fp == NULL) {
     fprintf(stderr, "error - can not open rules file\n");
     exit(1);
   }
-  int i;
   uint32_t tmp;
   uint32_t max_uint = 0xFFFFFFFF;
   uint32_t mask;
@@ -38,10 +32,10 @@ void InputFile5D::loadRule5D(std::vector<Rule5D> &rule, const char *fileName) {
   uint32_t sport1, sport2;
   uint32_t dport1, dport2;
   uint32_t protocal, protocol_mask;
-  unsigned int number_rule = 0;  // number of rules
-
+  size_t number_rule = 0;  // number of rules
+  size_t max_pri = 0;
   while (1) {
-    Rule5D r;
+    Rule r;
     std::array<uint32_t, 2> points;
 
     if (fscanf(fp,
@@ -172,17 +166,19 @@ void InputFile5D::loadRule5D(std::vector<Rule5D> &rule, const char *fileName) {
     }
 
     ++number_rule;
-    r.priority = number_rule;
+    r.pri = number_rule;
     rule.emplace_back(r);
   }
 
   // std::cout<<"the number of rules = "<< number_rule<<"\n";
-
+  max_pri = number_rule - 1;
+  for (size_t i = 0; i < number_rule; ++i) {
+    rule[i].priority = max_pri - i;
+  }
   return;
 }
 
-void InputFile5D::loadPacket5D(std::vector<Packet5D> &packets,
-                               const char *fileName) {
+void InputFile::loadPacket(std::vector<Packet> &packets, const char *fileName) {
   FILE *fp = NULL;
   fp = fopen(fileName, "r");
   if (fp == NULL) {
@@ -191,17 +187,19 @@ void InputFile5D::loadPacket5D(std::vector<Packet5D> &packets,
   }
   unsigned int header[MAXDIMENSIONS];
   unsigned int number_pkt = 0;  // number of packets
+  unsigned int proto_mask, fid;
 
   while (1) {
-    if (fscanf(fp, "%u\t%u\t%u\t%u\t%u\t%*u\t%*u\n", &header[0], &header[1],
-               &header[2], &header[3], &header[4]) == EOF)
+    if (fscanf(fp, "%u\t%u\t%u\t%u\t%u\t%u\t%u\n", &header[0], &header[1],
+               &header[2], &header[3], &header[4], &proto_mask, &fid) == EOF)
       break;
-    Packet5D p;
+    Packet p;
     p.emplace_back(header[0]);
     p.emplace_back(header[1]);
     p.emplace_back(header[2]);
     p.emplace_back(header[3]);
     p.emplace_back(header[4]);
+    p.push_back(fid);
     ++number_pkt;
     packets.emplace_back(p);
   }

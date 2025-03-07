@@ -22,10 +22,3 @@ cmake ..
 
 # 執行 make 進行編譯
 make -j$(nproc)
-
-# 可選：如果有測試程式，則執行測試
-if [ -f "./main" ]; then
-    echo "Running main..."
-    ./main
-fi
-

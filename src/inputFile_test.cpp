@@ -2,22 +2,22 @@
  * @file inputFile_test.cpp
  * @brief
  * @author jiachang (jiachanggit@gmail.com)
- * @version 1.5
- * @date 2024-02-11
+ * @version 1.0
+ * @date 2025-02-20
  *
- * @copyright Copyright (c) 2024  JIA-CHANG
+ * @copyright Copyright (c) 2025  JIA-CHANG
  *
  * @par dialog:
  * <table>
  * <tr><th>Date       <th>Version <th>Author  <th>Description
- * <tr><td>2024-02-11 <td>1.5     <td>jiachang     <td>test loading rule-set and
+ * <tr><td>2025-02-20 <td>1.0     <td>jiachang     <td>test loading rule-set and
  * loading trace-set
  * </table>
  */
 
 #include "inputFile_test.hpp"
 
-void InputFile5D_test::loadRule5D_test(const std::vector<Rule5D>& rule5V,
+void InputFile_test::loadRule_test(const std::vector<Rule>& ruleV,
                                        const char* fileName) {
   std::ofstream outFile(fileName);
   if (!outFile.is_open()) {
@@ -26,7 +26,7 @@ void InputFile5D_test::loadRule5D_test(const std::vector<Rule5D>& rule5V,
     return;
   }
 
-  for (const auto& rule : rule5V) {
+  for (const auto& rule : ruleV) {
     outFile << "priority: " << rule.priority << "\n";
     outFile << "prefix_length: ";
     for (const auto& length : rule.prefix_length) {
@@ -43,7 +43,7 @@ void InputFile5D_test::loadRule5D_test(const std::vector<Rule5D>& rule5V,
   outFile.close();
 }
 
-void InputFile5D_test::loadPacket5D_test(const std::vector<Packet5D>& packet5V,
+void InputFile_test::loadPacket_test(const std::vector<Packet>& packetV,
                                          const char* fileName) {
   std::ofstream outFile(fileName);
   if (!outFile.is_open()) {
@@ -52,7 +52,7 @@ void InputFile5D_test::loadPacket5D_test(const std::vector<Packet5D>& packet5V,
     return;
   }
   outFile << "src ip: \tdst ip: \tsrc port: \tdst port: \tprotocol: \n";
-  for (const auto& packet : packet5V) {
+  for (const auto& packet : packetV) {
     for (const auto& val : packet) {
       outFile << val << " ";
     }

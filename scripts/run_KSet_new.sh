@@ -8,7 +8,9 @@
 
 # 設定變數
 BUILD_DIR="./build"
-TEST_EXEC="$BUILD_DIR/tests/main"
+#############
+TEST_KSET_MAIN_EXEC="$BUILD_DIR/tests/KSet_new"
+#############
 RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_1k"
 TRACE_PATH="../classbench_set/ipv4-trace/acl1_1k_trace"
 
@@ -19,14 +21,14 @@ if [ ! -d "$BUILD_DIR" ]; then
 fi
 
 # 檢查並執行 build.sh 來編譯
-if [ ! -f "$TEST_EXEC" ]; then
+if [ ! -f "$TEST_KSET_MAIN_EXEC" ]; then
     echo "Test executable not found. Building the project..."
     chmod +x scripts/build.sh
     ./scripts/build.sh
 fi
 
 # 確保測試執行檔存在
-if [ ! -f "$TEST_EXEC" ]; then
+if [ ! -f "$TEST_KSET_MAIN_EXEC" ]; then
     echo "Error: Test executable still not found after build. Exiting."
     exit 1
 fi
@@ -38,5 +40,9 @@ if [ ! -f "$RULESET_PATH" ] || [ ! -f "$TRACE_PATH" ]; then
 fi
 
 # 執行測試
-echo "Running tests..."
-"$TEST_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t
+ulimit -s 81920
+echo "Running search tests..."
+"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t -c > "$TEST_KSET_MAIN_EXEC"_c_log.txt
+
+echo "Running upd tests..."
+"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt
