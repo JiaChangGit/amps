@@ -132,7 +132,6 @@ class Timer {
 // #define TIMER_METHOD TIMER_RDTSCP
 // #endif
 // 或 TIMER_STEADY_CLOCK
-// #include "Timer.h"
 // Timer t;
 // t.timeReset();
 // // 執行你的函數

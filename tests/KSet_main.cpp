@@ -515,7 +515,7 @@ int main(int argc, char *argv[]) {
             ++match_miss;
           else if (packets[i][5] < matchid[i])
             ++match_miss;  // > is correct: match a rule with a higher priority
-                           // (i.e., smaller rule id)
+          // (i.e., smaller rule id)
         }
       }
       printf("\t%d packets are classified, %d of them are misclassified\n",

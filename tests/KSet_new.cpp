@@ -5,12 +5,14 @@
 #include "KSet.hpp"
 #include "input.hpp"
 #include "inputFile_test.hpp"
+#include "linearSearch_test.hpp"
 using namespace std;
 
 #ifndef TIMER_METHOD
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
-
+#define JIA
+// #define PRIVALID
 constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
 // 靜態成員初始化
@@ -35,8 +37,6 @@ constexpr int seed = 11;
 
 void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
           vector<Rule> set[4], int k) {
-  size_t i, j;
-
   uint32_t tmpKey;
   int hash;
 
@@ -44,7 +44,7 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
   int max[3] = {-1};
 
   // compute rules in each set
-  for (i = 0; i < number_rule; ++i) {
+  for (size_t i = 0; i < number_rule; ++i) {
     // Set 0
     if ((rule[i].prefix_length[0] >= k) && (rule[i].prefix_length[1] >= k)) {
       if (rule[i].priority > max_pri_set[0]) max_pri_set[0] = rule[i].priority;
@@ -76,7 +76,7 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
        << ", max_pri[2]: " << max_pri_set[2]
        << ", max_pri[3]: " << max_pri_set[3] << endl;
   // compute used bits
-  for (i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 3; ++i) {
     if (pre_seg[i] == 0) continue;
     if (log2(pre_seg[i]) > 8 && log2(pre_seg[i]) < 16) {
       usedbits[i] = log2(pre_seg[i]);
@@ -89,17 +89,17 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
   cout << "Set 0: " << usedbits[0] << " bits, "
        << "Set 1: " << usedbits[1] << " bits, "
        << "Set 2: " << usedbits[2] << " bits" << endl;
-  for (i = 0; i < 4; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     max_pri_set[i] = -1;
   }
   // put rules in each set and analyze
   anaSet Set[3];
-  for (i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 3; ++i) {
     Set[i].tablesize = pow(2, usedbits[i]);
     Set[i].seg = new int[Set[i].tablesize];
   }
 
-  for (i = 0; i < number_rule; ++i) {
+  for (size_t i = 0; i < number_rule; ++i) {
     // Set 0
     if ((rule[i].prefix_length[0] >= usedbits[0]) &&
         (rule[i].prefix_length[1] >= usedbits[0])) {
@@ -147,8 +147,8 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
   }
 
   // max segment
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < Set[i].tablesize; ++j) {
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < Set[i].tablesize; ++j) {
       if (max[i] < Set[i].seg[j]) max[i] = Set[i].seg[j];
     }
   }
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
   InputFile_test inputFile_test;
   Timer timer;
   unsigned long long time_rdtscp = 0, time_rdtscp2 = 0;
-  constexpr int trials = 10;  // run 10 times circularly
+  constexpr int trials = 2;  // run 10 times circularly
 
   inputFile.loadRule(rule, parser.getRulesetFile());
   inputFile.loadPacket(packets, parser.getTraceFile());
@@ -197,7 +197,6 @@ int main(int argc, char *argv[]) {
     inputFile_test.loadPacket_test(packets, LoadPacket_test_path);
     cout << "Input packet test time(ns): " << timerTest.elapsed_ns() << "\n";
   }
-  size_t i, t;
   size_t number_update_rule = 0;
   vector<Rule> set_4[4];
 
@@ -227,7 +226,7 @@ int main(int argc, char *argv[]) {
   }
 
   int num_set[4] = {0};
-  for (i = 0; i < 4; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     num_set[i] = set_4[i].size();
   }
 
@@ -266,19 +265,29 @@ int main(int argc, char *argv[]) {
     cout << "\tThe number of packet in the trace file = " << number_pkt << "\n";
     cout << "\tTotal packets run " << trials
          << "times circularly: " << number_pkt * trials << "\n";
-    int match_miss = 0;
 
-    int match_pri = -2;
     vector<int> matchid(number_pkt);
     Packet p;
+#ifdef PRIVALID
+    //// === LinearSearch === ////
+    int match_miss = 0;
+    LinearSearch linearSearch;
+//// === LinearSearch === ////
+#endif
 
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
-
-    for (t = 0; t < trials; ++t) {
-      timer.timeReset();
-      for (i = 0; i < number_pkt; ++i) {
+#ifdef JIA
+    std::ofstream Jlog("perLookTimes.txt", std::ios_base::out);
+    if (!Jlog) {
+      std::cerr << "Error: Failed to open perLookTimes.txt\n";
+      return -1;
+    }
+#endif
+    for (size_t t = 0; t < trials; ++t) {
+      for (size_t i = 0; i < number_pkt; ++i) {
+        timer.timeReset();
         p = packets[i];
-        match_pri = -1;
+        int match_pri = -1;
         if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(p);
         if (match_pri < max_pri_set[1] && num_set[1] > 0)
           match_pri = max(match_pri, set1.ClassifyAPacket(p));
@@ -287,19 +296,30 @@ int main(int argc, char *argv[]) {
         if (match_pri < max_pri_set[3] && num_set[3] > 0)
           match_pri = max(match_pri, set3.ClassifyAPacket(p));
         matchid[i] = (number_rule - 1) - match_pri;
-      }
+        time_rdtscp += timer.elapsed_ns();
+#ifdef JIA
+        if (t == 1) {
+          Jlog << "Packet " << i << " \t Result " << matchid[i]
+               << " \t Time(ns) " << timer.elapsed_ns() / 1.0 << "\n";
+        }
+#endif
 
-      time_rdtscp += timer.elapsed_ns();
-      for (i = 0; i < number_pkt; ++i) {
-        if (matchid[i] == -1)
+#ifdef PRIVALID
+        //// === LinearSearch === ////
+        if (match_pri != (linearSearch.search(rule, p))) {
           ++match_miss;
-        else if (packets[i][5] < matchid[i])
-          ++match_miss;  // > is correct: match a rule with a higher priority
-                         // (i.e., smaller rule id)
+        }
+//// === LinearSearch === ////
+#endif
       }
     }
+#ifdef JIA
+    Jlog.close();
+#endif
+#ifdef PRIVALID
     cout << "\t" << number_pkt * trials << " packets are classified, "
          << match_miss << " of them are misclassified\n";
+#endif
     cout << fixed << setprecision(3)  // 設定小數點後 3 位
          << "\tTotal classification time: " << (time_rdtscp * trials) << " ns"
          << endl
