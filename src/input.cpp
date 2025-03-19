@@ -18,9 +18,9 @@
 #include "input.hpp"
 
 void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
-  FILE *fp = NULL;
+  FILE *fp = nullptr;
   fp = fopen(fileName, "r");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     fprintf(stderr, "error - can not open rules file\n");
     exit(1);
   }
@@ -179,9 +179,9 @@ void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
 }
 
 void InputFile::loadPacket(std::vector<Packet> &packets, const char *fileName) {
-  FILE *fp = NULL;
+  FILE *fp = nullptr;
   fp = fopen(fileName, "r");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     fprintf(stderr, "error - can not open trace file\n");
     exit(1);
   }

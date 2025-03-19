@@ -168,9 +168,6 @@ void KSet::ConstructClassifier(const vector<Rule> &rules) {
       }
     }
   }
-  // printf("num = %d, tablesize: %d, NULL_Node_Count = %ld, Small_Node_Count =
-  // %d, Big_Node_Count = %ld\n", num, tablesize, NULL_Node_Count,
-  // Small_Node_Count, Big_Node_Count);
 }
 
 int linear_search(const Packet &packet, const vector<Rule> &rules) {
@@ -570,8 +567,6 @@ void KSet::InsertRule(const Rule &insert_rule) {
       }
     }
   } else if (nodeKSet[value].flag == -1) {
-    // printf("num = %ld, the segment is empty, create a new segment! rule
-    // id=%d\n", num, insert_rule.id);
     nodeKSet[value].flag = 0;
     ++nodeKSet[value].nrules;
     nodeKSet[value].classifier.push_back(insert_rule);

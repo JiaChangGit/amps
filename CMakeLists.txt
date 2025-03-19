@@ -13,7 +13,7 @@ if (OPENMP_FOUND)
 endif()
 
 # 通用編譯選項
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive -pedantic -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive -pedantic -Wall -Wextra -mbmi2")
 
 # 添加 src 和 tests 子目錄（確保 src 在前，tests 依賴 src）
 add_subdirectory(src)

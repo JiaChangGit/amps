@@ -11,8 +11,8 @@ using namespace std;
 #ifndef TIMER_METHOD
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
-#define JIA
-// #define PRIVALID
+// #define PERLOOKUPTIME
+#define PRIVALID
 constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
 // 靜態成員初始化
@@ -25,15 +25,15 @@ struct option CommandLineParser::long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {0, 0, 0, 0}  // 結束標記
 };
-
+// ======for KSet====== //
 constexpr int threshold = 10;  // linear search threshold
 
-// for KSet
 constexpr int pre_K = 16;
 int SetBits[3] = {8, 8, 8};
 int max_pri_set[4] = {-1, -1, -1, -1};
 
 constexpr int seed = 11;
+constexpr int trials = 2;  // run 2 times circularly
 
 void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
           vector<Rule> set[4], int k) {
@@ -173,20 +173,22 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
   cout << "MAX[0]: " << max[0] << ", MAX[1]: " << max[1]
        << ", MAX[2]: " << max[2] << endl;
 }
+// ======for KSet====== //
 
 int main(int argc, char *argv[]) {
   CommandLineParser parser;
   parser.parseArguments(argc, argv);
+
   vector<Rule> rule, build, update;
   vector<Packet> packets;
   InputFile inputFile;
   InputFile_test inputFile_test;
   Timer timer;
   unsigned long long time_rdtscp = 0, time_rdtscp2 = 0;
-  constexpr int trials = 2;  // run 10 times circularly
 
   inputFile.loadRule(rule, parser.getRulesetFile());
   inputFile.loadPacket(packets, parser.getTraceFile());
+
   if (parser.isTestMode()) {
     Timer timerTest;
     timerTest.timeReset();
@@ -197,6 +199,7 @@ int main(int argc, char *argv[]) {
     inputFile_test.loadPacket_test(packets, LoadPacket_test_path);
     cout << "Input packet test time(ns): " << timerTest.elapsed_ns() << "\n";
   }
+
   size_t number_update_rule = 0;
   vector<Rule> set_4[4];
 
@@ -217,7 +220,6 @@ int main(int argc, char *argv[]) {
 
     const size_t number_build_rule = build.size();
     number_update_rule = update.size();
-
     cout << "The number of rules for build = " << number_build_rule << "\n";
 
     anaK(number_build_rule, build, SetBits, set_4, pre_K);
@@ -234,8 +236,8 @@ int main(int argc, char *argv[]) {
   KSet set1(1, set_4[1], SetBits[1]);
   KSet set2(2, set_4[2], SetBits[2]);
   KSet set3(3, set_4[3], 0);
-  // construct
-  cout << ("**************** Construction ****************\n");
+  // construct // ======for KSet====== //
+  cout << ("**************** Construction (for KSet)****************\n");
   timer.timeReset();
   if (num_set[0] > 0) {
     set0.ConstructClassifier(set_4[0]);
@@ -250,17 +252,17 @@ int main(int argc, char *argv[]) {
     set3.ConstructClassifier(set_4[3]);
   }
 
-  cout << "\tConstruction time: " << timer.elapsed_ns() << " ns\n";
+  cout << "\tConstruction(for KSet) time: " << timer.elapsed_ns() << " ns\n";
 
-  // print memory
+  // print memory // ======for KSet====== //
   set0.prints();
   set1.prints();
   set2.prints();
   set3.prints();
 
   if (parser.isSearchMode()) {
-    // classification
-    cout << ("\n**************** Classification ****************\n");
+    // classification // ======for KSet====== //
+    cout << ("\n**************** Classification(for KSet) ****************\n");
     const size_t number_pkt = packets.size();
     cout << "\tThe number of packet in the trace file = " << number_pkt << "\n";
     cout << "\tTotal packets run " << trials
@@ -276,7 +278,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
-#ifdef JIA
+#ifdef PERLOOKUPTIME
     std::ofstream Jlog("perLookTimes.txt", std::ios_base::out);
     if (!Jlog) {
       std::cerr << "Error: Failed to open perLookTimes.txt\n";
@@ -297,11 +299,9 @@ int main(int argc, char *argv[]) {
           match_pri = max(match_pri, set3.ClassifyAPacket(p));
         matchid[i] = (number_rule - 1) - match_pri;
         time_rdtscp += timer.elapsed_ns();
-#ifdef JIA
-        if (t == 1) {
-          Jlog << "Packet " << i << " \t Result " << matchid[i]
-               << " \t Time(ns) " << timer.elapsed_ns() / 1.0 << "\n";
-        }
+#ifdef PERLOOKUPTIME
+        Jlog << "Packet " << i << " \t Result " << matchid[i] << " \t Time(ns) "
+             << timer.elapsed_ns() / 1.0 << "\n";
 #endif
 
 #ifdef PRIVALID
@@ -309,11 +309,11 @@ int main(int argc, char *argv[]) {
         if (match_pri != (linearSearch.search(rule, p))) {
           ++match_miss;
         }
-//// === LinearSearch === ////
+        //// === LinearSearch === ////
 #endif
       }
     }
-#ifdef JIA
+#ifdef PERLOOKUPTIME
     Jlog.close();
 #endif
 #ifdef PRIVALID
@@ -328,11 +328,11 @@ int main(int argc, char *argv[]) {
   }
 
   if (parser.isUpdMode()) {
-    cout << ("\n**************** Update ****************\n");
+    cout << ("\n**************** Update(for KSet) ****************\n");
     cout << "\tThe number of updated rules = " << number_update_rule << endl;
     int srcmask, dstmask;
 
-    // insert
+    // insert // ======for KSet====== //
     time_rdtscp = 0;
     for (size_t i = 0; i < number_update_rule; ++i) {
       timer.timeReset();
@@ -349,7 +349,7 @@ int main(int argc, char *argv[]) {
       time_rdtscp += timer.elapsed_ns();
     }
 
-    // delete
+    // delete // ======for KSet====== //
     time_rdtscp2 = 0;
     for (size_t i = 0; i < number_update_rule; ++i) {
       timer.timeReset();
