@@ -22,15 +22,14 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef __DATA_STRUCTURE_H_
-#define __DATA_STRUCTURE_H_
-#include <time.h>
+#ifndef __PT_DATA_STRUCTURE_HPP__
+#define __PT_DATA_STRUCTURE_HPP__
 
 #include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <vector>
-
+namespace PT {
 union MASK {
   uint64_t i_64;
   struct {
@@ -98,5 +97,5 @@ struct CacuRule {
         acc_leaf(0),
         acc_rule(0) {}
 };
-
+}  // namespace PT
 #endif  //__DATA_STRUCTURE_H_

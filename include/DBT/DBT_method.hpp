@@ -22,76 +22,84 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef __METHODS_HPP__
-#define __MRTHODS_HPP__
+#ifndef __DBT_METHODS_HPP__
+#define __DBT_MRTHODS_HPP__
 #include <time.h>
 #include <unistd.h>
 
 #include <list>
 #include <random>
 
-#include "core.hpp"
+#include "DBT_core.hpp"
 
 using namespace std;
-
+namespace DBT {
 void single_thread(bool enable_update, vector<Rule>& rules,
                    vector<Packet>& packets, vector<int>& check_list) {
-  struct timespec t1, t2;
+  Timer timer;
   cout << "\nbuild for single thread...\n";
   cout << "binth=" << BINTH << " th_b=" << END_BOUND << " K=" << TOP_K
        << " th_c=" << C_BOUND << endl
        << endl;
 
   DBTable dbt(rules, BINTH);
-  clock_gettime(CLOCK_REALTIME, &t1);
+  timer.timeReset();
   dbt.construct();
-  clock_gettime(CLOCK_REALTIME, &t2);
-  cout << "Construction Time: " << get_milli_time(&t1, &t2) << " ms\n";
+
+  cout << "Construction Time: " << timer.elapsed_ns() << " ns\n";
 
   dbt.mem();
 
   cout << "\nstart search...\n";
   uint32_t res = 0;
   FILE* res_fp = nullptr;
-  res_fp = fopen("results.txt", "w");
-  double search_time = 0;
-  clock_gettime(CLOCK_REALTIME, &t1);
-  for (int i = 0; i < packets.size(); ++i) {
-    clock_gettime(CLOCK_REALTIME, &t1);
+  res_fp = fopen("./INFO/DBT_results.txt", "w");
+  unsigned long long search_time = 0, _search_time = 0;
+
+  const size_t packetNum = packets.size();
+  for (int i = 0; i < packetNum; ++i) {
+    timer.timeReset();
     res = dbt.search(packets[i]);
-    clock_gettime(CLOCK_REALTIME, &t2);
-    double _time = get_nano_time(&t1, &t2);
-    search_time += _time;
+    _search_time = timer.elapsed_ns();
+    search_time += _search_time;
 
     fprintf(res_fp, "Packet %d \t Result %d \t Time(ns) %f\n", i, res,
-            _time / 1.0);
+            _search_time / 1.0);
   }
   fclose(res_fp);
-  cout << "|- Average search time: " << search_time / packets.size() / 1000.0
-       << "us\n";
-  cout << "|- Throughput         : " << packets.size() * 1000.0 / search_time
-       << "M/s\n";
+  cout << "|- Average search time: " << search_time / packetNum << "ns\n";
 
   dbt.search_with_log(packets);
 
   // update
-  int update_num = 5000;
-  cout << "\nStart update...\n";
-  random_device seed;
-  mt19937 rd(seed());
-  uniform_int_distribution<> dis(0, rules.size() * 0.6);
-  double update_time = 0;
+  if (enable_update) {
+    int update_num = 5000;
+    cout << "\nStart update...\n";
+    random_device seed;
+    mt19937 rd(seed());
+    uniform_int_distribution<> dis(0, rules.size() * 0.6);
+    double update_time = 0;
 
-  for (int i = 0; i < update_num; ++i) {
-    int cur_idx = dis(rd);
-    clock_gettime(CLOCK_REALTIME, &t1);
-    dbt.remove(rules[cur_idx]);
-    dbt.insert(rules[cur_idx]);
-    clock_gettime(CLOCK_REALTIME, &t2);
-    update_time += get_nano_time(&t1, &t2);
+    unsigned long long delete_time = 0, _delete_time = 0;
+    unsigned long long insert_time = 0, _insert_time = 0;
+    for (int i = 0; i < update_num; ++i) {
+      int cur_idx = dis(rd);
+      timer.timeReset();
+      dbt.remove(rules[cur_idx]);
+      _delete_time = timer.elapsed_ns();
+      delete_time += _delete_time;
+
+      timer.timeReset();
+      dbt.insert(rules[cur_idx]);
+      _insert_time = timer.elapsed_ns();
+      insert_time += _insert_time;
+    }
+
+    cout << "|- Average delete time: " << delete_time / (update_num) << "ns\n";
+    cout << "|- Average insert time: " << insert_time / (update_num) << "ns\n";
+    cout << "|- Average update time: "
+         << (delete_time + insert_time) / (update_num * 2) << "ns\n\n";
   }
-  cout << "|- Average update time: " << update_time / (update_num * 2) / 1000.0
-       << "us\n\n";
 }
-
+}  // namespace DBT
 #endif  // _METHODS_H

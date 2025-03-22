@@ -22,8 +22,8 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef _PT_TREE_
-#define _PT_TREE_
+#ifndef __PT_TREE_
+#define __PT_TREE_
 #include <unistd.h>
 
 #include <cmath>
@@ -31,7 +31,8 @@
 #include <list>
 #include <random>
 
-#include "data_structure.hpp"
+#include "PT_data_structure.hpp"
+#include "basis.hpp"
 
 #define SIP_1 0
 #define SIP_2 1
@@ -48,7 +49,8 @@
 #define CACU_SCORE(x) (0.00012 * (x) * (x))
 
 using namespace std;
-
+using namespace PT;
+namespace PT {
 extern uint8_t maskHash[33][4];
 extern uint32_t maskBit[33];
 
@@ -119,8 +121,6 @@ struct ACL_LOG {
 int check_correct(Rule& a, Packet& b);
 void setmaskHash();
 
-double get_nano_time(struct timespec* a, struct timespec* b);
-double get_milli_time(struct timespec* a, struct timespec* b);
 uint64_t reverse_byte(uint64_t x);
 /// ====== ///
 
@@ -173,10 +173,9 @@ class PTtree {
   int search(Packet& p);
   int search_with_log(Packet& p, ACL_LOG& log);
 
-  bool update(vector<Rule>& rules, int num, struct timespec& t1,
-              struct timespec& t2);
+  bool update(vector<Rule>& rules, int num, Timer& timer);
 
-  void print_node_info(int level, int rules);
+  void print_node_info(const size_t rules);
 
   size_t get_ipNode_mem(IpNode* node);
   size_t get_leafNode_mem(LeafNode* node);
@@ -184,5 +183,5 @@ class PTtree {
   size_t get_mem(IpNode* node);
   size_t mem();
 };
-
+}  // namespace PT
 #endif  // !_PT_TREE_

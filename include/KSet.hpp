@@ -2,8 +2,9 @@
 #define __KSET_HPP__
 
 #include <cmath>
+#include <iomanip>  // 用於設置小數點位數
 
-#include "basis.hpp"
+#include "data_structure.hpp"
 using namespace std;
 
 #define PTR_SIZE 4
@@ -130,7 +131,7 @@ static inline bool cmpp(Rule const& a, Rule const& b) {
   return a.priority > b.priority;
 }
 
-class KSet : public PacketClassifier {
+class KSet {
  public:
   KSet(int num1, vector<Rule>& classifier, int usedbits);
   ~KSet();

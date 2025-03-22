@@ -1,5 +1,6 @@
-#include "core.hpp"
+#include "DBT_core.hpp"
 
+namespace DBT {
 uint64_t check_hash_cost = 5;
 uint64_t check_group_cost = 2;
 uint64_t check_rule_cost = 3;
@@ -36,8 +37,8 @@ vector<TupleRange> DynamicTupleRanges(vector<Rule*>& rules, double& dt_time,
   return tuple_ranges;
 }
 
-void PrintTupleRanges(vector<TupleRange>& tuple_ranges) {
-  int tuple_ranges_num = tuple_ranges.size();
+void PrintTupleRanges(const vector<TupleRange>& tuple_ranges) {
+  const size_t tuple_ranges_num = tuple_ranges.size();
   std::cout << tuple_ranges_num << std::endl;
   for (int i = 0; i < tuple_ranges_num; ++i)
     std::cout << tuple_ranges[i].x1 << " " << tuple_ranges[i].y1 << " "
@@ -64,7 +65,7 @@ void DtInfo::GetDtRules(vector<Rule*>& _rules) {
   }
 }
 
-void DtInfo::Init(vector<TupleRange> pre_tuple_ranges) {
+void DtInfo::Init(const vector<TupleRange>& pre_tuple_ranges) {
   // calculate mask
   ip_mask[0] = 0;
   for (int i = 1; i <= 32; ++i)
@@ -96,7 +97,8 @@ void DtInfo::Init(vector<TupleRange> pre_tuple_ranges) {
   //
   memset(pre_tuples_prefix, 0, sizeof(pre_tuples_prefix));
   //
-  for (int i = 0; i < pre_tuple_ranges.size(); ++i)
+  const size_t pre_tuple_rangesNum = pre_tuple_ranges.size();
+  for (int i = 0; i < pre_tuple_rangesNum; ++i)
     pre_tuples_prefix[pre_tuple_ranges[i].x1][pre_tuple_ranges[i].y1] = 1;
 
   if (dt_print_num) {
@@ -244,8 +246,9 @@ void DtInfo::DtCalculate(bool accelerate) {
       DtCalculateXY(x1, y1, accelerate && !pre_tuples_prefix[x1][y1]);
 }
 
-void DtInfo::ReducePreTupleRanges(vector<TupleRange> pre_tuple_ranges) {
-  for (int i = 0; i < pre_tuple_ranges.size(); ++i) {
+void DtInfo::ReducePreTupleRanges(const vector<TupleRange>& pre_tuple_ranges) {
+  const size_t pre_tuple_rangesNum = pre_tuple_ranges.size();
+  for (int i = 0; i < pre_tuple_rangesNum; ++i) {
     TupleRange tuple_range = pre_tuple_ranges[i];
     tuple_cost[tuple_range.x1][tuple_range.y1][tuple_range.x2][tuple_range.y2]
         .cost *= 0.9;
@@ -392,13 +395,6 @@ int DtInfo::Free() {
 //// ==== ////
 
 /// === ///
-double get_nano_time(struct timespec* a, struct timespec* b) {
-  return (b->tv_sec - a->tv_sec) * 1000000000 + b->tv_nsec - a->tv_nsec;
-}
-double get_milli_time(struct timespec* a, struct timespec* b) {
-  return (b->tv_sec - a->tv_sec) * 1000 +
-         (double)(b->tv_nsec - a->tv_nsec) / 1000000.0;
-}
 
 uint32_t hashCode(uint32_t hash1, uint32_t hash2) {
   hash1 ^= hash1 >> 16;
@@ -456,14 +452,15 @@ void CacuInfo::CacuIpMask(MASK& mask) {
     _rules.emplace_back(rule);
   }
   _rules[0]->is_first = true;
-  _rules[0]->size = _rules.size();
+  const size_t rulesNum = _rules.size();
+  _rules[0]->size = rulesNum;
 
   int dbs_size = 0;
 
   while (true) {
     BitRank bRank[64] = {0};
     for (int i = 0; i < 64; ++i) bRank[i].id = i;
-    for (int i = 0; i < _rules.size();) {
+    for (int i = 0; i < rulesNum;) {
       fetch_bit_by_ip(i, _rules[i]->size, bRank, _rules);
       i += _rules[i]->size;
     }
@@ -562,8 +559,9 @@ void CacuInfo::partition_by_ip(int bit_id, vector<CacuRule*>& _rules) {
       _r->fetch_bit = 0;
     }
   }
+  const size_t rulesNum = _rules.size();
 
-  for (int i = 0; i < _rules.size();) {
+  for (int i = 0; i < rulesNum;) {
     int _step = _rules[i]->size;
     partition_in_bucket(i, _step, _rules);
     i += _step;
@@ -621,12 +619,13 @@ uint16_t CacuInfo::CacuPortMask(int type) {
     _rules.emplace_back(rule);
   }
   _rules[0]->is_first = true;
-  _rules[0]->size = _rules.size();
+  const size_t rulesNum = _rules.size();
+  _rules[0]->size = rulesNum;
 
   while (true) {
     BitRank bRank[16] = {0};
     for (int i = 0; i < 16; ++i) bRank[i].id = i;
-    for (int i = 0; i < _rules.size();) {
+    for (int i = 0; i < rulesNum;) {
       fetch_bit_by_port(type, i, _rules[i]->size, bRank, _rules);
       i += _rules[i]->size;
     }
@@ -695,8 +694,8 @@ void CacuInfo::partition_by_port(int type, int bit_id,
     else
       _r->fetch_bit = 0;
   }
-
-  for (int i = 0; i < _rules.size();) {
+  const size_t rulesNum = _rules.size();
+  for (int i = 0; i < rulesNum;) {
     int _step = _rules[i]->size;
     partition_in_bucket(i, _step, _rules);
     i += _step;
@@ -724,7 +723,7 @@ void CacuInfo::partition_by_port(int type, int bit_id,
 
 void CacuInfo::print_bucket(vector<CacuRule*>& _rules) {
   FILE* fp = nullptr;
-  fp = fopen("buckets.txt", "a");
+  fp = fopen("./INFO/DBT_buckets.txt", "a");
   if (fp == nullptr) {
     fprintf(stderr, "error - can not creat buckets.txt\n");
     return;
@@ -741,8 +740,8 @@ void CacuInfo::print_bucket(vector<CacuRule*>& _rules) {
   int small_bucket = 0;
   int mid_bucket = 0;
   int big_bucket = 0;
-
-  for (size_t i = 0; i < _rules.size(); ++i) {
+  const size_t rulesNum = _rules.size();
+  for (size_t i = 0; i < rulesNum; ++i) {
     if (_rules[i]->is_first) {
       int _bucket_size = _rules[i]->size;
       fprintf(fp, "\nSIZE= %d ", _bucket_size);
@@ -882,7 +881,7 @@ void DBTable::adjust_ipNode(ip_node* _node) {
   for (int i = 0; i < _node->rules.size(); ++i)
     _rules.emplace_back(&_node->rules[i]);
   tuple_ranges = DynamicTupleRanges(_rules, dt_time, tuple_ranges);
-  int tuple_ranges_num = tuple_ranges.size();
+  const size_t tuple_ranges_num = tuple_ranges.size();
 
   _node->prefix_down = new char**[33]();
   for (int i = 0; i < 33; ++i) {
@@ -1297,14 +1296,14 @@ void DBTable::search_with_log(vector<Packet>& _packet) {
     if (max_tuple < acc_t) max_tuple = acc_t;
     if (max_rule < acc_r) max_rule = acc_r;
   }
-  std::cout << "\navg_acc_bucket: "
-            << (double)acc_bucket / (double)_packet.size()
+  const size_t packetNum = _packet.size();
+  std::cout << "\navg_acc_bucket: " << (double)acc_bucket / (double)packetNum
             << " max: " << max_bucket << std::endl;
 
-  std::cout << "avg_acc_tuple: " << (double)acc_tuple / (double)_packet.size()
+  std::cout << "avg_acc_tuple: " << (double)acc_tuple / (double)packetNum
             << " max: " << max_tuple << std::endl;
 
-  std::cout << "avg_acc_rule: " << (double)acc_rule / (double)_packet.size()
+  std::cout << "avg_acc_rule: " << (double)acc_rule / (double)packetNum
             << " max: " << max_rule << std::endl;
 }
 
@@ -1528,7 +1527,7 @@ void DBTable::remove(Rule& _r) {
 
 void DBTable::print_nodes() {
   FILE* fp = nullptr;
-  fp = fopen("nodes.txt", "w");
+  fp = fopen("./INFO/DBT_nodes.txt", "w");
   if (fp == nullptr) {
     fprintf(stderr, "error - can not creat nodes.txt\n");
     return;
@@ -1795,3 +1794,4 @@ size_t DBTable::portNode_mem(port_node* _pnode) {
   return mem;
 }
 //////// ======== ////////
+}  // namespace DBT

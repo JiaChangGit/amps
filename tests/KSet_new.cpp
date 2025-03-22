@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "KSet.hpp"
+#include "basis.hpp"
 #include "input.hpp"
 #include "inputFile_test.hpp"
 #include "linearSearch_test.hpp"
@@ -279,7 +280,7 @@ int main(int argc, char *argv[]) {
 
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
 #ifdef PERLOOKUPTIME
-    std::ofstream Jlog("perLookTimes.txt", std::ios_base::out);
+    std::ofstream Jlog("./INFO/perLookTimes.txt", std::ios_base::out);
     if (!Jlog) {
       std::cerr << "Error: Failed to open perLookTimes.txt\n";
       return -1;

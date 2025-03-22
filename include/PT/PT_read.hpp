@@ -22,12 +22,12 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef __READ_H_
-#define __READ_H_
-#include "data_structure.hpp"
+#ifndef __PT_READ_HPP__
+#define __PT_READ_HPP__
+#include "PT_data_structure.hpp"
 
 using namespace std;
-
+namespace PT {
 int read_rules(const char* file_name, vector<Rule>& list) {
   FILE* fp = nullptr;
   fp = fopen(file_name, "r");
@@ -91,5 +91,6 @@ int read_packets(const char* file_name, vector<Packet>& list,
   fclose(fp);
   return 1;
 }
+}  // namespace PT
 
 #endif  // !__READ_H_

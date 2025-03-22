@@ -19,49 +19,8 @@
 
 #include <getopt.h>
 
-#include <algorithm>
-#include <array>
 #include <chrono>
-#include <iomanip>  // 用於設置小數點位數
 #include <iostream>
-#include <string>
-#include <vector>
-#define LowDim 0
-#define HighDim 1
-#define MAXDIMENSIONS 5
-
-typedef std::vector<uint32_t> Packet;
-
-struct Rule {
-  Rule(unsigned int dim = 5)
-      : dim(dim),
-        pri(0),
-        priority(0),
-        range(dim, {{0, 0}}),
-        prefix_length(dim, 0) {};
-
-  unsigned int dim;
-  int pri, priority;
-  std::vector<std::array<uint32_t, 2>> range;
-  std::vector<uint32_t> prefix_length;
-
-  bool inline isMatch(const Packet& p) const {
-    for (size_t i = 0; i < dim; ++i) {
-      if (p[i] < range[i][LowDim] || p[i] > range[i][HighDim]) return false;
-    }
-    return true;
-  }
-};
-
-class PacketClassifier {
- public:
-  virtual void ConstructClassifier(const std::vector<Rule>& rules) = 0;
-  virtual int ClassifyAPacket(const Packet& packet) = 0;
-  virtual void DeleteRule(const Rule& rule) = 0;
-  virtual void InsertRule(const Rule& rule) = 0;
-
- private:
-};
 
 // 定義可選的計時模式
 #define TIMER_STEADY_CLOCK 1

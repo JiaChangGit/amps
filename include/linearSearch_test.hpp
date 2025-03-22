@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "basis.hpp"
+#include "data_structure.hpp"
 
 class LinearSearch {
  public:

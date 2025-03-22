@@ -22,8 +22,8 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef __DATA_STRUCTURE_HPP__
-#define __DATA_STRUCTURE_HPP__
+#ifndef __DBT_DATA_STRUCTURE_HPP__
+#define __DBT_DATA_STRUCTURE_HPP__
 #include <math.h>
 #include <stdint.h>
 #include <time.h>
@@ -32,6 +32,7 @@
 #include <cstring>
 #include <vector>
 
+namespace DBT {
 extern int TOP_K;
 extern double END_BOUND;
 extern int C_BOUND;
@@ -300,5 +301,5 @@ void myVector<T>::remove(uint64_t i) {
   memmove(data + i, data + i + 1, (data_size - i - 1) * sizeof(T));
   --data_size;
 }
-
+}  // namespace DBT
 #endif  //__DATA_STRUCTURE_H_

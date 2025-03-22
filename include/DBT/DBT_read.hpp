@@ -22,11 +22,12 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef __READ_HPP__
-#define __READ_HPP__
-#include "data_structure.hpp"
+#ifndef __DBT_READ_HPP__
+#define __DBT_READ_HPP__
+#include "DBT_data_structure.hpp"
 
 using namespace std;
+namespace DBT {
 int read_rules(const char* file_name, vector<Rule>& list) {
   FILE* fp = nullptr;
   fp = fopen(file_name, "r");
@@ -91,5 +92,5 @@ int read_packets(const char* file_name, vector<Packet>& list,
   fclose(fp);
   return 1;
 }
-
+}  // namespace DBT
 #endif  // !__READ_H_

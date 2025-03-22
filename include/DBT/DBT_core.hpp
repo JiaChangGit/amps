@@ -22,8 +22,8 @@
  *IN THE SOFTWARE.
  */
 
-#ifndef __CORE_HPP__
-#define __CORE_HPP__
+#ifndef __DBT_CORE_HPP__
+#define __DBT_CORE_HPP__
 #include <immintrin.h>  // 包含 BMI2 指令集
 
 #include <algorithm>
@@ -32,14 +32,15 @@
 #include <iomanip>
 #include <iostream>
 
-#include "tss.hpp"
-
+#include "DBT_tss.hpp"
+#include "basis.hpp"
+#ifndef TIMER_METHOD
+#define TIMER_METHOD TIMER_RDTSCP
+#endif
 using namespace std;
 
+namespace DBT {
 /// === ///
-double get_nano_time(struct timespec* a, struct timespec* b);
-double get_milli_time(struct timespec* a, struct timespec* b);
-
 uint32_t hashCode(uint32_t hash1, uint32_t hash2);
 uint32_t hashCode(uint64_t hash);
 /// === ///
@@ -97,5 +98,5 @@ class DBTable {
   size_t ptule_mem(prefix_tuple& _ptuple);
   size_t portNode_mem(port_node* _pnode);
 };
-
+}  // namespace DBT
 #endif  // !__CORE_H_

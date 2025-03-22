@@ -20,7 +20,7 @@
 
 #include <fstream>
 
-#include "basis.hpp"
+#include "data_structure.hpp"
 
 class InputFile_test {
  public:

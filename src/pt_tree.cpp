@@ -1,5 +1,5 @@
 #include "pt_tree.hpp"
-
+namespace PT {
 uint8_t maskHash[33][4];
 uint32_t maskBit[33] = {
     0,          0x80000000, 0xC0000000, 0xE0000000, 0xF0000000, 0xF8000000,
@@ -32,20 +32,12 @@ int check_correct(Rule& a, Packet& b) {
 void setmaskHash() {
   for (int i = 0; i < 33; ++i) {
     int j = 0;
-    for (; j < i / 8; ++j) maskHash[i][j] = 8;
+    for (; j < i / 8; ++j) PT::maskHash[i][j] = 8;
     if (j < 4) {
-      maskHash[i][j] = i % 8;
-      for (++j; j < 4; ++j) maskHash[i][j] = 0;
+      PT::maskHash[i][j] = i % 8;
+      for (++j; j < 4; ++j) PT::maskHash[i][j] = 0;
     }
   }
-}
-
-double get_nano_time(struct timespec* a, struct timespec* b) {
-  return (b->tv_sec - a->tv_sec) * 1000000000 + b->tv_nsec - a->tv_nsec;
-}
-double get_milli_time(struct timespec* a, struct timespec* b) {
-  return (b->tv_sec - a->tv_sec) * 1000 +
-         (double)(b->tv_nsec - a->tv_nsec) / 1000000.0;
 }
 
 uint64_t reverse_byte(uint64_t x) {
@@ -100,7 +92,7 @@ void CacuInfo::reset_cRules() {
 void CacuInfo::read_fields() {
   vector<uint8_t> tmp_fields;
   tmp_fields.resize(3);
-  FILE* fp_l3 = fopen("./L3.txt", "r");
+  FILE* fp_l3 = fopen("./include/PT/L3.txt", "r");
   if (fp_l3 == nullptr) {
     fprintf(stderr, "error - can not open L3.txt\n");
     exit(0);
@@ -1855,9 +1847,8 @@ int PTtree::search_with_log(Packet& p, ACL_LOG& log) {
   return res;
 }
 
-bool PTtree::update(vector<Rule>& rules, int num, struct timespec& t1,
-                    struct timespec& t2) {
-  int ruleNum = rules.size();
+bool PTtree::update(vector<Rule>& rules, int num, Timer& timer) {
+  const size_t ruleNum = rules.size();
   vector<Rule> newRule;
   vector<int> rd_idx;
   random_device seed;
@@ -1872,10 +1863,14 @@ bool PTtree::update(vector<Rule>& rules, int num, struct timespec& t1,
     rd_idx.emplace_back(cur_idx);
   }
 
-  clock_gettime(CLOCK_REALTIME, &t1);
+  unsigned long long delete_time = 0, _delete_time = 0;
+  unsigned long long insert_time = 0, _insert_time = 0;
   // remove
   for (int i = 0; i < num; ++i) {
+    timer.timeReset();
     bool res = this->remove(newRule[i]);
+    _delete_time = timer.elapsed_ns();
+    delete_time += _delete_time;
     if (!res) {
       fprintf(stderr, "error-can not find rule! Remove rules failed!");
       return res;
@@ -1883,15 +1878,20 @@ bool PTtree::update(vector<Rule>& rules, int num, struct timespec& t1,
   }
   // insert
   for (int i = 0; i < num; ++i) {
+    timer.timeReset();
     this->insert_up(newRule[i]);
+    _insert_time = timer.elapsed_ns();
+    insert_time += _insert_time;
   }
-  clock_gettime(CLOCK_REALTIME, &t2);
-  cout << "|- Average update time: " << get_milli_time(&t1, &t2) / (num * 2.0)
-       << "um\n";
+
+  cout << "|- Average delete time: " << delete_time / (num) << "ns\n";
+  cout << "|- Average insert time: " << insert_time / (num) << "ns\n";
+  cout << "|- Average update time: "
+       << (delete_time + insert_time) / (num * 2.0) << "ns\n";
   return true;
 }
 
-void PTtree::print_node_info(int level, int rules) {
+void PTtree::print_node_info(const size_t rules) {
   std::cout << "|- Total nodes num:          " << this->totalNodes << std::endl;
   std::cout << "|- Total inner nodes num:    "
             << this->ipNodeList.size() + this->portNodeList.size() + 1
@@ -1911,131 +1911,114 @@ void PTtree::print_node_info(int level, int rules) {
             << (double)rules / (double)(this->pLeafNodeList.size() +
                                         this->aLeafNodeList.size())
             << std::endl;
-  if (level > 1) {
-    double equ_1 = 0;
-    double rang_1to100 = 0;
-    double lager_100 = 0;
-    int max_leaf = 0;
-    for (auto leaf : this->pLeafNodeList) {
-      if (leaf->rule.size() > max_leaf) max_leaf = leaf->rule.size();
-      if (leaf->rule.size() == 1)
-        ++equ_1;
-      else if (leaf->rule.size() < 100)
-        ++rang_1to100;
-      else
-        ++lager_100;
+  double equ_1 = 0;
+  double rang_1to100 = 0;
+  double lager_100 = 0;
+  int max_leaf = 0;
+  for (auto leaf : this->pLeafNodeList) {
+    if (leaf->rule.size() > max_leaf) max_leaf = leaf->rule.size();
+    if (leaf->rule.size() == 1)
+      ++equ_1;
+    else if (leaf->rule.size() < 100)
+      ++rang_1to100;
+    else
+      ++lager_100;
+  }
+  std::cout << "|- Leaf node size->1:        " << equ_1 << std::endl;
+  std::cout << "|- Leaf node size->(1, 100]: " << rang_1to100 << std::endl;
+  std::cout << "|- Leaf node size->(100, +]: " << lager_100 << std::endl;
+  std::cout << "|- Max leaf node size:       " << max_leaf << std::endl;
+
+  FILE* fp = nullptr;
+  std::cout
+      << "|- Write pTree inner node infomation to pInnerNode_info.txt...\n";
+  fp = fopen("./INFO/PT_pInnerNode_info.txt", "w");
+  fprintf(fp, "IpNode [ID LAYER FIELD TABLE_NUM CHILD_NUM]\n\n");
+  switch (this->layerFields.size()) {
+    case 3: {
+      for (auto& node : this->ipNodeList) {
+        IpNode_static* n = (IpNode_static*)node;
+        int c_num = 0;
+        for (int i = 0; i < 257; ++i)
+          if (n->child[i].pointer != nullptr) ++c_num;
+        fprintf(fp, "%u\t%u\t%u\t1\t%d\n", n->id, n->layer, n->field, c_num);
+      }
+      break;
     }
-    /*for (auto leaf : this->aLeafNodeList) {
-            if (leaf->rule.size() > max_leaf)max_leaf = leaf->rule.size();
-            if (leaf->rule.size() == 1)++equ_1;
-            else if (leaf->rule.size() < 100) ++rang_1to100;
-            else ++lager_100;
-    }*/
-    std::cout << "|- Leaf node size->1:        " << equ_1 << std::endl;
-    std::cout << "|- Leaf node size->(1, 100]: " << rang_1to100 << std::endl;
-    std::cout << "|- Leaf node size->(100, +]: " << lager_100 << std::endl;
-    std::cout << "|- Max leaf node size:       " << max_leaf << std::endl;
-
-    if (level > 2) {
-      FILE* fp = nullptr;
-      std::cout
-          << "|- Write pTree inner node infomation to pInnerNode_info.txt...\n";
-      fp = fopen("pInnerNode_info.txt", "w");
-      fprintf(fp, "IpNode [ID LAYER FIELD TABLE_NUM CHILD_NUM]\n\n");
-      switch (this->layerFields.size()) {
-        case 3: {
-          for (auto& node : this->ipNodeList) {
-            IpNode_static* n = (IpNode_static*)node;
-            int c_num = 0;
-            for (int i = 0; i < 257; ++i)
-              if (n->child[i].pointer != nullptr) ++c_num;
-            fprintf(fp, "%u\t%u\t%u\t1\t%d\n", n->id, n->layer, n->field,
-                    c_num);
-          }
-          break;
-        }
-        default: {
-          for (auto& node : this->ipNodeList) {
-            IpNode* n = (IpNode*)node;
-            int c_num = 0;
-            list<IpTable>::iterator it = n->tableList.begin();
-            for (; it != n->tableList.end(); ++it) c_num += it->child.size();
-            fprintf(fp, "%u\t%u\t%u\t%u\t%d\n", n->id, n->layer, n->field,
-                    n->tableList.size(), c_num);
-          }
-          break;
-        }
+    default: {
+      for (auto& node : this->ipNodeList) {
+        IpNode* n = (IpNode*)node;
+        int c_num = 0;
+        list<IpTable>::iterator it = n->tableList.begin();
+        for (; it != n->tableList.end(); ++it) c_num += it->child.size();
+        fprintf(fp, "%u\t%u\t%u\t%u\t%d\n", n->id, n->layer, n->field,
+                n->tableList.size(), c_num);
       }
-      fclose(fp);
-
-      std::cout
-          << "|- Write pTree leaf node infomation to pLeafNode_info.txt...\n";
-      fp = fopen("pLeafNode_info.txt", "w");
-      fprintf(
-          fp,
-          "Leaf Node [ID SIG] (SIG={[1, 1], (1, 16], (16, 32], (32, 64], (64, "
-          "128],  (128, +)})\n|- Rule [PRI SIP DIP SPORT DPORT PROTOCOL]\n");
-      for (int i = 0; i < this->pLeafNodeList.size(); ++i) {
-        int psize = this->pLeafNodeList[i]->rule.size();
-        if (psize == 1)
-          fprintf(fp, "\n%d\t%d [1, 1]\n", i, psize);
-        else if (psize < 16)
-          fprintf(fp, "\n%d\t%d (1, 16]\n", i, psize);
-        else if (psize < 32)
-          fprintf(fp, "\n%d\t%d (16, 32]\n", i, psize);
-        else if (psize < 64)
-          fprintf(fp, "\n%d\t%d (32, 64]\n", i, psize);
-        else if (psize < 128)
-          fprintf(fp, "\n%d\t%d (64, 128]\n", i, psize);
-        else
-          fprintf(fp, "\n%d\t%d (128, +)\n", i, psize);
-        for (auto r : this->pLeafNodeList[i]->rule)
-          fprintf(
-              fp,
-              "|- "
-              "%u\t%u.%u.%u.%u/%u\t\t%u.%u.%u.%u/%u\t\t%u:%u\t\t%u:%u\t\t%u\n",
-              r.pri, r.source_ip[3], r.source_ip[2], r.source_ip[1],
-              r.source_ip[0], r.source_mask, r.destination_ip[3],
-              r.destination_ip[2], r.destination_ip[1], r.destination_ip[0],
-              r.destination_mask, r.source_port[0], r.source_port[1],
-              r.destination_port[0], r.destination_port[1], r.protocol[1]);
-      }
-      fclose(fp);
-
-      std::cout
-          << "|- Write aTree inner node infomation to aInnerNode_info.txt...\n";
-      fp = fopen("aInnerNode_info.txt", "w");
-      fprintf(fp, "Protocol Node [ID TABLE_NUM CHILD_NUM]\n\n");
-      fprintf(fp, "0\t1\t%u\n\n", this->aTree->child.size());
-      fprintf(fp, "Port Node [ID TABLE_NUM CHILD_NUM]\n\n");
-      for (auto node : this->portNodeList) {
-        PortNode_static* n = (PortNode_static*)node;
-        fprintf(fp, "%u\t2\t%u\n", n->id, n->child.size());
-      }
-      fclose(fp);
-
-      std::cout
-          << "|- Write aTree leaf node infomation to aLeafNode_info.txt...\n";
-      fp = fopen("aLeafNode_info.txt", "w");
-      fprintf(
-          fp,
-          "Leaf Node [ID SIZE]\n|- Rule [PRI SIP DIP SPORT DPORT PROTOCOL]\n");
-      for (int i = 0; i < this->aLeafNodeList.size(); ++i) {
-        fprintf(fp, "\n%d\t%u\n", i, this->aLeafNodeList[i]->rule.size());
-        for (auto r : this->aLeafNodeList[i]->rule)
-          fprintf(
-              fp,
-              "|- "
-              "%u\t%u.%u.%u.%u/%u\t\t%u.%u.%u.%u/%u\t\t%u:%u\t\t%u:%u\t\t%u\n",
-              r.pri, r.source_ip[3], r.source_ip[2], r.source_ip[1],
-              r.source_ip[0], r.source_mask, r.destination_ip[3],
-              r.destination_ip[2], r.destination_ip[1], r.destination_ip[0],
-              r.destination_mask, r.source_port[0], r.source_port[1],
-              r.destination_port[0], r.destination_port[1], r.protocol[1]);
-      }
-      fclose(fp);
+      break;
     }
   }
+  fclose(fp);
+
+  std::cout << "|- Write pTree leaf node infomation to pLeafNode_info.txt...\n";
+  fp = fopen("./INFO/PT_pLeafNode_info.txt", "w");
+  fprintf(fp,
+          "Leaf Node [ID SIG] (SIG={[1, 1], (1, 16], (16, 32], (32, 64], (64, "
+          "128],  (128, +)})\n|- Rule [PRI SIP DIP SPORT DPORT PROTOCOL]\n");
+  for (int i = 0; i < this->pLeafNodeList.size(); ++i) {
+    int psize = this->pLeafNodeList[i]->rule.size();
+    if (psize == 1)
+      fprintf(fp, "\n%d\t%d [1, 1]\n", i, psize);
+    else if (psize < 16)
+      fprintf(fp, "\n%d\t%d (1, 16]\n", i, psize);
+    else if (psize < 32)
+      fprintf(fp, "\n%d\t%d (16, 32]\n", i, psize);
+    else if (psize < 64)
+      fprintf(fp, "\n%d\t%d (32, 64]\n", i, psize);
+    else if (psize < 128)
+      fprintf(fp, "\n%d\t%d (64, 128]\n", i, psize);
+    else
+      fprintf(fp, "\n%d\t%d (128, +)\n", i, psize);
+    for (auto r : this->pLeafNodeList[i]->rule)
+      fprintf(fp,
+              "|- "
+              "%u\t%u.%u.%u.%u/%u\t\t%u.%u.%u.%u/%u\t\t%u:%u\t\t%u:%u\t\t%u\n",
+              r.pri, r.source_ip[3], r.source_ip[2], r.source_ip[1],
+              r.source_ip[0], r.source_mask, r.destination_ip[3],
+              r.destination_ip[2], r.destination_ip[1], r.destination_ip[0],
+              r.destination_mask, r.source_port[0], r.source_port[1],
+              r.destination_port[0], r.destination_port[1], r.protocol[1]);
+  }
+  fclose(fp);
+
+  std::cout
+      << "|- Write aTree inner node infomation to aInnerNode_info.txt...\n";
+  fp = fopen("./INFO/PT_aInnerNode_info.txt", "w");
+  fprintf(fp, "Protocol Node [ID TABLE_NUM CHILD_NUM]\n\n");
+  fprintf(fp, "0\t1\t%u\n\n", this->aTree->child.size());
+  fprintf(fp, "Port Node [ID TABLE_NUM CHILD_NUM]\n\n");
+  for (auto node : this->portNodeList) {
+    PortNode_static* n = (PortNode_static*)node;
+    fprintf(fp, "%u\t2\t%u\n", n->id, n->child.size());
+  }
+  fclose(fp);
+
+  std::cout << "|- Write aTree leaf node infomation to aLeafNode_info.txt...\n";
+  fp = fopen("./INFO/PT_aLeafNode_info.txt", "w");
+  fprintf(fp,
+          "Leaf Node [ID SIZE]\n|- Rule [PRI SIP DIP SPORT DPORT PROTOCOL]\n");
+  for (int i = 0; i < this->aLeafNodeList.size(); ++i) {
+    fprintf(fp, "\n%d\t%u\n", i, this->aLeafNodeList[i]->rule.size());
+    for (auto r : this->aLeafNodeList[i]->rule)
+      fprintf(fp,
+              "|- "
+              "%u\t%u.%u.%u.%u/%u\t\t%u.%u.%u.%u/%u\t\t%u:%u\t\t%u:%u\t\t%u\n",
+              r.pri, r.source_ip[3], r.source_ip[2], r.source_ip[1],
+              r.source_ip[0], r.source_mask, r.destination_ip[3],
+              r.destination_ip[2], r.destination_ip[1], r.destination_ip[0],
+              r.destination_mask, r.source_port[0], r.source_port[1],
+              r.destination_port[0], r.destination_port[1], r.protocol[1]);
+  }
+  fclose(fp);
 }
 
 size_t PTtree::get_ipNode_mem(IpNode* node) {
@@ -2112,3 +2095,4 @@ size_t PTtree::mem() {
   }
 }
 //// ==================== ////
+}  // namespace PT

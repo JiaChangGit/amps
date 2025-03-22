@@ -28,9 +28,9 @@
 
 #include <random>
 
-#include "methods.hpp"
+#include "PT_methods.hpp"
+#include "PT_read.hpp"
 #include "pt_tree.hpp"
-#include "read.hpp"
 
 using namespace std;
 
@@ -43,9 +43,8 @@ int main(int argc, char* argv[]) {
   vector<Packet> packets;
   vector<int> check_list;
 
-  struct timespec t1, t2;
+  Timer timer;
   constexpr bool enable_log = true;
-  constexpr int log_level = 3;  // {1,2,3}
   bool enable_update = false;
   vector<uint8_t> set_field;
   int set_port = 1;
@@ -108,9 +107,6 @@ int main(int argc, char* argv[]) {
         cout << "*                Using 0-3 to express source ip 1-4 byte and "
                 "4-7 to express destination ip 1-4 byte. (Example: [-f "
                 "4,0,1,1])                               *\n";
-        cout << "* -l(--log):     Enable the log. Have three level 1-3. "
-                "(Example: [-l 3])                                             "
-                "                                      *\n";
         cout << "* -u(--update):  Enable update. (Example: [-u])               "
                 "                                                              "
                 "                               *\n";
@@ -136,20 +132,18 @@ int main(int argc, char* argv[]) {
   // search config
   /***********************************************************************************************************************/
   if (set_field.size() == 0) {
-    clock_gettime(CLOCK_REALTIME, &t1);
+    timer.timeReset();
     CacuInfo cacu(rules);
     cacu.read_fields();
     set_field = cacu.cacu_best_fields();
     set_port = 1;
-    clock_gettime(CLOCK_REALTIME, &t2);
-    double search_config_time = get_milli_time(&t1, &t2);
-    cout << "search config time: " << (search_config_time / 1000.0) << " s"
-         << endl;
+
+    cout << "search config time: " << timer.elapsed_s() << " s" << endl;
   }
   for (int i = 0; i < set_field.size(); ++i) cout << set_field[i] << " ";
 
-  single_thread(set_field, set_port, enable_log, log_level, enable_update,
-                rules, packets, check_list);
+  single_thread(set_field, set_port, enable_log, enable_update, rules, packets,
+                check_list);
 
   cout << "\nProgram complete.\n\n";
   return 0;

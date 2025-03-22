@@ -26,14 +26,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "method.hpp"
-#include "read.hpp"
+#include "DBT_method.hpp"
+#include "DBT_read.hpp"
 
-int TOP_K = 4;
-double END_BOUND = 0.8;
-int C_BOUND = 32;
-int BINTH = 4;
-uint32_t maskBit[33] = {
+int DBT::TOP_K = 4;
+double DBT::END_BOUND = 0.8;
+int DBT::C_BOUND = 32;
+int DBT::BINTH = 4;
+uint32_t DBT::maskBit[33] = {
     0,          0x80000000, 0xC0000000, 0xE0000000, 0xF0000000, 0xF8000000,
     0xFC000000, 0xFE000000, 0xFF000000, 0xFF800000, 0xFFC00000, 0xFFE00000,
     0xFFF00000, 0xFFF80000, 0xFFFC0000, 0xFFFE0000, 0xFFFF0000, 0xFFFF8000,
@@ -41,7 +41,7 @@ uint32_t maskBit[33] = {
     0xFFFFFF00, 0xFFFFFF80, 0xFFFFFFC0, 0xFFFFFFE0, 0xFFFFFFF0, 0xFFFFFFF8,
     0xFFFFFFFC, 0xFFFFFFFE, 0xFFFFFFFF};
 
-uint32_t getBit[32] = {
+uint32_t DBT::getBit[32] = {
     0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000,
     0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000,
     0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000,
@@ -56,10 +56,10 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "use -h(--help) to print the usage guideline.\n");
     return 0;
   }
-  vector<Rule> rules;
-  vector<Packet> packets;
+  vector<DBT::Rule> rules;
+  vector<DBT::Packet> packets;
   vector<int> check_list;
-  struct timespec t1, t2;
+  Timer timer;
 
   constexpr bool enable_log = true;
   bool enable_update = false;
@@ -87,16 +87,16 @@ int main(int argc, char* argv[]) {
         if (!read_packets(optarg, packets, check_list)) return -1;
         break;
       case 'b':
-        BINTH = atoi(optarg);
+        DBT::BINTH = atoi(optarg);
         break;
       case 'e':
-        END_BOUND = atof(optarg);
+        DBT::END_BOUND = atof(optarg);
         break;
       case 'c':
-        C_BOUND = atoi(optarg);
+        DBT::C_BOUND = atoi(optarg);
         break;
       case 'k':
-        TOP_K = atoi(optarg);
+        DBT::TOP_K = atoi(optarg);
         break;
       case 'u':
         enable_update = true;
@@ -112,9 +112,6 @@ int main(int argc, char* argv[]) {
         cout << "* -p(--packet):  Input the packet set file. If not set, the "
                 "program will generate randomly. (Example: [-p acl1_trace])    "
                 "                                 *\n";
-        cout << "* -l(--log):     Enable the log. Have three level 1-3. "
-                "(Example: [-l 3])                                             "
-                "                                      *\n";
         cout << "* -u(--update):  Enable update. (Example: [-u])               "
                 "                                                              "
                 "                               *\n";

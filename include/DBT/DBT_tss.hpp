@@ -1,9 +1,9 @@
-#ifndef __TSS_HPP__
-#define __TSS_HPP__
+#ifndef __DBT_TSS_HPP__
+#define __DBT_SS_HPP__
 
 #include <iostream>
 
-#include "data_structure.hpp"
+#include "DBT_data_structure.hpp"
 
 #define SPLIT_SELF 1
 #define SPLIT_SRC 2
@@ -14,8 +14,10 @@
 // DynamicTuple_Demo need to define TUPLEINFO
 // DynamicTuple_Basic and DynamicTuple can be used without TUPLEINFO, which will
 // malloc more memory
+
 // #define TUPLEINFO
 
+namespace DBT {
 extern uint64_t check_hash_cost;
 extern uint64_t check_group_cost;
 extern uint64_t check_rule_cost;
@@ -92,11 +94,11 @@ struct DtInfo {
 #endif
 
   void GetDtRules(vector<Rule *> &_rules);
-  void Init(vector<TupleRange> pre_tuple_ranges);
+  void Init(const vector<TupleRange> &pre_tuple_ranges);
   uint32_t GetIpNumSum(int x1, int y1, int x2, int y2);
   void DtCalculate(bool accelerate);
   void DtCalculateXY(int x1, int y1, bool accelerate);
-  void ReducePreTupleRanges(vector<TupleRange> pre_tuple_ranges);
+  void ReducePreTupleRanges(const vector<TupleRange> &pre_tuple_ranges);
   void DynamicProgramming();
   void DynamicProgrammingXY(int x1, int y1);
   vector<TupleRange> GetTupleRanges(int x1, int y1, int x2, int y2);
@@ -111,6 +113,6 @@ vector<TupleRange> TupleRangeStep(int step);
 vector<TupleRange> DynamicTupleRanges(vector<Rule *> &rules, double &dt_time,
                                       vector<TupleRange> pre_tuple_ranges);
 
-void PrintTupleRanges(vector<TupleRange> &tuple_ranges);
-
+void PrintTupleRanges(const vector<TupleRange> &tuple_ranges);
+}  // namespace DBT
 #endif

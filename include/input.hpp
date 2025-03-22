@@ -18,7 +18,7 @@
 #ifndef __IO_INPUT_HPP__
 #define __IO_INPUT_HPP__
 
-#include "basis.hpp"
+#include "data_structure.hpp"
 
 class InputFile {
  public:
