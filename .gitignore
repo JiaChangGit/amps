@@ -3,7 +3,7 @@
 
 *.Identifier
 ./INFO/*.txt
-
+./third_party
 ### C ###
 # Prerequisites
 *.d
