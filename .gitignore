@@ -2,8 +2,9 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,c++,cmake,visualstudio,visualstudiocode,powershell,git
 
 *.Identifier
-./INFO/*.txt
-./third_party
+INFO/*.txt
+third_party/*
+
 ### C ###
 # Prerequisites
 *.d
