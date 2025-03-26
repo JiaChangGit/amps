@@ -39,12 +39,11 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "use -h(--help) to print the usage guideline.\n");
     return 0;
   }
-  vector<Rule> rules;
-  vector<Packet> packets;
+  vector<PT_Rule> rules;
+  vector<PT_Packet> packets;
   vector<int> check_list;
 
   Timer timer;
-  constexpr bool enable_log = true;
   bool enable_update = false;
   vector<uint8_t> set_field;
   int set_port = 1;
@@ -142,8 +141,7 @@ int main(int argc, char* argv[]) {
   }
   for (int i = 0; i < set_field.size(); ++i) cout << set_field[i] << " ";
 
-  single_thread(set_field, set_port, enable_log, enable_update, rules, packets,
-                check_list);
+  PT::single_thread(set_field, set_port, enable_update, rules, packets);
 
   cout << "\nProgram complete.\n\n";
   return 0;

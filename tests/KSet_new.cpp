@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) {
 
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
 #ifdef PERLOOKUPTIME
-    std::ofstream Jlog("./INFO/perLookTimes.txt", std::ios_base::out);
+    std::ofstream Jlog("./INFO/KSet_perLookTimes.txt", std::ios_base::out);
     if (!Jlog) {
       std::cerr << "Error: Failed to open perLookTimes.txt\n";
       return -1;
@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
          << "\tTotal classification time: " << (time_rdtscp * trials) << " ns"
          << endl
          << "\tAverage classification time: "
-         << (time_rdtscp / (trials * number_pkt)) << " ns";
+         << (time_rdtscp / (trials * number_pkt)) << " ns\n";
   }
 
   if (parser.isUpdMode()) {

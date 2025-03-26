@@ -1,3 +1,4 @@
+# ./
 cmake_minimum_required(VERSION 3.10)
 project(MyProject)
 
@@ -15,7 +16,8 @@ endif()
 # 通用編譯選項
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive -pedantic -Wall -Wextra -mbmi2")
 
-# 添加 src 和 tests 子目錄（確保 src 在前，tests 依賴 src）
+# 添加 src 和 tests 子目錄（確保third_party/dlib在前，以及src 在前，tests 依賴 src）
+add_subdirectory(third_party/dlib)
 add_subdirectory(src)
 add_subdirectory(tests)
 

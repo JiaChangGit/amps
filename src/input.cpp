@@ -199,7 +199,7 @@ void InputFile::loadPacket(std::vector<Packet> &packets, const char *fileName) {
     p.emplace_back(header[2]);
     p.emplace_back(header[3]);
     p.emplace_back(header[4]);
-    p.push_back(fid);
+    p.emplace_back(fid);
     ++number_pkt;
     packets.emplace_back(p);
   }

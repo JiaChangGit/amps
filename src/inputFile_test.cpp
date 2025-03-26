@@ -18,7 +18,7 @@
 #include "inputFile_test.hpp"
 
 void InputFile_test::loadRule_test(const std::vector<Rule>& ruleV,
-                                       const char* fileName) {
+                                   const char* fileName) {
   std::ofstream outFile(fileName);
   if (!outFile.is_open()) {
     std::cerr << "Failed to open " << fileName << " for writing"
@@ -44,14 +44,14 @@ void InputFile_test::loadRule_test(const std::vector<Rule>& ruleV,
 }
 
 void InputFile_test::loadPacket_test(const std::vector<Packet>& packetV,
-                                         const char* fileName) {
+                                     const char* fileName) {
   std::ofstream outFile(fileName);
   if (!outFile.is_open()) {
     std::cerr << "Failed to open " << fileName << " for writing"
               << "\n";
     return;
   }
-  outFile << "src ip: \tdst ip: \tsrc port: \tdst port: \tprotocol: \n";
+  outFile << "src ip: \tdst ip: \tsrc port: \tdst port: \tprotocol: \match:\n";
   for (const auto& packet : packetV) {
     for (const auto& val : packet) {
       outFile << val << " ";

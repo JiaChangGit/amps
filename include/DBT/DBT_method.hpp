@@ -35,7 +35,7 @@
 using namespace std;
 namespace DBT {
 void single_thread(bool enable_update, vector<Rule>& rules,
-                   vector<Packet>& packets, vector<int>& check_list) {
+                   vector<Packet>& packets) {
   Timer timer;
   cout << "\nbuild for single thread...\n";
   cout << "binth=" << BINTH << " th_b=" << END_BOUND << " K=" << TOP_K

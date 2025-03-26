@@ -87,9 +87,9 @@ struct IpNode_static {
       : field(_field), childType(_cType), layer(_layer), id(_id) {}
 };
 struct LeafNode {
-  vector<Rule> rule;
+  vector<PT_Rule> rule;
   LeafNode() {}
-  LeafNode(vector<Rule>& _rule) : rule(_rule) {}
+  LeafNode(vector<PT_Rule>& _rule) : rule(_rule) {}
 };
 struct PortNode_static {
   uint32_t id;
@@ -118,7 +118,7 @@ struct ACL_LOG {
 };
 
 /// ====== ///
-int check_correct(Rule& a, Packet& b);
+int check_correct(PT_Rule& a, PT_Packet& b);
 void setmaskHash();
 
 uint64_t reverse_byte(uint64_t x);
@@ -126,12 +126,12 @@ uint64_t reverse_byte(uint64_t x);
 
 class CacuInfo {
  public:
-  vector<CacuRule*> cRules;
+  vector<PT_CacuRule*> cRules;
   vector<vector<uint8_t>> fields;
   int best_fields_id;
   double min_cost;
 
-  CacuInfo(vector<Rule>& _rules);
+  CacuInfo(vector<PT_Rule>& _rules);
   void reset_cRules();
   void read_fields();
 
@@ -165,15 +165,15 @@ class PTtree {
   void freeStaticNode(IpNode_static* node);
   void freeNode(IpNode* node);
 
-  void insert(Rule& r);
-  void insert_up(Rule& r);
+  void insert(PT_Rule& r);
+  void insert_up(PT_Rule& r);
 
-  bool remove(Rule& r);
+  bool remove(PT_Rule& r);
 
-  int search(Packet& p);
-  int search_with_log(Packet& p, ACL_LOG& log);
+  int search(const PT_Packet& p);
+  int search_with_log(PT_Packet& p, ACL_LOG& log);
 
-  bool update(vector<Rule>& rules, int num, Timer& timer);
+  bool update(vector<PT_Rule>& rules, int num, Timer& timer);
 
   void print_node_info(const size_t rules);
 

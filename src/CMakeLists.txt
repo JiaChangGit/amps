@@ -23,4 +23,4 @@ target_include_directories(my_DBTable PUBLIC ${PROJECT_SOURCE_DIR}/include)
 add_library(input_lib STATIC input.cpp inputFile_test.cpp)
 # 設定 input_lib 需要 include 目錄
 target_include_directories(input_lib PUBLIC ${PROJECT_SOURCE_DIR}/include)
-
+target_include_directories(input_lib PUBLIC ${PROJECT_SOURCE_DIR}/third_party/dlib)

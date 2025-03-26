@@ -52,7 +52,7 @@ union IP {
   } i_8;
 };
 
-typedef struct Rule {
+typedef struct PT_Rule {
   int pri;                    // priority
   unsigned char protocol[2];  // [0] : mask [1] : protocol
   unsigned char source_mask;
@@ -61,17 +61,17 @@ typedef struct Rule {
   unsigned char destination_ip[4];
   unsigned short source_port[2];
   unsigned short destination_port[2];
-} Rule;
+} PT_Rule;
 
-typedef struct Packet {
+typedef struct PT_Packet {
   unsigned int protocol;
   unsigned char source_ip[4];
   unsigned char destination_ip[4];
   unsigned short source_port;
   unsigned short destination_port;
-} Packet;
+} PT_Packet;
 
-struct CacuRule {
+struct PT_CacuRule {
   uint32_t pri;  // priority
   IP total_fetch_byte;
   MASK total_mask;
@@ -87,7 +87,7 @@ struct CacuRule {
   int acc_leaf;
   int acc_rule;
 
-  CacuRule()
+  PT_CacuRule()
       : total_fetch_byte({0}),
         total_mask({0}),
         mask({0}),

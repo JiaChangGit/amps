@@ -42,7 +42,7 @@ fi
 # 執行測試
 ulimit -s 81920
 echo "Running search tests..."
-"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t -c > "$TEST_KSET_MAIN_EXEC"_c_log.txt
+"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t -s > "$TEST_KSET_MAIN_EXEC"_c_log.txt
 
 echo "Running upd tests..."
 "$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt

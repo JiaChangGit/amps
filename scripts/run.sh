@@ -9,8 +9,8 @@
 # 設定變數
 BUILD_DIR="./build"
 TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_1k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl1_1k_trace"
+RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
+TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
 
 # 檢查並建立 build 目錄（如果不存在）
 if [ ! -d "$BUILD_DIR" ]; then
@@ -39,4 +39,4 @@ fi
 
 # 執行測試
 echo "Running tests..."
-"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -t
+"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s -t

@@ -10,7 +10,7 @@ uint32_t maskBit[33] = {
     0xFFFFFFFC, 0xFFFFFFFE, 0xFFFFFFFF};
 
 /// === ///
-int check_correct(Rule& a, Packet& b) {
+int check_correct(PT_Rule& a, PT_Packet& b) {
   if (a.protocol[0] != 0 && (uint32_t)a.protocol[1] != b.protocol) return 0;
   int mask = 32 - (uint32_t)a.source_mask;
   uint32_t sip, dip;
@@ -56,12 +56,12 @@ uint64_t reverse_byte(uint64_t x) {
 
 /// ======= ///
 
-CacuInfo::CacuInfo(vector<Rule>& _rules) {
+CacuInfo::CacuInfo(vector<PT_Rule>& _rules) {
   min_cost = 0xFFFFFFFF;
   best_fields_id = 0;
   for (auto& _r : _rules) {
     if (_r.source_mask < 4 && _r.destination_mask < 4) continue;
-    CacuRule* _cr = new CacuRule();
+    PT_CacuRule* _cr = new PT_CacuRule();
     _cr->pri = _r.pri;
     _cr->mask.i_32.smask = maskBit[_r.source_mask];
     _cr->mask.i_32.dmask = maskBit[_r.destination_mask];
@@ -214,7 +214,7 @@ double CacuInfo::cacu_cost(vector<uint8_t>& _fields) {
 uint32_t CacuInfo::cacu_in_node(int _start, int _end) {
   uint32_t num = 0;
   sort(cRules.begin() + _start, cRules.begin() + _end,
-       [](CacuRule* a, CacuRule* b) -> bool {
+       [](PT_CacuRule* a, PT_CacuRule* b) -> bool {
          if (a->cur_mask != b->cur_mask)
            return a->cur_mask > b->cur_mask;
          else if (a->cur_byte != b->cur_byte)
@@ -250,7 +250,7 @@ uint32_t CacuInfo::cacu_in_node(int _start, int _end) {
 double CacuInfo::cacu_in_leaf(int _start, int _end) {
   double score = 0;
   sort(cRules.begin() + _start, cRules.begin() + _end,
-       [](CacuRule* a, CacuRule* b) -> bool {
+       [](PT_CacuRule* a, PT_CacuRule* b) -> bool {
          if (a->cur_mask != b->cur_mask)
            return a->cur_mask > b->cur_mask;
          else if (a->cur_byte != b->cur_byte)
@@ -363,7 +363,7 @@ void PTtree::freeNode(IpNode* node) {
   }
   delete (node);
 }
-void PTtree::insert(Rule& r) {
+void PTtree::insert(PT_Rule& r) {
   if (r.source_mask < 4 && r.destination_mask < 4) {  // inser in assit tree
     if (aTree == nullptr) {
       aTree = new ProtoNode();
@@ -725,7 +725,7 @@ void PTtree::insert(Rule& r) {
   }
 }
 
-void PTtree::insert_up(Rule& r) {
+void PTtree::insert_up(PT_Rule& r) {
   if (r.source_mask < 4 && r.destination_mask < 4) {  // inser in assit tree
     if (aTree == nullptr) {
       aTree = new ProtoNode();
@@ -1096,7 +1096,7 @@ void PTtree::insert_up(Rule& r) {
     }
   }
 }
-bool PTtree::remove(Rule& r) {
+bool PTtree::remove(PT_Rule& r) {
   if (r.source_mask < 4 && r.destination_mask < 4) {  // remove in assit tree
     if (aTree == nullptr) {
       return false;
@@ -1367,7 +1367,7 @@ bool PTtree::remove(Rule& r) {
   }
 }
 
-int PTtree::search(Packet& p) {
+int PTtree::search(const PT_Packet& p) {
   unsigned int pSip, pDip;
   unsigned char pProto;
   unsigned short pSport, pDport;
@@ -1590,7 +1590,7 @@ int PTtree::search(Packet& p) {
   }
   return res;
 }
-int PTtree::search_with_log(Packet& p, ACL_LOG& log) {
+int PTtree::search_with_log(PT_Packet& p, ACL_LOG& log) {
   unsigned int pSip, pDip;
   unsigned char pProto;
   unsigned short pSport, pDport;
@@ -1847,9 +1847,9 @@ int PTtree::search_with_log(Packet& p, ACL_LOG& log) {
   return res;
 }
 
-bool PTtree::update(vector<Rule>& rules, int num, Timer& timer) {
+bool PTtree::update(vector<PT_Rule>& rules, int num, Timer& timer) {
   const size_t ruleNum = rules.size();
-  vector<Rule> newRule;
+  vector<PT_Rule> newRule;
   vector<int> rd_idx;
   random_device seed;
   mt19937 rd(seed());
@@ -1858,7 +1858,7 @@ bool PTtree::update(vector<Rule>& rules, int num, Timer& timer) {
     int cur_idx = dis(rd);
     while (find(rd_idx.begin(), rd_idx.end(), cur_idx) != rd_idx.end())
       cur_idx = dis(rd);
-    Rule r = rules[cur_idx];
+    PT_Rule r = rules[cur_idx];
     newRule.emplace_back(r);
     rd_idx.emplace_back(cur_idx);
   }
@@ -2032,7 +2032,7 @@ size_t PTtree::get_ipNode_mem(IpNode* node) {
 }
 
 size_t PTtree::get_leafNode_mem(LeafNode* node) {
-  size_t sum = sizeof(LeafNode) + sizeof(Rule) * node->rule.size();
+  size_t sum = sizeof(LeafNode) + sizeof(PT_Rule) * node->rule.size();
   return sum;
 }
 
@@ -2082,7 +2082,7 @@ size_t PTtree::mem() {
       sum += sizeof(PortNode_static) +
              sizeof(pair<uint32_t, LeafNode*>) * pnode->child.size();
       for (auto&& leaf : pnode->child) {
-        sum += sizeof(LeafNode) + leaf.second->rule.size() * sizeof(Rule);
+        sum += sizeof(LeafNode) + leaf.second->rule.size() * sizeof(PT_Rule);
       }
     }
   }

@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  single_thread(enable_update, rules, packets, check_list);
+  single_thread(enable_update, rules, packets);
 
   cout << "\nprogram complete\n\n";
   return 0;

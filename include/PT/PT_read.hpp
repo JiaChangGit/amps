@@ -28,7 +28,7 @@
 
 using namespace std;
 namespace PT {
-int read_rules(const char* file_name, vector<Rule>& list) {
+int read_rules(const char* file_name, vector<PT_Rule>& list) {
   FILE* fp = nullptr;
   fp = fopen(file_name, "r");
   if (fp == nullptr) {
@@ -47,7 +47,7 @@ int read_rules(const char* file_name, vector<Rule>& list) {
                 &sIp[0], &sIp[1], &sIp[2], &sIp[3], &sIp[4], &dIp[0], &dIp[1],
                 &dIp[2], &dIp[3], &dIp[4], &sPort[0], &sPort[1], &dPort[0],
                 &dPort[1], &protocol[1], &protocol[0]) != EOF) {
-    Rule r;
+    PT_Rule r;
     r.pri = i;
     r.protocol[0] = (unsigned char)protocol[0];  // mask
     r.protocol[1] = (unsigned char)protocol[1];  // protocol
@@ -69,7 +69,7 @@ int read_rules(const char* file_name, vector<Rule>& list) {
   return 1;
 }
 
-int read_packets(const char* file_name, vector<Packet>& list,
+int read_packets(const char* file_name, vector<PT_Packet>& list,
                  vector<int>& check_list) {
   FILE* fp = nullptr;
   fp = fopen(file_name, "r");
@@ -77,7 +77,7 @@ int read_packets(const char* file_name, vector<Packet>& list,
     fprintf(stderr, "error - can not open trace file\n");
     return 0;
   }
-  Packet p = {0};
+  PT_Packet p = {0};
   unsigned int ip_src, ip_des;
   int result;
   while (fscanf(fp, "%u\t%u\t%hu\t%hu\t%u\t%*u\t%d\n", &ip_src, &ip_des,

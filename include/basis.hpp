@@ -21,6 +21,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <vector>
 
 // 定義可選的計時模式
 #define TIMER_STEADY_CLOCK 1
@@ -102,7 +103,7 @@ class CommandLineParser {
  public:
   void parseArguments(int argc, char* argv[]) {
     int option;
-    while ((option = getopt_long(argc, argv, "r:p:tcuh", long_options,
+    while ((option = getopt_long(argc, argv, "r:p:beckftsuh", long_options,
                                  nullptr)) != -1) {
       switch (option) {
         case 'r':
@@ -111,10 +112,41 @@ class CommandLineParser {
         case 'p':
           trace_file = optarg;
           break;
+        case 'b':
+          BINTH = atoi(optarg);
+          break;
+        case 'e':
+          END_BOUND = atof(optarg);
+          break;
+        case 'c':
+          C_BOUND = atoi(optarg);
+          break;
+        case 'k':
+          TOP_K = atoi(optarg);
+          break;
+        case 'f': {
+          std::vector<int> tmp_in_field;
+          int i = 0;
+          while (optarg[i] != '\0') {
+            if (optarg[i] != ',') {
+              char c = optarg[i];
+              tmp_in_field.emplace_back(atoi(&c));
+            }
+            ++i;
+          }
+          std::cout << "Set pTree field: ";
+          for (i = 0; i < tmp_in_field.size() - 1; ++i) {
+            std::cout << tmp_in_field[i] << " ";
+            set_field.emplace_back(tmp_in_field[i]);
+          }
+          std::cout << "\nSet aTree port field: " << tmp_in_field[i] << "\n";
+          set_port = tmp_in_field[i];
+          break;
+        }
         case 't':
           test_mode = true;
           break;
-        case 'c':  // classification simulation
+        case 's':  // classification simulation
           classificationFlag = true;
           break;
         case 'u':  // update simulation
@@ -137,6 +169,8 @@ class CommandLineParser {
   bool isSearchMode() const { return classificationFlag; }
   bool isUpdMode() const { return updateFlag; }
   bool shouldShowHelp() const { return show_help; }
+  std::vector<uint8_t> getField() const { return set_field; }
+  int getPort() const { return set_port; }
 
   static void printHelp(const std::string& program_name) {
     std::cout << "****************************\n";
@@ -145,7 +179,7 @@ class CommandLineParser {
     std::cout << "  -r, --ruleset <file>  Load ruleset file\n";
     std::cout << "  -p, --trace <file>    Load packet trace file\n";
     std::cout << "  -t, --test            Run test with predefined data\n";
-    std::cout << "  -c, --search mode     search mode\n";
+    std::cout << "  -s, --search mode     search mode\n";
     std::cout << "  -u, --update mode     update mode\n";
     std::cout << "  -h, --help            Show this help message\n";
     std::cout << "****************************\n";
@@ -159,5 +193,28 @@ class CommandLineParser {
   bool classificationFlag = false;
   bool updateFlag = false;
   static struct option long_options[];
+  /// PT ///
+  std::vector<uint8_t> set_field;
+  int set_port = 1;
+  /// PT ///
+  //// DBT ////
+  int TOP_K = 4;
+  double END_BOUND = 0.8;
+  int C_BOUND = 32;
+  int BINTH = 4;
+  //// DBT ////
 };
+
+inline double ip_to_uint32_be(const unsigned char ip[4]) {
+  return static_cast<double>((static_cast<uint32_t>(ip[0]) << 24) |
+                             (static_cast<uint32_t>(ip[1]) << 16) |
+                             (static_cast<uint32_t>(ip[2]) << 8) |
+                             (static_cast<uint32_t>(ip[3])));
+}
+inline void extract_ip_bytes_to_float(const unsigned char ip[4], float out[4]) {
+  for (int i = 0; i < 4; ++i) {
+    out[i] = static_cast<float>(ip[i]);
+  }
+}
+
 #endif
