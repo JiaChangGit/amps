@@ -13,7 +13,7 @@ using namespace std;
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
 // #define PERLOOKUPTIME
-#define PRIVALID
+// #define PRIVALID
 constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
 // 靜態成員初始化

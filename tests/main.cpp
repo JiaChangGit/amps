@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "KSet.hpp"
+#include "LinearRegressionModel.hpp"
 #include "basis.hpp"
 #include "input.hpp"
 #include "inputFile_test.hpp"
@@ -39,17 +40,10 @@ using namespace std;
 #ifndef TIMER_METHOD
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
-// #define PERLOOKUPTIME
-#define ENABLE_OUTPUT_PT_PREDICTION
-#define ENABLE_OUTPUT_KSET_PREDICTION
+#define PERLOOKUPTIME
+#define ENABLE_OUTPUT_PREDICTION
 #define TOTAL
-#ifdef TOTAL
-// #include <dlib/mlp.h>
 
-#include <Eigen/Dense>
-using namespace Eigen;
-// using namespace dlib;
-#endif
 constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
 // 靜態成員初始化
@@ -336,76 +330,6 @@ void exportPTRules(const std::vector<PT_Rule> &rules,
 
   fclose(fp);
 }
-
-// 對特徵矩陣 X 做 Z-score 標準化（不包含 bias 欄）
-void normalizeFeatures(MatrixXd &X, vector<double> &mean_out,
-                       vector<double> &std_out) {
-  int rows = X.rows();
-  int cols = X.cols();
-
-  mean_out.resize(cols - 1);
-  std_out.resize(cols - 1);
-
-  for (int j = 0; j < cols - 1; ++j) {  // 最後一欄是 bias，不處理
-    VectorXd col = X.col(j);
-    double mean = col.mean();
-    double stddev = sqrt((col.array() - mean).square().sum() / rows);
-
-    // 防止除以 0
-    if (stddev < 1e-8) stddev = 1.0;
-
-    mean_out[j] = mean;
-    std_out[j] = stddev;
-
-    // 執行標準化
-    X.col(j) = (X.col(j).array() - mean) / stddev;
-  }
-}
-// 將單一數值做 Z-score 標準化（預測時用）
-double toNormalized(double value, double mean, double stddev) {
-  if (stddev < 1e-8) return 0.0;
-  return (value - mean) / stddev;
-}
-// 線性迴歸擬合函式
-VectorXd linearRegressionFit(const MatrixXd &X, const VectorXd &y) {
-  // 使用 Householder QR 分解來求解最小平方解
-  return X.householderQr().solve(y);
-}
-// 模型評估指標
-void evaluateModel(const VectorXd &y_pred, const VectorXd &y_true,
-                   const string &label) {
-  int n = y_true.size();
-  double mae = 0.0, mse = 0.0;
-  double y_mean = y_true.mean();
-  double ss_res = 0.0, ss_tot = 0.0;
-
-  for (int i = 0; i < n; ++i) {
-    double error = y_pred(i) - y_true(i);
-    mae += std::abs(error);
-    mse += error * error;
-    ss_res += error * error;
-    ss_tot += (y_true(i) - y_mean) * (y_true(i) - y_mean);
-  }
-
-  mae /= n;
-  mse /= n;
-  double rmse = std::sqrt(mse);
-  double r2 = 1.0 - (ss_res / ss_tot);
-
-  cout << "\n[" << label << " model evaluation]" << endl;
-  cout << "MAE  = " << mae << " ns" << endl;
-  cout << "RMSE = " << rmse << " ns" << endl;
-  cout << "R^2  = " << r2 << endl;
-}
-// 參數 a.size() == 4（3個特徵 + 1個 bias）
-double predict3(const VectorXd &a, double x1, double x2, double x3) {
-  return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3);
-}
-// 參數 a.size() == 6（5個特徵 + 1個 bias）
-double predict5(const VectorXd &a, double x1, double x2, double x3, double x4,
-                double x5) {
-  return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 + a(5);
-}
 /////////////////
 int main(int argc, char *argv[]) {
   CommandLineParser parser;
@@ -563,8 +487,6 @@ int main(int argc, char *argv[]) {
          << "times circularly: " << packetNum * trials << "\n";
 
     vector<int> matchid(packetNum);
-    Packet p;
-
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
 #ifdef PERLOOKUPTIME
     std::ofstream KSet_per_log("./INFO/KSet_perLookTimes.txt",
@@ -576,19 +498,19 @@ int main(int argc, char *argv[]) {
 #endif
     for (size_t t = 0; t < trials; ++t) {
       for (size_t i = 0; i < packetNum; ++i) {
-        timer.timeReset();
-        p = packets[i];
         int match_pri = -1;
-        if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(p);
+        timer.timeReset();
+        if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
         if (match_pri < max_pri_set[1] && num_set[1] > 0)
-          match_pri = max(match_pri, set1.ClassifyAPacket(p));
+          match_pri = max(match_pri, set1.ClassifyAPacket(packets[i]));
         if (match_pri < max_pri_set[2] && num_set[2] > 0)
-          match_pri = max(match_pri, set2.ClassifyAPacket(p));
+          match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
         if (match_pri < max_pri_set[3] && num_set[3] > 0)
-          match_pri = max(match_pri, set3.ClassifyAPacket(p));
-        matchid[i] = (number_rule - 1) - match_pri;
+          match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
         _KSet_search_time = timer.elapsed_ns();
         KSet_search_time += _KSet_search_time;
+        matchid[i] = (number_rule - 1) - match_pri;
+
 #ifdef PERLOOKUPTIME
         if (1 == t) {
           KSet_per_log << "Packet " << i << " \t Result " << matchid[i]
@@ -671,27 +593,24 @@ int main(int argc, char *argv[]) {
          << "times circularly: " << packetNum * trials << "\n";
 
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
-    vector<int> matchid(packetNum);
-    Packet p;
-#ifdef PERLOOKUPTIME
-    std::ofstream per_log("./INFO/perLookTimes.txt", std::ios_base::out);
-    if (!per_log) {
-      std::cerr << "Error: Failed to open perLookTimes.txt\n";
-      return -1;
-    }
-#endif
+
     ///////// train ////////
-    // 三維模型：使用 source_ip, destination_ip, source_port
+    // 三維模型
     MatrixXd X3(packetNum, 4);  // 3 features + bias
     VectorXd PT_model_3(4);
     VectorXd KSet_model_3(4);
 
-    // 五維模型：加上 protocol, destination_port
+    // 五維模型
     MatrixXd X5(packetNum, 6);  // 5 features + bias
     VectorXd PT_model_5(6);
     VectorXd KSet_model_5(6);
 
-    // y 向量共用 (3 and 5)
+    // 11維模型
+    MatrixXd X11(packetNum, 12);  // 11 features + bias
+    VectorXd PT_model_11(12);
+    VectorXd KSet_model_11(12);
+
+    // y 向量共用 (3, 5, 11)
     VectorXd PT_y(packetNum);
     VectorXd KSet_y(packetNum);
 
@@ -704,12 +623,9 @@ int main(int argc, char *argv[]) {
     float out[4] = {0};
 
     for (int i = 0; i < packetNum; ++i) {
-      p = packets[i];
-      int match_pri = -1;
-
       // 特徵轉換
-      x_protocol = static_cast<double>(PT_packets[i].protocol);
       // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
+      // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
       ////
       extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
       x_source_ip_0 = static_cast<double>(out[0]);
@@ -723,152 +639,124 @@ int main(int argc, char *argv[]) {
       x_destination_ip_2 = static_cast<double>(out[2]);
       x_destination_ip_3 = static_cast<double>(out[3]);
       ////
-      // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
       x_source_port = static_cast<double>(PT_packets[i].source_port);
       x_destination_port = static_cast<double>(PT_packets[i].destination_port);
+      x_protocol = static_cast<double>(PT_packets[i].protocol);
 
       // 搜尋時間量測 (PT)
-      _PT_search_time = 0;
+      PT_match_id = tree.search(PT_packets[i]);
       timer.timeReset();
       PT_match_id = tree.search(PT_packets[i]);
       _PT_search_time = timer.elapsed_ns();
       PT_y(i) = static_cast<double>(_PT_search_time);
 
       // 搜尋時間量測 (KSet)
-      timer.timeReset();
-      if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(p);
+      int match_pri = -1;
+      if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
       if (match_pri < max_pri_set[1] && num_set[1] > 0)
-        match_pri = max(match_pri, set1.ClassifyAPacket(p));
+        match_pri = max(match_pri, set1.ClassifyAPacket(packets[i]));
       if (match_pri < max_pri_set[2] && num_set[2] > 0)
-        match_pri = max(match_pri, set2.ClassifyAPacket(p));
+        match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
       if (match_pri < max_pri_set[3] && num_set[3] > 0)
-        match_pri = max(match_pri, set3.ClassifyAPacket(p));
-      matchid[i] = (number_rule - 1) - match_pri;
+        match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
+
+      match_pri = -1;
+      timer.timeReset();
+      if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
+      if (match_pri < max_pri_set[1] && num_set[1] > 0)
+        match_pri = max(match_pri, set1.ClassifyAPacket(packets[i]));
+      if (match_pri < max_pri_set[2] && num_set[2] > 0)
+        match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
+      if (match_pri < max_pri_set[3] && num_set[3] > 0)
+        match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
       _KSet_search_time = timer.elapsed_ns();
       KSet_y(i) = static_cast<double>(_KSet_search_time);
 
-      // 填入三維特徵：source_ip, destination_ip, source_port + bias
-      // X3(i, 0) = x_source_ip;
-      // X3(i, 1) = x_destination_ip;
-      // X3(i, 2) = x_source_port;
-      // X3(i, 3) = 1.0;
-      ////
+      // 填入三維特徵
       X3(i, 0) = x_source_ip_0;
       X3(i, 1) = x_source_ip_1;
       X3(i, 2) = x_destination_ip_0;
       X3(i, 3) = 1.0;
       ////
 
-      // 填入五維特徵：source_ip, destination_ip, source_port,
-      // destination_port, protocol + bias
+      // 填入五維特徵
       X5(i, 0) = x_source_ip_0;
       X5(i, 1) = x_destination_ip_0;
       X5(i, 2) = x_source_port;
       X5(i, 3) = x_destination_port;
       X5(i, 4) = x_protocol;
       X5(i, 5) = 1.0;
+
+      // 填入11維特徵
+      X11(i, 0) = x_source_ip_0;
+      X11(i, 1) = x_source_ip_1;
+      X11(i, 2) = x_source_ip_2;
+      X11(i, 3) = x_source_ip_3;
+      X11(i, 4) = x_destination_ip_0;
+      X11(i, 5) = x_destination_ip_1;
+      X11(i, 6) = x_destination_ip_2;
+      X11(i, 7) = x_destination_ip_3;
+      X11(i, 8) = x_source_port;
+      X11(i, 9) = x_destination_port;
+      X11(i, 10) = x_protocol;
+      X11(i, 11) = 1.0;
     }
     vector<double> mean_X3, std_X3;
     vector<double> mean_X5, std_X5;
+    vector<double> mean_X11, std_X11;
 
     normalizeFeatures(X3, mean_X3, std_X3);
     normalizeFeatures(X5, mean_X5, std_X5);
+    normalizeFeatures(X11, mean_X11, std_X11);
 
     // 模型擬合
     PT_model_3 = linearRegressionFit(X3, PT_y);
     PT_model_5 = linearRegressionFit(X5, PT_y);
+    PT_model_11 = linearRegressionFit(X11, PT_y);
     KSet_model_3 = linearRegressionFit(X3, KSet_y);
     KSet_model_5 = linearRegressionFit(X5, KSet_y);
+    KSet_model_11 = linearRegressionFit(X11, KSet_y);
 
     // 輸出模型參數
     cout << "\n[PT 3-feature model] (x1, x2, x3, bias):\n"
          << PT_model_3.transpose() << endl;
     cout << "\n[PT 5-feature model] (x1~x5, bias):\n"
          << PT_model_5.transpose() << endl;
+    cout << "\n[PT 11-feature model] (x1~x11, bias):\n"
+         << PT_model_11.transpose() << endl;
     cout << "\n[KSet 3-feature model] (x1, x2, x3, bias):\n"
          << KSet_model_3.transpose() << endl;
     cout << "\n[KSet 5-feature model] (x1~x5, bias):\n"
          << KSet_model_5.transpose() << endl;
+    cout << "\n[KSet 11-feature model] (x1~x11, bias):\n"
+         << KSet_model_11.transpose() << endl;
     ///////// train ////////
 
     /////// benchmark ///////
-    evaluateModel(X3 * PT_model_3, PT_y, "3-feature");
-    evaluateModel(X5 * PT_model_5, PT_y, "5-feature");
-    evaluateModel(X3 * KSet_model_3, KSet_y, "3-feature");
-    evaluateModel(X5 * KSet_model_5, KSet_y, "5-feature");
+    evaluateModel(X3 * PT_model_3, PT_y, "PT-3-feature");
+    evaluateModel(X5 * PT_model_5, PT_y, "PT-5-feature");
+    evaluateModel(X11 * PT_model_11, PT_y, "PT-11-feature");
+    evaluateModel(X3 * KSet_model_3, KSet_y, "KSet-3-feature");
+    evaluateModel(X5 * KSet_model_5, KSet_y, "KSet-5-feature");
+    evaluateModel(X11 * KSet_model_11, KSet_y, "KSet-11-feature");
     /////// benchmark ///////
 
-#ifdef ENABLE_OUTPUT_PT_PREDICTION
+#ifdef ENABLE_OUTPUT_PREDICTION
     // 輸出封包預測與實際搜尋時間至結果檔案
     std::ofstream pt_prediction_out("./INFO/pt_prediction_result.txt");
     if (!pt_prediction_out) {
       std::cerr << "Cannot open pt_prediction_result.txt！" << std::endl;
       return 1;
     }
-    for (int i = 0; i < packetNum; ++i) {
-      // // 特徵 2: source IP（big-endian 轉 uint32）
-      // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
-      // // 特徵 3: destination IP（big-endian 轉 uint32）
-      // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
-
-      ////
-      extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
-      x_source_ip_0 = static_cast<double>(out[0]);
-      x_source_ip_1 = static_cast<double>(out[1]);
-      x_source_ip_2 = static_cast<double>(out[2]);
-      x_source_ip_3 = static_cast<double>(out[3]);
-
-      extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
-      x_destination_ip_0 = static_cast<double>(out[0]);
-      x_destination_ip_1 = static_cast<double>(out[1]);
-      x_destination_ip_2 = static_cast<double>(out[2]);
-      x_destination_ip_3 = static_cast<double>(out[3]);
-      ////
-
-      // 特徵 4: source port（轉 uint16）
-      x_source_port = static_cast<double>(PT_packets[i].source_port);
-
-      double x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
-      double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
-      double x3_norm_3 =
-          toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
-
-      double predicted_time_3 =
-          predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-
-      double x1_norm_5 = toNormalized(x_source_ip_0, mean_X5[0], std_X5[0]);
-      double x2_norm_5 =
-          toNormalized(x_destination_ip_0, mean_X5[1], std_X5[1]);
-      double x3_norm_5 = toNormalized(x_source_port, mean_X5[2], std_X5[2]);
-      double x4_norm_5 =
-          toNormalized(x_destination_port, mean_X5[3], std_X5[3]);
-      double x5_norm_5 = toNormalized(x_protocol, mean_X5[4], std_X5[4]);
-
-      double predicted_time_5 = predict5(PT_model_5, x1_norm_5, x2_norm_5,
-                                         x3_norm_5, x4_norm_5, x5_norm_5);
-
-      double actual_time = PT_y(i);
-      pt_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
-                        << std::setprecision(4) << predicted_time_3
-                        << "\tPredict5 " << predicted_time_5
-                        << "\tRealTime(ns) " << actual_time << std::endl;
-    }
-
-    pt_prediction_out.close();
-    std::cout << "to pt_prediction_result.txt..." << std::endl;
-#endif
-
-#ifdef ENABLE_OUTPUT_KSET_PREDICTION
-    // 輸出封包預測與實際搜尋時間至結果檔案
     std::ofstream kset_prediction_out("./INFO/kset_prediction_result.txt");
     if (!kset_prediction_out) {
       std::cerr << "Cannot open kset_prediction_result.txt！" << std::endl;
       return 1;
     }
     for (int i = 0; i < packetNum; ++i) {
-      // // 特徵 2: source IP（big-endian 轉 uint32）
+      // //  source IP（big-endian 轉 uint32）
       // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
-      // // 特徵 3: destination IP（big-endian 轉 uint32）
+      // //  destination IP（big-endian 轉 uint32）
       // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
 
       ////
@@ -885,16 +773,15 @@ int main(int argc, char *argv[]) {
       x_destination_ip_3 = static_cast<double>(out[3]);
       ////
 
-      // 特徵 4: source port（轉 uint16）
+      // source port（轉 uint16）
       x_source_port = static_cast<double>(PT_packets[i].source_port);
+      x_destination_port = static_cast<double>(PT_packets[i].destination_port);
+      x_protocol = static_cast<double>(PT_packets[i].protocol);
 
       double x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
       double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
       double x3_norm_3 =
           toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
-
-      double predicted_time_3 =
-          predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
 
       double x1_norm_5 = toNormalized(x_source_ip_0, mean_X5[0], std_X5[0]);
       double x2_norm_5 =
@@ -904,15 +791,82 @@ int main(int argc, char *argv[]) {
           toNormalized(x_destination_port, mean_X5[3], std_X5[3]);
       double x5_norm_5 = toNormalized(x_protocol, mean_X5[4], std_X5[4]);
 
-      double predicted_time_5 = predict5(KSet_model_5, x1_norm_5, x2_norm_5,
+      double x1_norm_11 = toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
+      double x2_norm_11 = toNormalized(x_source_ip_1, mean_X11[1], std_X11[1]);
+      double x3_norm_11 = toNormalized(x_source_ip_2, mean_X11[2], std_X11[2]);
+      double x4_norm_11 = toNormalized(x_source_ip_3, mean_X11[3], std_X11[3]);
+      double x5_norm_11 =
+          toNormalized(x_destination_ip_0, mean_X11[4], std_X11[4]);
+      double x6_norm_11 =
+          toNormalized(x_destination_ip_1, mean_X11[5], std_X11[5]);
+      double x7_norm_11 =
+          toNormalized(x_destination_ip_2, mean_X11[6], std_X11[6]);
+      double x8_norm_11 =
+          toNormalized(x_destination_ip_3, mean_X11[7], std_X11[7]);
+      double x9_norm_11 = toNormalized(x_source_port, mean_X11[8], std_X11[8]);
+      double x10_norm_11 =
+          toNormalized(x_destination_port, mean_X11[9], std_X11[9]);
+      double x11_norm_11 = toNormalized(x_protocol, mean_X11[10], std_X11[10]);
+
+      double predicted_time_3 =
+          predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+      double predicted_time_5 = predict5(PT_model_5, x1_norm_5, x2_norm_5,
                                          x3_norm_5, x4_norm_5, x5_norm_5);
-      double actual_time = KSet_y(i);
+      double predicted_time_11 =
+          predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11, x4_norm_11,
+                    x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11, x9_norm_11,
+                    x10_norm_11, x11_norm_11);
+      /*
+      double predicted_time_3 = predict3(PT_model_3, x_source_ip_0,
+                                         x_source_ip_1, x_destination_ip_0);
+      double predicted_time_5 =
+          predict5(PT_model_5, x_source_ip_0, x_destination_ip_0, x_source_port,
+                   x_destination_port, x_protocol);
+      double predicted_time_11 =
+          predict11(PT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                    x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                    x_destination_ip_2, x_destination_ip_3, x_source_port,
+                    x_destination_port, x_protocol);
+      */
+
+      double actual_time = PT_y(i);
+      pt_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
+                        << std::setprecision(4) << predicted_time_3
+                        << "\tPredict5 " << predicted_time_5 << "\tPredict11 "
+                        << predicted_time_11 << "\tRealTime(ns) " << actual_time
+                        << std::endl;
+
+      predicted_time_3 =
+          predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+      predicted_time_5 = predict5(KSet_model_5, x1_norm_5, x2_norm_5, x3_norm_5,
+                                  x4_norm_5, x5_norm_5);
+      predicted_time_11 =
+          predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
+                    x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11,
+                    x9_norm_11, x10_norm_11, x11_norm_11);
+      /*
+      predicted_time_3 = predict3(KSet_model_3, x_source_ip_0, x_source_ip_1,
+                                  x_destination_ip_0);
+      predicted_time_5 =
+          predict5(KSet_model_5, x_source_ip_0, x_destination_ip_0,
+                   x_source_port, x_destination_port, x_protocol);
+      predicted_time_11 =
+          predict11(KSet_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                    x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                    x_destination_ip_2, x_destination_ip_3, x_source_port,
+                    x_destination_port, x_protocol);
+      */
+
+      actual_time = KSet_y(i);
       kset_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
                           << std::setprecision(4) << predicted_time_3
-                          << "\tPredict5 " << predicted_time_5
-                          << "\tRealTime(ns) " << actual_time << std::endl;
+                          << "\tPredict5 " << predicted_time_5 << "\tPredict11 "
+                          << predicted_time_11 << "\tRealTime(ns) "
+                          << actual_time << std::endl;
     }
 
+    pt_prediction_out.close();
+    std::cout << "to pt_prediction_result.txt..." << std::endl;
     kset_prediction_out.close();
     std::cout << "to kset_prediction_result.txt..." << std::endl;
 #endif

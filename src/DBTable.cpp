@@ -1599,7 +1599,7 @@ void DBTable::print_nodes() {
         used_tuple += subsets.ipNodes[i].tuples.size();
         if (subsets.ipNodes[i].tuples.size() > max_tuples)
           max_tuples = subsets.ipNodes[i].tuples.size();
-        fprintf(fp, "\nUSED_TUPLES %d", subsets.ipNodes[i].tuples.size());
+        fprintf(fp, "\nUSED_TUPLES %zu", subsets.ipNodes[i].tuples.size());
         for (auto& _tuple : subsets.ipNodes[i].tuples) {
           total_bucket_num += _tuple.mask + 1;
           used_bucket_num += _tuple.ptuple_num;
