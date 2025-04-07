@@ -40,7 +40,7 @@ int read_rules(const char* file_name, vector<PT_Rule>& list) {
   unsigned int sPort[2];
   unsigned int dPort[2];
   unsigned int protocol[2];
-  int i = 0;
+  unsigned int i = 0;
   while (fscanf(fp,
                 "@%u.%u.%u.%u/%u\t%u.%u.%u.%u/%u\t%u : %u\t%u : "
                 "%u\t%x/%x\t%*x/%*x\t\n",

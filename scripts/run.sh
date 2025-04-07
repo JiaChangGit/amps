@@ -38,5 +38,7 @@ if [ ! -f "$RULESET_PATH" ] || [ ! -f "$TRACE_PATH" ]; then
 fi
 
 # 執行測試
+ulimit -s 81920
+
 echo "Running tests..."
 "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s

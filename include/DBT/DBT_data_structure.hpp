@@ -51,8 +51,8 @@ struct myVector {
   myVector();
   myVector(struct myVector& val);
   ~myVector();
-
   uint64_t size();
+  uint64_t size() const;
   uint64_t capacity();
   bool empty();
   void free();
@@ -60,6 +60,7 @@ struct myVector {
   void swap(T* p, uint64_t _size, uint64_t _capa);
   T* front();
   T& operator[](uint64_t i);
+  const T& operator[](uint64_t i) const;
   void operator=(struct myVector<T>& val);
   void emplace_back(T& val);
   void insert(T& val, uint64_t i);
@@ -199,6 +200,10 @@ template <typename T>
 uint64_t myVector<T>::size() {
   return data_size;
 }
+template <typename T>
+uint64_t myVector<T>::size() const {
+  return data_size;
+}
 
 template <typename T>
 uint64_t myVector<T>::capacity() {
@@ -246,6 +251,11 @@ T* myVector<T>::front() {
 
 template <typename T>
 T& myVector<T>::operator[](uint64_t i) {
+  return data[i];
+}
+
+template <typename T>
+const T& DBT::myVector<T>::operator[](uint64_t i) const {
   return data[i];
 }
 

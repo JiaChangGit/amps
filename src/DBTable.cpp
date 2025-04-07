@@ -849,6 +849,8 @@ void DBTable::construct() {
   uint32_t bucket_num = 0;
   bitset<64> bits;
   bits = subsets.mask.i_64;
+  std::cout << "DBTable.cpp bits: " << bits
+            << std::endl;  // 印出整個 64 位元序列
   bucket_num = (1 << bits.count()) + 1;
   subsets.size = bucket_num;
   subsets.ipNodes = new ip_node[bucket_num]();
@@ -1070,7 +1072,7 @@ void DBTable::adjust_ptuple(prefix_tuple* _ptuple) {
   _ptuple->rules.swap(_rules);
 }
 
-uint32_t DBTable::search(Packet& _p) {
+uint32_t DBTable::search(const Packet& _p) {
   uint32_t res = 0xFFFFFFFF;
   uint32_t bucket_id[2] = {_pext_u64(_p.ip.i_64, subsets.mask.i_64),
                            subsets.nodes_num - 1};
@@ -1173,7 +1175,7 @@ uint32_t DBTable::search(Packet& _p) {
   return res;
 }
 
-void DBTable::search_with_log(vector<Packet>& _packet) {
+void DBTable::search_with_log(const vector<Packet>& _packet) {
   uint64_t acc_bucket = 0;
   uint64_t acc_tuple = 0;
   uint64_t acc_rule = 0;

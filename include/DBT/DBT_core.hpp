@@ -86,8 +86,8 @@ class DBTable {
   void adjust_ipNode(ip_node* _node);
   void adjust_ptuple(prefix_tuple* _tuple);
 
-  uint32_t search(Packet& _p);
-  void search_with_log(vector<Packet>& _packets);
+  uint32_t search(const Packet& _p);
+  void search_with_log(const vector<Packet>& _packets);
 
   void insert(Rule& _r);
   void remove(Rule& _r);

@@ -9,12 +9,10 @@
 #include "inputFile_test.hpp"
 #include "linearSearch_test.hpp"
 ///////// PT //////////
-#include "PT_read.hpp"
 #include "pt_tree.hpp"
 ///////// PT //////////
 ///////// DBT /////////
-#include "DBT_method.hpp"
-#include "DBT_read.hpp"
+#include "DBT_core.hpp"
 int DBT::TOP_K = 4;
 double DBT::END_BOUND = 0.8;
 int DBT::C_BOUND = 32;
@@ -51,7 +49,7 @@ struct option CommandLineParser::long_options[] = {
     {"ruleset", required_argument, NULL, 'r'},
     {"trace", required_argument, NULL, 'p'},
     {"test", no_argument, NULL, 't'},
-    {"classification", no_argument, NULL, 'c'},
+    {"classification", no_argument, NULL, 's'},
     {"update", no_argument, NULL, 'u'},
     {"help", no_argument, NULL, 'h'},
     {0, 0, 0, 0}  // 結束標記
@@ -205,6 +203,18 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
        << ", MAX[2]: " << max[2] << endl;
 }
 /////////////////
+void bytes_reverse(uint32_t ip, uint8_t bytes[4]) {
+  bytes[0] = (ip >> 24) & 0xFF;
+  bytes[1] = (ip >> 16) & 0xFF;
+  bytes[2] = (ip >> 8) & 0xFF;
+  bytes[3] = ip & 0xFF;
+}
+void bytesAllocate(uint32_t ip, uint8_t bytes[4]) {
+  bytes[0] = ip & 0xFF;
+  bytes[1] = (ip >> 8) & 0xFF;
+  bytes[2] = (ip >> 16) & 0xFF;
+  bytes[3] = (ip >> 24) & 0xFF;
+}
 // ===============================
 // Convert Packet -> PT_Packet
 // ===============================
@@ -212,29 +222,20 @@ std::vector<PT_Packet> convertToPTPackets(const std::vector<Packet> &packets) {
   std::vector<PT_Packet> pt_packets;
 
   for (const auto &pkt : packets) {
-    if (pkt.size() < 5) continue;
-
     PT_Packet pt{};
-
     uint32_t sip = pkt[0];
     uint32_t dip = pkt[1];
 
     // IP 順序修正：big endian
-    pt.source_ip[0] = (sip >> 24) & 0xFF;
-    pt.source_ip[1] = (sip >> 16) & 0xFF;
-    pt.source_ip[2] = (sip >> 8) & 0xFF;
-    pt.source_ip[3] = sip & 0xFF;
-
-    pt.destination_ip[0] = (dip >> 24) & 0xFF;
-    pt.destination_ip[1] = (dip >> 16) & 0xFF;
-    pt.destination_ip[2] = (dip >> 8) & 0xFF;
-    pt.destination_ip[3] = dip & 0xFF;
-
+    // bytes_reverse(sip, pt.source_ip);
+    // bytes_reverse(dip, pt.destination_ip);
+    bytesAllocate(sip, pt.source_ip);
+    bytesAllocate(dip, pt.destination_ip);
     pt.source_port = static_cast<uint16_t>(pkt[2]);
     pt.destination_port = static_cast<uint16_t>(pkt[3]);
     pt.protocol = pkt[4];
 
-    pt_packets.push_back(pt);
+    pt_packets.emplace_back(pt);
   }
 
   return pt_packets;
@@ -247,8 +248,6 @@ std::vector<PT_Rule> convertToPTRules(const std::vector<Rule> &rules) {
   std::vector<PT_Rule> pt_rules;
 
   for (const auto &r : rules) {
-    if (r.range.size() < 5 || r.prefix_length.size() < 5) continue;
-
     PT_Rule pt{};
     pt.pri = r.pri;
 
@@ -258,27 +257,19 @@ std::vector<PT_Rule> convertToPTRules(const std::vector<Rule> &rules) {
 
     // source IP
     pt.source_mask = static_cast<unsigned char>(r.prefix_length[0]);
-    uint32_t sip = r.range[0][0];
-    pt.source_ip[0] = (sip >> 24) & 0xFF;
-    pt.source_ip[1] = (sip >> 16) & 0xFF;
-    pt.source_ip[2] = (sip >> 8) & 0xFF;
-    pt.source_ip[3] = sip & 0xFF;
-
+    // bytes_reverse(r.range[0][0], pt.source_ip);
+    bytesAllocate(r.range[0][0], pt.source_ip);
     // destination IP
     pt.destination_mask = static_cast<unsigned char>(r.prefix_length[1]);
-    uint32_t dip = r.range[1][0];
-    pt.destination_ip[0] = (dip >> 24) & 0xFF;
-    pt.destination_ip[1] = (dip >> 16) & 0xFF;
-    pt.destination_ip[2] = (dip >> 8) & 0xFF;
-    pt.destination_ip[3] = dip & 0xFF;
-
+    // bytes_reverse(r.range[1][0], pt.destination_ip);
+    bytesAllocate(r.range[1][0], pt.destination_ip);
     // ports
     pt.source_port[0] = static_cast<uint16_t>(r.range[2][0]);
     pt.source_port[1] = static_cast<uint16_t>(r.range[2][1]);
     pt.destination_port[0] = static_cast<uint16_t>(r.range[3][0]);
     pt.destination_port[1] = static_cast<uint16_t>(r.range[3][1]);
 
-    pt_rules.push_back(pt);
+    pt_rules.emplace_back(pt);
   }
 
   return pt_rules;
@@ -296,10 +287,10 @@ void exportPTPackets(const std::vector<PT_Packet> &packets,
   }
 
   for (const auto &pkt : packets) {
-    fprintf(fp, "%u.%u.%u.%u\t", pkt.source_ip[0], pkt.source_ip[1],
-            pkt.source_ip[2], pkt.source_ip[3]);
-    fprintf(fp, "%u.%u.%u.%u\t", pkt.destination_ip[0], pkt.destination_ip[1],
-            pkt.destination_ip[2], pkt.destination_ip[3]);
+    fprintf(fp, "%u.%u.%u.%u\t", pkt.source_ip[3], pkt.source_ip[2],
+            pkt.source_ip[1], pkt.source_ip[0]);
+    fprintf(fp, "%u.%u.%u.%u\t", pkt.destination_ip[3], pkt.destination_ip[2],
+            pkt.destination_ip[1], pkt.destination_ip[0]);
     fprintf(fp, "%u\t%u\t%u\n", pkt.source_port, pkt.destination_port,
             pkt.protocol);
   }
@@ -319,16 +310,79 @@ void exportPTRules(const std::vector<PT_Rule> &rules,
   }
 
   for (const auto &r : rules) {
-    fprintf(fp, "@%u.%u.%u.%u/%u\t", r.source_ip[0], r.source_ip[1],
-            r.source_ip[2], r.source_ip[3], r.source_mask);
-    fprintf(fp, "%u.%u.%u.%u/%u\t", r.destination_ip[0], r.destination_ip[1],
-            r.destination_ip[2], r.destination_ip[3], r.destination_mask);
+    fprintf(fp, "@%u.%u.%u.%u/%u\t", r.source_ip[3], r.source_ip[2],
+            r.source_ip[1], r.source_ip[0], r.source_mask);
+    fprintf(fp, "%u.%u.%u.%u/%u\t", r.destination_ip[3], r.destination_ip[2],
+            r.destination_ip[1], r.destination_ip[0], r.destination_mask);
     fprintf(fp, "%u : %u\t", r.source_port[0], r.source_port[1]);
     fprintf(fp, "%u : %u\t", r.destination_port[0], r.destination_port[1]);
     fprintf(fp, "%02X/%02X\n", r.protocol[1], r.protocol[0]);
   }
 
   fclose(fp);
+}
+
+std::vector<DBT::Packet> convertToDBTPackets(
+    const std::vector<Packet> &packets) {
+  std::vector<DBT::Packet> dbt_packets;
+
+  for (const Packet &p : packets) {
+    DBT::Packet dbt_p;
+    // IP 順序修正：big endian
+    uint32_t sip = p[0];
+    uint32_t dip = p[1];
+    // bytes_reverse(sip, dbt_p.ip.i_8.sip);
+    // bytes_reverse(dip, dbt_p.ip.i_8.dip);
+    dbt_p.ip.i_32.sip = p[0];
+    dbt_p.ip.i_32.dip = p[1];
+    dbt_p.Port[0] = static_cast<uint16_t>(p[2]);
+    dbt_p.Port[1] = static_cast<uint16_t>(p[3]);
+    dbt_p.protocol = p[4];
+
+    dbt_packets.emplace_back(dbt_p);
+  }
+
+  return dbt_packets;
+}
+
+DBT::vector<DBT::Rule> convertToDBTRules(const std::vector<Rule> &rules) {
+  DBT::vector<DBT::Rule> dbt_rules;
+
+  for (const Rule &r : rules) {
+    DBT::Rule dbt_r;
+    dbt_r.pri = r.pri;
+
+    // Protocol
+    if (r.range[4][0] == r.range[4][1]) {
+      dbt_r.protocol.val = static_cast<uint8_t>(r.range[4][0]);
+      dbt_r.protocol.mask = 0xFF;
+    } else {
+      dbt_r.protocol.val = 0;
+      dbt_r.protocol.mask = 0;
+    }
+
+    dbt_r.sip_length = static_cast<uint8_t>(r.prefix_length[0]);
+    dbt_r.dip_length = static_cast<uint8_t>(r.prefix_length[1]);
+
+    dbt_r.Port[0][0] = static_cast<uint16_t>(r.range[2][0]);
+    dbt_r.Port[0][1] = static_cast<uint16_t>(r.range[2][1]);
+    dbt_r.Port[1][0] = static_cast<uint16_t>(r.range[3][0]);
+    dbt_r.Port[1][1] = static_cast<uint16_t>(r.range[3][1]);
+
+    // 明確拆解成 bytes（避免 Endian 問題）
+    // bytes_reverse(r.range[0][0], dbt_r.ip.i_8.sip);
+    // bytes_reverse(r.range[1][0], dbt_r.ip.i_8.dip);
+    dbt_r.ip.i_32.sip = r.range[0][0];
+    dbt_r.ip.i_32.dip = r.range[1][0];
+
+    dbt_r.mask.i_32.smask = DBT::maskBit[dbt_r.sip_length];
+    dbt_r.mask.i_32.dmask = DBT::maskBit[dbt_r.dip_length];
+    dbt_r.ip.i_64 &= dbt_r.mask.i_64;
+
+    dbt_rules.emplace_back(dbt_r);
+  }
+
+  return dbt_rules;
 }
 /////////////////
 int main(int argc, char *argv[]) {
@@ -354,14 +408,16 @@ int main(int argc, char *argv[]) {
     inputFile_test.loadPacket_test(packets, LoadPacket_test_path);
     cout << "Input packet test time(ns): " << timerTest.elapsed_ns() << "\n";
   }
+  const size_t number_rule = rule.size();
+  cout << "The number of rules = " << number_rule << "\n";
 
   //// PT ////
   auto PT_packets = convertToPTPackets(packets);
   auto PT_rule = convertToPTRules(rule);
-
-  exportPTPackets(PT_packets, "./INFO/pt_packets.txt");
-  exportPTRules(PT_rule, "./INFO/pt_rules.txt");
-
+  if (parser.isTestMode()) {
+    exportPTPackets(PT_packets, "./INFO/PT_packets.txt");
+    exportPTRules(PT_rule, "./INFO/PT_rules.txt");
+  }
   setmaskHash();
   /***********************************************************************************************************************/
   // search config
@@ -400,27 +456,70 @@ int main(int argc, char *argv[]) {
   /***********************************************************************************************************************/
   cout << "\nPT start search...\n";
   int PT_match_id = 0;
+#ifdef PERLOOKUPTIME
   FILE *PT_res_fp = nullptr;
   PT_res_fp = fopen("./INFO/PT_results.txt", "w");
+#endif
   unsigned long long PT_search_time = 0, _PT_search_time = 0;
   for (int i = 0; i < packetNum; ++i) {
     timer.timeReset();
     PT_match_id = tree.search(PT_packets[i]);
     _PT_search_time = timer.elapsed_ns();
     PT_search_time += _PT_search_time;
-
+    --PT_match_id;
+#ifdef PERLOOKUPTIME
     fprintf(PT_res_fp, "Packet %d \t Result %d \t Time(ns) %f\n", i,
-            PT_match_id, _PT_search_time / 1.0);
+            (PT_match_id), _PT_search_time / 1.0);
+#endif
   }
+#ifdef PERLOOKUPTIME
   fclose(PT_res_fp);
+#endif
   cout << "|- Average search time: " << PT_search_time / packetNum << "ns\n";
   //// PT ////
 
+  //// DBT ////
+  auto DBT_packets = convertToDBTPackets(packets);
+  auto DBT_rules = convertToDBTRules(rule);
+
+  cout << "binth=" << DBT::BINTH << " th_b=" << DBT::END_BOUND
+       << " K=" << DBT::TOP_K << " th_c=" << DBT::C_BOUND << endl
+       << endl;
+  DBT::DBTable dbt(DBT_rules, DBT::BINTH);
+  timer.timeReset();
+  dbt.construct();
+  cout << "Construction Time: " << timer.elapsed_ns() << " ns\n";
+  dbt.mem();
+
+  cout << "\nstart search...\n";
+  uint32_t DBT_match_id = 0;
+#ifdef PERLOOKUPTIME
+  FILE *DBT_res_fp = nullptr;
+  DBT_res_fp = fopen("./INFO/DBT_results.txt", "w");
+#endif
+  unsigned long long DBT_search_time = 0, _DBT_search_time = 0;
+
+  for (int i = 0; i < packetNum; ++i) {
+    timer.timeReset();
+    DBT_match_id = dbt.search(DBT_packets[i]);
+    _DBT_search_time = timer.elapsed_ns();
+    DBT_search_time += _DBT_search_time;
+    --DBT_match_id;
+#ifdef PERLOOKUPTIME
+    fprintf(DBT_res_fp, "Packet %d \t Result %u \t Time(ns) %f\n", i,
+            DBT_match_id, _DBT_search_time / 1.0);
+#endif
+  }
+#ifdef PERLOOKUPTIME
+  fclose(DBT_res_fp);
+#endif
+  cout << "|- Average search time: " << DBT_search_time / packetNum << "ns\n";
+
+  dbt.search_with_log(DBT_packets);
+  //// DBT ////
+
   //// KSet ////
   vector<Rule> set_4[4];
-
-  const size_t number_rule = rule.size();
-  cout << "The number of rules = " << number_rule << "\n";
 
   size_t number_update_rule = 0;
   if (parser.isUpdMode()) {
@@ -489,8 +588,7 @@ int main(int argc, char *argv[]) {
     vector<int> matchid(packetNum);
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
 #ifdef PERLOOKUPTIME
-    std::ofstream KSet_per_log("./INFO/KSet_perLookTimes.txt",
-                               std::ios_base::out);
+    std::ofstream KSet_per_log("./INFO/KSet_results.txt", std::ios_base::out);
     if (!KSet_per_log) {
       std::cerr << "Error: Failed to open perLookTimes.txt\n";
       return -1;
@@ -593,26 +691,25 @@ int main(int argc, char *argv[]) {
          << "times circularly: " << packetNum * trials << "\n";
 
     if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+    dbt.construct();
 
     ///////// train ////////
     // 三維模型
     MatrixXd X3(packetNum, 4);  // 3 features + bias
     VectorXd PT_model_3(4);
     VectorXd KSet_model_3(4);
-
-    // 五維模型
-    MatrixXd X5(packetNum, 6);  // 5 features + bias
-    VectorXd PT_model_5(6);
-    VectorXd KSet_model_5(6);
+    VectorXd DBT_model_3(4);
 
     // 11維模型
     MatrixXd X11(packetNum, 12);  // 11 features + bias
     VectorXd PT_model_11(12);
     VectorXd KSet_model_11(12);
+    VectorXd DBT_model_11(12);
 
-    // y 向量共用 (3, 5, 11)
+    // y 向量共用 (3, 11)
     VectorXd PT_y(packetNum);
     VectorXd KSet_y(packetNum);
+    VectorXd DBT_y(packetNum);
 
     double x_source_ip = 0, x_destination_ip = 0;
     double x_source_port = 0, x_destination_port = 0, x_protocol = 0;
@@ -644,9 +741,9 @@ int main(int argc, char *argv[]) {
       x_protocol = static_cast<double>(PT_packets[i].protocol);
 
       // 搜尋時間量測 (PT)
-      PT_match_id = tree.search(PT_packets[i]);
+      tree.search(PT_packets[i]);
       timer.timeReset();
-      PT_match_id = tree.search(PT_packets[i]);
+      tree.search(PT_packets[i]);
       _PT_search_time = timer.elapsed_ns();
       PT_y(i) = static_cast<double>(_PT_search_time);
 
@@ -659,7 +756,6 @@ int main(int argc, char *argv[]) {
         match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
       if (match_pri < max_pri_set[3] && num_set[3] > 0)
         match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
-
       match_pri = -1;
       timer.timeReset();
       if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
@@ -672,21 +768,19 @@ int main(int argc, char *argv[]) {
       _KSet_search_time = timer.elapsed_ns();
       KSet_y(i) = static_cast<double>(_KSet_search_time);
 
+      // 搜尋時間量測 (DBT)
+      dbt.search(DBT_packets[i]);
+      timer.timeReset();
+      dbt.search(DBT_packets[i]);
+      _DBT_search_time = timer.elapsed_ns();
+      DBT_y(i) = static_cast<double>(_DBT_search_time);
+
       // 填入三維特徵
       X3(i, 0) = x_source_ip_0;
       X3(i, 1) = x_source_ip_1;
       X3(i, 2) = x_destination_ip_0;
       X3(i, 3) = 1.0;
       ////
-
-      // 填入五維特徵
-      X5(i, 0) = x_source_ip_0;
-      X5(i, 1) = x_destination_ip_0;
-      X5(i, 2) = x_source_port;
-      X5(i, 3) = x_destination_port;
-      X5(i, 4) = x_protocol;
-      X5(i, 5) = 1.0;
-
       // 填入11維特徵
       X11(i, 0) = x_source_ip_0;
       X11(i, 1) = x_source_ip_1;
@@ -706,51 +800,55 @@ int main(int argc, char *argv[]) {
     vector<double> mean_X11, std_X11;
 
     normalizeFeatures(X3, mean_X3, std_X3);
-    normalizeFeatures(X5, mean_X5, std_X5);
     normalizeFeatures(X11, mean_X11, std_X11);
 
     // 模型擬合
     PT_model_3 = linearRegressionFit(X3, PT_y);
-    PT_model_5 = linearRegressionFit(X5, PT_y);
     PT_model_11 = linearRegressionFit(X11, PT_y);
     KSet_model_3 = linearRegressionFit(X3, KSet_y);
-    KSet_model_5 = linearRegressionFit(X5, KSet_y);
     KSet_model_11 = linearRegressionFit(X11, KSet_y);
+    DBT_model_3 = linearRegressionFit(X3, DBT_y);
+    DBT_model_11 = linearRegressionFit(X11, DBT_y);
 
     // 輸出模型參數
     cout << "\n[PT 3-feature model] (x1, x2, x3, bias):\n"
          << PT_model_3.transpose() << endl;
-    cout << "\n[PT 5-feature model] (x1~x5, bias):\n"
-         << PT_model_5.transpose() << endl;
     cout << "\n[PT 11-feature model] (x1~x11, bias):\n"
          << PT_model_11.transpose() << endl;
     cout << "\n[KSet 3-feature model] (x1, x2, x3, bias):\n"
          << KSet_model_3.transpose() << endl;
-    cout << "\n[KSet 5-feature model] (x1~x5, bias):\n"
-         << KSet_model_5.transpose() << endl;
     cout << "\n[KSet 11-feature model] (x1~x11, bias):\n"
          << KSet_model_11.transpose() << endl;
+    cout << "\n[DBT 3-feature model] (x1, x2, x3, bias):\n"
+         << DBT_model_3.transpose() << endl;
+    cout << "\n[DBT 11-feature model] (x1~x11, bias):\n"
+         << DBT_model_11.transpose() << endl;
     ///////// train ////////
 
     /////// benchmark ///////
     evaluateModel(X3 * PT_model_3, PT_y, "PT-3-feature");
-    evaluateModel(X5 * PT_model_5, PT_y, "PT-5-feature");
     evaluateModel(X11 * PT_model_11, PT_y, "PT-11-feature");
     evaluateModel(X3 * KSet_model_3, KSet_y, "KSet-3-feature");
-    evaluateModel(X5 * KSet_model_5, KSet_y, "KSet-5-feature");
     evaluateModel(X11 * KSet_model_11, KSet_y, "KSet-11-feature");
+    evaluateModel(X3 * DBT_model_3, DBT_y, "DBT-3-feature");
+    evaluateModel(X11 * DBT_model_11, DBT_y, "DBT-11-feature");
     /////// benchmark ///////
 
 #ifdef ENABLE_OUTPUT_PREDICTION
     // 輸出封包預測與實際搜尋時間至結果檔案
-    std::ofstream pt_prediction_out("./INFO/pt_prediction_result.txt");
+    std::ofstream pt_prediction_out("./INFO/PT_prediction_result.txt");
     if (!pt_prediction_out) {
-      std::cerr << "Cannot open pt_prediction_result.txt！" << std::endl;
+      std::cerr << "Cannot open PT_prediction_result.txt！" << std::endl;
       return 1;
     }
     std::ofstream kset_prediction_out("./INFO/kset_prediction_result.txt");
     if (!kset_prediction_out) {
       std::cerr << "Cannot open kset_prediction_result.txt！" << std::endl;
+      return 1;
+    }
+    std::ofstream DBT_prediction_out("./INFO/DBT_prediction_result.txt");
+    if (!DBT_prediction_out) {
+      std::cerr << "Cannot open DBT_prediction_out.txt！" << std::endl;
       return 1;
     }
     for (int i = 0; i < packetNum; ++i) {
@@ -782,15 +880,10 @@ int main(int argc, char *argv[]) {
       double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
       double x3_norm_3 =
           toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
+      double predicted_time_3 =
+          predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
 
-      double x1_norm_5 = toNormalized(x_source_ip_0, mean_X5[0], std_X5[0]);
-      double x2_norm_5 =
-          toNormalized(x_destination_ip_0, mean_X5[1], std_X5[1]);
-      double x3_norm_5 = toNormalized(x_source_port, mean_X5[2], std_X5[2]);
-      double x4_norm_5 =
-          toNormalized(x_destination_port, mean_X5[3], std_X5[3]);
-      double x5_norm_5 = toNormalized(x_protocol, mean_X5[4], std_X5[4]);
-
+      timer.timeReset();
       double x1_norm_11 = toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
       double x2_norm_11 = toNormalized(x_source_ip_1, mean_X11[1], std_X11[1]);
       double x3_norm_11 = toNormalized(x_source_ip_2, mean_X11[2], std_X11[2]);
@@ -808,20 +901,15 @@ int main(int argc, char *argv[]) {
           toNormalized(x_destination_port, mean_X11[9], std_X11[9]);
       double x11_norm_11 = toNormalized(x_protocol, mean_X11[10], std_X11[10]);
 
-      double predicted_time_3 =
-          predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-      double predicted_time_5 = predict5(PT_model_5, x1_norm_5, x2_norm_5,
-                                         x3_norm_5, x4_norm_5, x5_norm_5);
       double predicted_time_11 =
           predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11, x4_norm_11,
                     x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11, x9_norm_11,
                     x10_norm_11, x11_norm_11);
+      _Total_predict_time = timer.elapsed_ns();
+      Total_predict_time += _Total_predict_time;
       /*
       double predicted_time_3 = predict3(PT_model_3, x_source_ip_0,
                                          x_source_ip_1, x_destination_ip_0);
-      double predicted_time_5 =
-          predict5(PT_model_5, x_source_ip_0, x_destination_ip_0, x_source_port,
-                   x_destination_port, x_protocol);
       double predicted_time_11 =
           predict11(PT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
                     x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
@@ -832,14 +920,11 @@ int main(int argc, char *argv[]) {
       double actual_time = PT_y(i);
       pt_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
                         << std::setprecision(4) << predicted_time_3
-                        << "\tPredict5 " << predicted_time_5 << "\tPredict11 "
-                        << predicted_time_11 << "\tRealTime(ns) " << actual_time
-                        << std::endl;
-
+                        << "\tPredict11 " << predicted_time_11
+                        << "\tRealTime(ns) " << actual_time << std::endl;
+      //
       predicted_time_3 =
           predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-      predicted_time_5 = predict5(KSet_model_5, x1_norm_5, x2_norm_5, x3_norm_5,
-                                  x4_norm_5, x5_norm_5);
       predicted_time_11 =
           predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                     x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11,
@@ -847,9 +932,6 @@ int main(int argc, char *argv[]) {
       /*
       predicted_time_3 = predict3(KSet_model_3, x_source_ip_0, x_source_ip_1,
                                   x_destination_ip_0);
-      predicted_time_5 =
-          predict5(KSet_model_5, x_source_ip_0, x_destination_ip_0,
-                   x_source_port, x_destination_port, x_protocol);
       predicted_time_11 =
           predict11(KSet_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
                     x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
@@ -860,15 +942,39 @@ int main(int argc, char *argv[]) {
       actual_time = KSet_y(i);
       kset_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
                           << std::setprecision(4) << predicted_time_3
-                          << "\tPredict5 " << predicted_time_5 << "\tPredict11 "
-                          << predicted_time_11 << "\tRealTime(ns) "
-                          << actual_time << std::endl;
+                          << "\tPredict11 " << predicted_time_11
+                          << "\tRealTime(ns) " << actual_time << std::endl;
+      //
+      predicted_time_3 = predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+      predicted_time_11 =
+          predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
+                    x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11,
+                    x9_norm_11, x10_norm_11, x11_norm_11);
+      /*
+      predicted_time_3 = predict3(DBT_model_3, x_source_ip_0, x_source_ip_1,
+                                  x_destination_ip_0);
+      predicted_time_11 =
+          predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                    x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                    x_destination_ip_2, x_destination_ip_3, x_source_port,
+                    x_destination_port, x_protocol);
+      */
+
+      actual_time = DBT_y(i);
+      DBT_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
+                         << std::setprecision(4) << predicted_time_3
+                         << "\tPredict11 " << predicted_time_11
+                         << "\tRealTime(ns) " << actual_time << std::endl;
     }
 
     pt_prediction_out.close();
     std::cout << "to pt_prediction_result.txt..." << std::endl;
     kset_prediction_out.close();
     std::cout << "to kset_prediction_result.txt..." << std::endl;
+    DBT_prediction_out.close();
+    std::cout << "to DBT_prediction_result.txt..." << std::endl;
+    std::cout << "AVG predict_time(ns): " << Total_predict_time / packetNum
+              << endl;
 #endif
   }
 #endif

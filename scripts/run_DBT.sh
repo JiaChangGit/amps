@@ -12,8 +12,8 @@ BUILD_DIR="./build"
 #############
 TEST_KSET_MAIN_EXEC="$BUILD_DIR/tests/DBTable_main"
 #############
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
+RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
+TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
 
 # 檢查並建立 build 目錄（如果不存在）
 if [ ! -d "$BUILD_DIR" ]; then
@@ -47,4 +47,4 @@ echo "Running search tests..."
 "$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" > "$TEST_KSET_MAIN_EXEC"_c_log.txt
 
 echo "Running upd tests..."
-"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt
+#"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt
