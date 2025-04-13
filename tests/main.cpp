@@ -9,7 +9,7 @@
 #include "inputFile_test.hpp"
 #include "linearSearch_test.hpp"
 ///////// PT //////////
-#include "pt_tree.hpp"
+#include "PT_tree.hpp"
 ///////// PT //////////
 ///////// DBT /////////
 #include "DBT_core.hpp"
@@ -33,14 +33,16 @@ uint32_t DBT::getBit[32] = {
     0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004,
     0x00000002, 0x00000001};
 ///////// DBT /////////
+///////// bloomFilter /////////
+#include "bloomFilter.hpp"
+///////// bloomFilter /////////
 using namespace std;
 
 #ifndef TIMER_METHOD
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
+#define PERLOOKUPTIME_SECOND
 #define PERLOOKUPTIME
-#define ENABLE_OUTPUT_PREDICTION
-#define TOTAL
 
 constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
@@ -97,7 +99,7 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
       ++pre_seg[3];
     }
   }
-  cout << ("================Precompute=============\n");
+  cout << ("\n================KSet Precompute=============\n");
   cout << "Set 0: " << pre_seg[0] << ", Set 1: " << pre_seg[1]
        << ", Set 2: " << pre_seg[2] << ", Set 3: " << pre_seg[3] << endl;
 
@@ -218,8 +220,8 @@ void bytesAllocate(uint32_t ip, uint8_t bytes[4]) {
 // ===============================
 // Convert Packet -> PT_Packet
 // ===============================
-std::vector<PT_Packet> convertToPTPackets(const std::vector<Packet> &packets) {
-  std::vector<PT_Packet> pt_packets;
+vector<PT_Packet> convertToPTPackets(const vector<Packet> &packets) {
+  vector<PT_Packet> pt_packets;
 
   for (const auto &pkt : packets) {
     PT_Packet pt{};
@@ -244,8 +246,8 @@ std::vector<PT_Packet> convertToPTPackets(const std::vector<Packet> &packets) {
 // ===============================
 // Convert Rule -> PT_Rule
 // ===============================
-std::vector<PT_Rule> convertToPTRules(const std::vector<Rule> &rules) {
-  std::vector<PT_Rule> pt_rules;
+vector<PT_Rule> convertToPTRules(const vector<Rule> &rules) {
+  vector<PT_Rule> pt_rules;
 
   for (const auto &r : rules) {
     PT_Rule pt{};
@@ -278,8 +280,7 @@ std::vector<PT_Rule> convertToPTRules(const std::vector<Rule> &rules) {
 // ===============================
 // Export PT_Packet to file
 // ===============================
-void exportPTPackets(const std::vector<PT_Packet> &packets,
-                     const std::string &filename) {
+void exportPTPackets(const vector<PT_Packet> &packets, const string &filename) {
   FILE *fp = fopen(filename.c_str(), "w");
   if (!fp) {
     perror("Failed to open output PT_Packet file");
@@ -301,8 +302,7 @@ void exportPTPackets(const std::vector<PT_Packet> &packets,
 // ===============================
 // Export PT_Rule to file
 // ===============================
-void exportPTRules(const std::vector<PT_Rule> &rules,
-                   const std::string &filename) {
+void exportPTRules(const vector<PT_Rule> &rules, const string &filename) {
   FILE *fp = fopen(filename.c_str(), "w");
   if (!fp) {
     perror("Failed to open output PT_Rule file");
@@ -322,9 +322,8 @@ void exportPTRules(const std::vector<PT_Rule> &rules,
   fclose(fp);
 }
 
-std::vector<DBT::Packet> convertToDBTPackets(
-    const std::vector<Packet> &packets) {
-  std::vector<DBT::Packet> dbt_packets;
+vector<DBT::Packet> convertToDBTPackets(const vector<Packet> &packets) {
+  vector<DBT::Packet> dbt_packets;
 
   for (const Packet &p : packets) {
     DBT::Packet dbt_p;
@@ -345,8 +344,8 @@ std::vector<DBT::Packet> convertToDBTPackets(
   return dbt_packets;
 }
 
-DBT::vector<DBT::Rule> convertToDBTRules(const std::vector<Rule> &rules) {
-  DBT::vector<DBT::Rule> dbt_rules;
+vector<DBT::Rule> convertToDBTRules(const vector<Rule> &rules) {
+  vector<DBT::Rule> dbt_rules;
 
   for (const Rule &r : rules) {
     DBT::Rule dbt_r;
@@ -377,7 +376,6 @@ DBT::vector<DBT::Rule> convertToDBTRules(const std::vector<Rule> &rules) {
 
     dbt_r.mask.i_32.smask = DBT::maskBit[dbt_r.sip_length];
     dbt_r.mask.i_32.dmask = DBT::maskBit[dbt_r.dip_length];
-    dbt_r.ip.i_64 &= dbt_r.mask.i_64;
 
     dbt_rules.emplace_back(dbt_r);
   }
@@ -388,13 +386,12 @@ DBT::vector<DBT::Rule> convertToDBTRules(const std::vector<Rule> &rules) {
 int main(int argc, char *argv[]) {
   CommandLineParser parser;
   parser.parseArguments(argc, argv);
-  vector<Rule> rule, build, update;
+  vector<Rule> rule;
   vector<Packet> packets;
   InputFile inputFile;
   InputFile_test inputFile_test;
   Timer timer;
-  unsigned long long KSet_search_time = 0, _KSet_search_time = 0;
-  constexpr int trials = 2;  // run 10 times circularly
+  constexpr int trials = 2;  // run 2 times circularly
 
   inputFile.loadRule(rule, parser.getRulesetFile());
   inputFile.loadPacket(packets, parser.getTraceFile());
@@ -410,7 +407,23 @@ int main(int argc, char *argv[]) {
   }
   const size_t number_rule = rule.size();
   cout << "The number of rules = " << number_rule << "\n";
+  const size_t packetNum = packets.size();
+  cout << "The number of packets = " << packetNum << "\n";
+  unsigned long long PT_search_time = 0, _PT_search_time = 0;
+  unsigned long long DBT_search_time = 0, _DBT_search_time = 0;
+  unsigned long long KSet_search_time = 0, _KSet_search_time = 0;
+  int PT_match_id = 0;
+  int PT_match_id_arr[packetNum];
+  uint32_t DBT_match_id = 0;
+  uint32_t DBT_match_id_arr[packetNum];
+  int kset_match_pri = -1;
+  int kset_match_pri_arr[packetNum];
+  double mean_PT = 0, median_PT = 0, per95_PT = 0, per99_PT = 0, mean_DBT = 0,
+         median_DBT = 0, per95_DBT = 0, per99_DBT = 0, mean_KSet = 0,
+         median_KSet = 0, per95_KSet = 0, per99_KSet = 0;
 
+  /*************************************************************************/
+  ///////// Construct /////////
   //// PT ////
   auto PT_packets = convertToPTPackets(packets);
   auto PT_rule = convertToPTRules(rule);
@@ -419,9 +432,8 @@ int main(int argc, char *argv[]) {
     exportPTRules(PT_rule, "./INFO/PT_rules.txt");
   }
   setmaskHash();
-  /***********************************************************************************************************************/
+
   // search config
-  /***********************************************************************************************************************/
   vector<uint8_t> set_field = parser.getField();
   int set_port = parser.getPort();
   if (set_field.size() == 0) {
@@ -431,14 +443,14 @@ int main(int argc, char *argv[]) {
     set_field = cacu.cacu_best_fields();
     set_port = 1;
 
-    cout << "search config time: " << timer.elapsed_s() << " s" << endl;
+    cout << "\nPT search config time: " << timer.elapsed_s() << " s" << endl;
   }
   for (int i = 0; i < set_field.size(); ++i) cout << set_field[i] << " ";
   PTtree tree(set_field, set_port);
-  const size_t packetNum = PT_packets.size();
-  /***********************************************************************************************************************/
+
   // insert
-  /***********************************************************************************************************************/
+  // PT construct
+  cout << ("**************** Construction(PT) ****************\n");
   cout << "\nStart build for single thread...\n|- Using fields:     ";
   for (unsigned int x : set_field) cout << x << ",";
   cout << set_port << endl;
@@ -451,31 +463,6 @@ int main(int argc, char *argv[]) {
 
   cout << "|- Memory footprint: " << (double)tree.mem() / 1024.0 / 1024.0
        << "MB\n";
-  /***********************************************************************************************************************/
-  // Search
-  /***********************************************************************************************************************/
-  cout << "\nPT start search...\n";
-  int PT_match_id = 0;
-#ifdef PERLOOKUPTIME
-  FILE *PT_res_fp = nullptr;
-  PT_res_fp = fopen("./INFO/PT_results.txt", "w");
-#endif
-  unsigned long long PT_search_time = 0, _PT_search_time = 0;
-  for (int i = 0; i < packetNum; ++i) {
-    timer.timeReset();
-    PT_match_id = tree.search(PT_packets[i]);
-    _PT_search_time = timer.elapsed_ns();
-    PT_search_time += _PT_search_time;
-    --PT_match_id;
-#ifdef PERLOOKUPTIME
-    fprintf(PT_res_fp, "Packet %d \t Result %d \t Time(ns) %f\n", i,
-            (PT_match_id), _PT_search_time / 1.0);
-#endif
-  }
-#ifdef PERLOOKUPTIME
-  fclose(PT_res_fp);
-#endif
-  cout << "|- Average search time: " << PT_search_time / packetNum << "ns\n";
   //// PT ////
 
   //// DBT ////
@@ -486,74 +473,39 @@ int main(int argc, char *argv[]) {
        << " K=" << DBT::TOP_K << " th_c=" << DBT::C_BOUND << endl
        << endl;
   DBT::DBTable dbt(DBT_rules, DBT::BINTH);
+  // DBT construct
+  cout << ("**************** Construction(DBT) ****************\n");
   timer.timeReset();
   dbt.construct();
   cout << "Construction Time: " << timer.elapsed_ns() << " ns\n";
   dbt.mem();
-
-  cout << "\nstart search...\n";
-  uint32_t DBT_match_id = 0;
-#ifdef PERLOOKUPTIME
-  FILE *DBT_res_fp = nullptr;
-  DBT_res_fp = fopen("./INFO/DBT_results.txt", "w");
-#endif
-  unsigned long long DBT_search_time = 0, _DBT_search_time = 0;
-
-  for (int i = 0; i < packetNum; ++i) {
-    timer.timeReset();
-    DBT_match_id = dbt.search(DBT_packets[i]);
-    _DBT_search_time = timer.elapsed_ns();
-    DBT_search_time += _DBT_search_time;
-    --DBT_match_id;
-#ifdef PERLOOKUPTIME
-    fprintf(DBT_res_fp, "Packet %d \t Result %u \t Time(ns) %f\n", i,
-            DBT_match_id, _DBT_search_time / 1.0);
-#endif
-  }
-#ifdef PERLOOKUPTIME
-  fclose(DBT_res_fp);
-#endif
-  cout << "|- Average search time: " << DBT_search_time / packetNum << "ns\n";
-
-  dbt.search_with_log(DBT_packets);
   //// DBT ////
 
   //// KSet ////
   vector<Rule> set_4[4];
-
-  size_t number_update_rule = 0;
-  if (parser.isUpdMode()) {
-    srand(seed);
-    int randn;
-
-    for (size_t i = 0; i < number_rule; ++i) {
-      randn = rand() % 100;
-      if (randn < 95)
-        build.push_back(rule[i]);
-      else
-        update.push_back(rule[i]);
-    }
-
-    const size_t number_build_rule = build.size();
-    number_update_rule = update.size();
-
-    cout << "The number of rules for build = " << number_build_rule << "\n";
-
-    anaK(number_build_rule, build, SetBits, set_4, pre_K);
-  } else {
-    anaK(number_rule, rule, SetBits, set_4, pre_K);
-  }
+  anaK(number_rule, rule, SetBits, set_4, pre_K);
 
   int num_set[4] = {0};
   for (size_t i = 0; i < 4; ++i) {
     num_set[i] = set_4[i].size();
   }
+  vector<KSet> set = {{0, set_4[0], SetBits[0]},
+                      {1, set_4[1], SetBits[1]},
+                      {2, set_4[2], SetBits[2]},
+                      {3, set_4[3], 0}};
 
-  KSet set0(0, set_4[0], SetBits[0]);
-  KSet set1(1, set_4[1], SetBits[1]);
-  KSet set2(2, set_4[2], SetBits[2]);
-  KSet set3(3, set_4[3], 0);
-  // construct
+  // ///// OLD VERSION
+  // KSet set0(0, set_4[0], SetBits[0]);
+  // KSet set1(1, set_4[1], SetBits[1]);
+  // KSet set2(2, set_4[2], SetBits[2]);
+  // KSet set3(3, set_4[3], 0);
+  // ///// OLD VERSION
+
+  KSet &set0 = set[0];
+  KSet &set1 = set[1];
+  KSet &set2 = set[2];
+  KSet &set3 = set[3];
+  // KSet construct
   cout << ("**************** Construction(KSet) ****************\n");
   timer.timeReset();
   if (num_set[0] > 0) {
@@ -568,119 +520,22 @@ int main(int argc, char *argv[]) {
   if (num_set[3] > 0) {
     set3.ConstructClassifier(set_4[3]);
   }
-
   cout << "\tConstruction time: " << timer.elapsed_ns() << " ns\n";
 
   // print memory
+  set.shrink_to_fit();
   set0.prints();
   set1.prints();
   set2.prints();
   set3.prints();
+
+  if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
   //// KSet ////
+  ///////// Construct /////////
+  /*************************************************************************/
 
-  if (parser.isSearchMode()) {
-    // classification
-    cout << ("\n**************** Classification(KSet) ****************\n");
-    cout << "\tThe number of packet in the trace file = " << packetNum << "\n";
-    cout << "\tTotal packets run " << trials
-         << "times circularly: " << packetNum * trials << "\n";
-
-    vector<int> matchid(packetNum);
-    if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
-#ifdef PERLOOKUPTIME
-    std::ofstream KSet_per_log("./INFO/KSet_results.txt", std::ios_base::out);
-    if (!KSet_per_log) {
-      std::cerr << "Error: Failed to open perLookTimes.txt\n";
-      return -1;
-    }
-#endif
-    for (size_t t = 0; t < trials; ++t) {
-      for (size_t i = 0; i < packetNum; ++i) {
-        int match_pri = -1;
-        timer.timeReset();
-        if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
-        if (match_pri < max_pri_set[1] && num_set[1] > 0)
-          match_pri = max(match_pri, set1.ClassifyAPacket(packets[i]));
-        if (match_pri < max_pri_set[2] && num_set[2] > 0)
-          match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
-        if (match_pri < max_pri_set[3] && num_set[3] > 0)
-          match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
-        _KSet_search_time = timer.elapsed_ns();
-        KSet_search_time += _KSet_search_time;
-        matchid[i] = (number_rule - 1) - match_pri;
-
-#ifdef PERLOOKUPTIME
-        if (1 == t) {
-          KSet_per_log << "Packet " << i << " \t Result " << matchid[i]
-                       << " \t Time(ns) " << _KSet_search_time / 1.0 << "\n";
-        }
-#endif
-      }
-    }
-#ifdef PERLOOKUPTIME
-    KSet_per_log.close();
-#endif
-
-    cout << fixed << setprecision(3)  // 設定小數點後 3 位
-         << "\tTotal classification time: " << (KSet_search_time * trials)
-         << " ns" << endl
-         << "\tAverage classification time: "
-         << (KSet_search_time / (trials * packetNum)) << " ns\n";
-  }
-
-  if (parser.isUpdMode()) {
-    cout << ("\n**************** Update ****************\n");
-    cout << "\tThe number of updated rules = " << number_update_rule << endl;
-    int srcmask, dstmask;
-
-    // insert
-    unsigned long long KSet_insert_time = 0, _KSet_insert_time = 0;
-    for (size_t i = 0; i < number_update_rule; ++i) {
-      timer.timeReset();
-      srcmask = update[i].prefix_length[0];
-      dstmask = update[i].prefix_length[1];
-      if ((srcmask >= SetBits[0]) && (dstmask >= SetBits[0]))
-        set0.InsertRule(update[i]);
-      else if (srcmask >= SetBits[1])
-        set1.InsertRule(update[i]);
-      else if (dstmask >= SetBits[2])
-        set2.InsertRule(update[i]);
-      else
-        set3.InsertRule(update[i]);
-      _KSet_insert_time = timer.elapsed_ns();
-      KSet_insert_time += _KSet_insert_time;
-    }
-
-    // delete
-    unsigned long long KSet_delete_time = 0, _KSet_delete_time = 0;
-    for (size_t i = 0; i < number_update_rule; ++i) {
-      timer.timeReset();
-      srcmask = update[i].prefix_length[0];
-      dstmask = update[i].prefix_length[1];
-      if ((srcmask >= SetBits[0]) && (dstmask >= SetBits[0]))
-        set0.DeleteRule(update[i]);
-      else if (srcmask >= SetBits[1])
-        set1.DeleteRule(update[i]);
-      else if (dstmask >= SetBits[2])
-        set2.DeleteRule(update[i]);
-      else
-        set3.DeleteRule(update[i]);
-      _KSet_delete_time = timer.elapsed_ns();
-      KSet_delete_time += _KSet_delete_time;
-    }
-
-    cout << fixed << setprecision(3)  // 設定小數點後 3 位
-         << "\tAverage insert time: " << (KSet_insert_time / number_update_rule)
-         << " ns, "
-         << "Average delete time: " << (KSet_delete_time / number_update_rule)
-         << " ns" << endl
-         << "\tAverage update time: "
-         << ((KSet_insert_time + KSet_delete_time) / (number_update_rule * 2))
-         << " ns" << endl;
-  }
-
-////////// =============== /////////////
-#ifdef TOTAL
+  /*************************************************************************/
+  ///////// Model /////////
   if (parser.isSearchMode()) {
     unsigned long long Total_search_time = 0, _Total_search_time = 0;
     unsigned long long Total_predict_time = 0, _Total_predict_time = 0;
@@ -690,26 +545,23 @@ int main(int argc, char *argv[]) {
     cout << "\tTotal packets run " << trials
          << "times circularly: " << packetNum * trials << "\n";
 
-    if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
-    dbt.construct();
-
     ///////// train ////////
     // 三維模型
     MatrixXd X3(packetNum, 4);  // 3 features + bias
     VectorXd PT_model_3(4);
-    VectorXd KSet_model_3(4);
     VectorXd DBT_model_3(4);
+    VectorXd KSet_model_3(4);
 
     // 11維模型
     MatrixXd X11(packetNum, 12);  // 11 features + bias
     VectorXd PT_model_11(12);
-    VectorXd KSet_model_11(12);
     VectorXd DBT_model_11(12);
+    VectorXd KSet_model_11(12);
 
     // y 向量共用 (3, 11)
     VectorXd PT_y(packetNum);
-    VectorXd KSet_y(packetNum);
     VectorXd DBT_y(packetNum);
+    VectorXd KSet_y(packetNum);
 
     double x_source_ip = 0, x_destination_ip = 0;
     double x_source_port = 0, x_destination_port = 0, x_protocol = 0;
@@ -717,13 +569,22 @@ int main(int argc, char *argv[]) {
            x_source_ip_3 = 0;
     double x_destination_ip_0 = 0, x_destination_ip_1 = 0,
            x_destination_ip_2 = 0, x_destination_ip_3 = 0;
-    float out[4] = {0};
+
+#ifdef PERLOOKUPTIME
+    FILE *PT_match_fp = nullptr;
+    PT_match_fp = fopen("./INFO/PT_results.txt", "w");
+    FILE *DBT_match_fp = nullptr;
+    DBT_match_fp = fopen("./INFO/DBT_results.txt", "w");
+    FILE *KSet_match_fp = nullptr;
+    KSet_match_fp = fopen("./INFO/KSet_results.txt", "w");
+#endif
 
     for (int i = 0; i < packetNum; ++i) {
       // 特徵轉換
       // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
       // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
       ////
+      float out[4] = {0};
       extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
       x_source_ip_0 = static_cast<double>(out[0]);
       x_source_ip_1 = static_cast<double>(out[1]);
@@ -743,37 +604,58 @@ int main(int argc, char *argv[]) {
       // 搜尋時間量測 (PT)
       tree.search(PT_packets[i]);
       timer.timeReset();
+
+#ifdef PERLOOKUPTIME
+      PT_match_id = tree.search(PT_packets[i]);
+      _PT_search_time = timer.elapsed_ns();
+      PT_y(i) = static_cast<double>(_PT_search_time);
+      PT_match_id_arr[i] = PT_match_id;
+#else
       tree.search(PT_packets[i]);
       _PT_search_time = timer.elapsed_ns();
       PT_y(i) = static_cast<double>(_PT_search_time);
-
-      // 搜尋時間量測 (KSet)
-      int match_pri = -1;
-      if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
-      if (match_pri < max_pri_set[1] && num_set[1] > 0)
-        match_pri = max(match_pri, set1.ClassifyAPacket(packets[i]));
-      if (match_pri < max_pri_set[2] && num_set[2] > 0)
-        match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
-      if (match_pri < max_pri_set[3] && num_set[3] > 0)
-        match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
-      match_pri = -1;
-      timer.timeReset();
-      if (num_set[0] > 0) match_pri = set0.ClassifyAPacket(packets[i]);
-      if (match_pri < max_pri_set[1] && num_set[1] > 0)
-        match_pri = max(match_pri, set1.ClassifyAPacket(packets[i]));
-      if (match_pri < max_pri_set[2] && num_set[2] > 0)
-        match_pri = max(match_pri, set2.ClassifyAPacket(packets[i]));
-      if (match_pri < max_pri_set[3] && num_set[3] > 0)
-        match_pri = max(match_pri, set3.ClassifyAPacket(packets[i]));
-      _KSet_search_time = timer.elapsed_ns();
-      KSet_y(i) = static_cast<double>(_KSet_search_time);
+#endif
 
       // 搜尋時間量測 (DBT)
       dbt.search(DBT_packets[i]);
       timer.timeReset();
+
+#ifdef PERLOOKUPTIME
+      DBT_match_id = dbt.search(DBT_packets[i]);
+      _DBT_search_time = timer.elapsed_ns();
+      DBT_y(i) = static_cast<double>(_DBT_search_time);
+      DBT_match_id_arr[i] = DBT_match_id;
+#else
       dbt.search(DBT_packets[i]);
       _DBT_search_time = timer.elapsed_ns();
       DBT_y(i) = static_cast<double>(_DBT_search_time);
+#endif
+
+      // 搜尋時間量測 (KSet)
+      kset_match_pri = -1;
+      if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
+      if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+        kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+      if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+        kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+      if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+        kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+
+      kset_match_pri = -1;
+      timer.timeReset();
+      if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
+      if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+        kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+      if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+        kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+      if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+        kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+      _KSet_search_time = timer.elapsed_ns();
+      KSet_y(i) = static_cast<double>(_KSet_search_time);
+
+#ifdef PERLOOKUPTIME
+      kset_match_pri_arr[i] = (number_rule - 1) - kset_match_pri;
+#endif
 
       // 填入三維特徵
       X3(i, 0) = x_source_ip_0;
@@ -795,12 +677,27 @@ int main(int argc, char *argv[]) {
       X11(i, 10) = x_protocol;
       X11(i, 11) = 1.0;
     }
+
+#ifdef PERLOOKUPTIME
+    for (int i = 0; i < packetNum; ++i) {
+      fprintf(PT_match_fp, "Packet %d \t Result %d \t Time(ns) %f\n", i,
+              (PT_match_id_arr[i]), PT_y(i) / 1.0);
+      fprintf(DBT_match_fp, "Packet %d \t Result %u \t Time(ns) %f\n", i,
+              DBT_match_id_arr[i], DBT_y(i) / 1.0);
+      fprintf(KSet_match_fp, "Packet %d \t Result %u \t Time(ns) %f\n", i,
+              kset_match_pri_arr[i], KSet_y(i) / 1.0);
+    }
+    fclose(PT_match_fp);
+    fclose(DBT_match_fp);
+    fclose(KSet_match_fp);
+#endif
+
     vector<double> mean_X3, std_X3;
     vector<double> mean_X5, std_X5;
     vector<double> mean_X11, std_X11;
 
-    normalizeFeatures(X3, mean_X3, std_X3);
-    normalizeFeatures(X11, mean_X11, std_X11);
+    /* JIA normalizeFeatures */ normalizeFeatures(X3, mean_X3, std_X3);
+    /* JIA normalizeFeatures */ normalizeFeatures(X11, mean_X11, std_X11);
 
     // 模型擬合
     PT_model_3 = linearRegressionFit(X3, PT_y);
@@ -815,14 +712,14 @@ int main(int argc, char *argv[]) {
          << PT_model_3.transpose() << endl;
     cout << "\n[PT 11-feature model] (x1~x11, bias):\n"
          << PT_model_11.transpose() << endl;
-    cout << "\n[KSet 3-feature model] (x1, x2, x3, bias):\n"
-         << KSet_model_3.transpose() << endl;
-    cout << "\n[KSet 11-feature model] (x1~x11, bias):\n"
-         << KSet_model_11.transpose() << endl;
     cout << "\n[DBT 3-feature model] (x1, x2, x3, bias):\n"
          << DBT_model_3.transpose() << endl;
     cout << "\n[DBT 11-feature model] (x1~x11, bias):\n"
          << DBT_model_11.transpose() << endl;
+    cout << "\n[KSet 3-feature model] (x1, x2, x3, bias):\n"
+         << KSet_model_3.transpose() << endl;
+    cout << "\n[KSet 11-feature model] (x1~x11, bias):\n"
+         << KSet_model_11.transpose() << endl;
     ///////// train ////////
 
     /////// benchmark ///////
@@ -834,21 +731,20 @@ int main(int argc, char *argv[]) {
     evaluateModel(X11 * DBT_model_11, DBT_y, "DBT-11-feature");
     /////// benchmark ///////
 
-#ifdef ENABLE_OUTPUT_PREDICTION
     // 輸出封包預測與實際搜尋時間至結果檔案
-    std::ofstream pt_prediction_out("./INFO/PT_prediction_result.txt");
+    ofstream pt_prediction_out("./INFO/PT_prediction_result.txt");
     if (!pt_prediction_out) {
-      std::cerr << "Cannot open PT_prediction_result.txt！" << std::endl;
+      cerr << "Cannot open PT_prediction_result.txt！" << endl;
       return 1;
     }
-    std::ofstream kset_prediction_out("./INFO/kset_prediction_result.txt");
-    if (!kset_prediction_out) {
-      std::cerr << "Cannot open kset_prediction_result.txt！" << std::endl;
-      return 1;
-    }
-    std::ofstream DBT_prediction_out("./INFO/DBT_prediction_result.txt");
+    ofstream DBT_prediction_out("./INFO/DBT_prediction_result.txt");
     if (!DBT_prediction_out) {
-      std::cerr << "Cannot open DBT_prediction_out.txt！" << std::endl;
+      cerr << "Cannot open DBT_prediction_out.txt！" << endl;
+      return 1;
+    }
+    ofstream kset_prediction_out("./INFO/KSet_prediction_result.txt");
+    if (!kset_prediction_out) {
+      cerr << "Cannot open KSet_prediction_result.txt！" << endl;
       return 1;
     }
     for (int i = 0; i < packetNum; ++i) {
@@ -858,6 +754,7 @@ int main(int argc, char *argv[]) {
       // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
 
       ////
+      float out[4] = {0};
       extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
       x_source_ip_0 = static_cast<double>(out[0]);
       x_source_ip_1 = static_cast<double>(out[1]);
@@ -876,14 +773,18 @@ int main(int argc, char *argv[]) {
       x_destination_port = static_cast<double>(PT_packets[i].destination_port);
       x_protocol = static_cast<double>(PT_packets[i].protocol);
 
+      /* JIA normalizeFeatures */
       double x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
       double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
       double x3_norm_3 =
           toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
+
+      //// PT
       double predicted_time_3 =
           predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
 
       timer.timeReset();
+      /* JIA normalizeFeatures */
       double x1_norm_11 = toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
       double x2_norm_11 = toNormalized(x_source_ip_1, mean_X11[1], std_X11[1]);
       double x3_norm_11 = toNormalized(x_source_ip_2, mean_X11[2], std_X11[2]);
@@ -907,6 +808,7 @@ int main(int argc, char *argv[]) {
                     x10_norm_11, x11_norm_11);
       _Total_predict_time = timer.elapsed_ns();
       Total_predict_time += _Total_predict_time;
+      /* JIA non-normalizeFeatures */
       /*
       double predicted_time_3 = predict3(PT_model_3, x_source_ip_0,
                                          x_source_ip_1, x_destination_ip_0);
@@ -918,65 +820,219 @@ int main(int argc, char *argv[]) {
       */
 
       double actual_time = PT_y(i);
-      pt_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
-                        << std::setprecision(4) << predicted_time_3
-                        << "\tPredict11 " << predicted_time_11
-                        << "\tRealTime(ns) " << actual_time << std::endl;
-      //
+      pt_prediction_out << "Packet " << i << "\tPredict3 " << fixed
+                        << setprecision(4) << predicted_time_3 << "\tPredict11 "
+                        << predicted_time_11 << "\tRealTime(ns) " << actual_time
+                        << endl;
+      //// PT
+
+      //// DBT
+      predicted_time_3 = predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+      timer.timeReset();
+      predicted_time_11 =
+          predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
+                    x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11,
+                    x9_norm_11, x10_norm_11, x11_norm_11);
+      _Total_predict_time = timer.elapsed_ns();
+      Total_predict_time += _Total_predict_time;
+      /* JIA non-normalizeFeatures */
+      /*
+      predicted_time_3 = predict3(DBT_model_3, x_source_ip_0, x_source_ip_1,
+                    x_destination_ip_0);
+      predicted_time_11 =
+      predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+      x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+      x_destination_ip_2, x_destination_ip_3, x_source_port,
+      x_destination_port, x_protocol);
+      */
+
+      actual_time = DBT_y(i);
+      DBT_prediction_out << "Packet " << i << "\tPredict3 " << fixed
+                         << setprecision(4) << predicted_time_3
+                         << "\tPredict11 " << predicted_time_11
+                         << "\tRealTime(ns) " << actual_time << endl;
+      //// DBT
+
+      //// KSet
       predicted_time_3 =
           predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+      timer.timeReset();
       predicted_time_11 =
           predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                     x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11,
                     x9_norm_11, x10_norm_11, x11_norm_11);
+      _Total_predict_time = timer.elapsed_ns();
+      Total_predict_time += _Total_predict_time;
+      /* JIA non-normalizeFeatures */
       /*
       predicted_time_3 = predict3(KSet_model_3, x_source_ip_0, x_source_ip_1,
                                   x_destination_ip_0);
       predicted_time_11 =
-          predict11(KSet_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
-                    x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+          predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
+      x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
                     x_destination_ip_2, x_destination_ip_3, x_source_port,
                     x_destination_port, x_protocol);
       */
 
       actual_time = KSet_y(i);
-      kset_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
-                          << std::setprecision(4) << predicted_time_3
+      kset_prediction_out << "Packet " << i << "\tPredict3 " << fixed
+                          << setprecision(4) << predicted_time_3
                           << "\tPredict11 " << predicted_time_11
-                          << "\tRealTime(ns) " << actual_time << std::endl;
-      //
-      predicted_time_3 = predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-      predicted_time_11 =
-          predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                    x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11, x8_norm_11,
-                    x9_norm_11, x10_norm_11, x11_norm_11);
-      /*
-      predicted_time_3 = predict3(DBT_model_3, x_source_ip_0, x_source_ip_1,
-                                  x_destination_ip_0);
-      predicted_time_11 =
-          predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
-                    x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-                    x_destination_ip_2, x_destination_ip_3, x_source_port,
-                    x_destination_port, x_protocol);
-      */
-
-      actual_time = DBT_y(i);
-      DBT_prediction_out << "Packet " << i << "\tPredict3 " << std::fixed
-                         << std::setprecision(4) << predicted_time_3
-                         << "\tPredict11 " << predicted_time_11
-                         << "\tRealTime(ns) " << actual_time << std::endl;
+                          << "\tRealTime(ns) " << actual_time << endl;
+      //// KSet
     }
 
     pt_prediction_out.close();
-    std::cout << "to pt_prediction_result.txt..." << std::endl;
-    kset_prediction_out.close();
-    std::cout << "to kset_prediction_result.txt..." << std::endl;
+    cout << "to pt_prediction_result.txt..." << endl;
     DBT_prediction_out.close();
-    std::cout << "to DBT_prediction_result.txt..." << std::endl;
-    std::cout << "AVG predict_time(ns): " << Total_predict_time / packetNum
-              << endl;
+    cout << "to DBT_prediction_result.txt..." << endl;
+    kset_prediction_out.close();
+    cout << "to KSet_prediction_result.txt..." << endl;
+    cout << "    AVG predict_time(ns): " << Total_predict_time / packetNum
+         << endl;
+
+    cout << "|--- PT_y Mean: " << (mean_PT = computeMean(PT_y)) << endl;
+    cout << "|--- PT_y Median: " << (median_PT = computeMedian(PT_y)) << endl;
+    cout << "|--- PT_y 25th Percentile: " << (computePercentile(PT_y, 0.25))
+         << endl;
+    cout << "|--- PT_y 95th Percentile: "
+         << (per95_PT = computePercentile(PT_y, 0.95)) << endl;
+    cout << "|--- PT_y 99th Percentile: "
+         << (per99_PT = computePercentile(PT_y, 0.99)) << endl;
+
+    cout << "|--- DBT_y Mean: " << (mean_DBT = computeMean(DBT_y)) << endl;
+    cout << "|--- DBT_y Median: " << (median_DBT = computeMedian(DBT_y))
+         << endl;
+    cout << "|--- DBT_y 25th Percentile: " << (computePercentile(DBT_y, 0.25))
+         << endl;
+    cout << "|--- DBT_y 95th Percentile: "
+         << (per95_DBT = computePercentile(DBT_y, 0.95)) << endl;
+    cout << "|--- DBT_y 99th Percentile: "
+         << (per99_DBT = computePercentile(DBT_y, 0.99)) << endl;
+
+    cout << "|--- KSet_y Mean: " << (mean_KSet = computeMean(KSet_y)) << endl;
+    cout << "|--- KSet_y Median: " << (median_KSet = computeMedian(KSet_y))
+         << endl;
+    cout << "|--- KSet_y 25th Percentile: " << (computePercentile(KSet_y, 0.25))
+         << endl;
+    cout << "|--- KSet_y 95th Percentile: "
+         << (per95_KSet = computePercentile(KSet_y, 0.95)) << endl;
+    cout << "|--- KSet_y 99th Percentile: "
+         << (per99_KSet = computePercentile(KSet_y, 0.99)) << endl;
+
+    ///////// Model /////////
+    /*************************************************************************/
+
+    /*************************************************************************/
+    ///////// Individual /////////
+    // PT classification
+    cout << ("\n**************** Classification(PT) ****************\n");
+#ifdef PERLOOKUPTIME_SECOND
+    FILE *PT_res_fp = nullptr;
+    PT_res_fp = fopen("./INFO/PT_results2.txt", "w");
 #endif
+
+    for (int i = 0; i < packetNum; ++i) {
+      timer.timeReset();
+      PT_match_id = tree.search(PT_packets[i]);
+      _PT_search_time = timer.elapsed_ns();
+      PT_y(i) = static_cast<double>(_PT_search_time);
+      PT_search_time += _PT_search_time;
+      --PT_match_id;
+      PT_match_id_arr[i] = PT_match_id;
+    }
+
+#ifdef PERLOOKUPTIME_SECOND
+    for (int i = 0; i < packetNum; ++i) {
+      fprintf(PT_res_fp, "Packet %d \t Result %d \t Time(ns) %f\n", i,
+              (PT_match_id_arr[i]), PT_y(i) / 1.0);
+    }
+    fclose(PT_res_fp);
+#endif
+
+    cout << "|- Average search time: " << PT_search_time / packetNum << "ns\n";
+    //// PT ////
+
+    // DBT classification
+    cout << ("\n**************** Classification(DBT) ****************\n");
+#ifdef PERLOOKUPTIME_SECOND
+    FILE *DBT_res_fp = nullptr;
+    DBT_res_fp = fopen("./INFO/DBT_results2.txt", "w");
+#endif
+
+    for (int i = 0; i < packetNum; ++i) {
+      timer.timeReset();
+      DBT_match_id = dbt.search(DBT_packets[i]);
+      _DBT_search_time = timer.elapsed_ns();
+      DBT_y(i) = static_cast<double>(_DBT_search_time);
+      DBT_search_time += _DBT_search_time;
+      --DBT_match_id;
+      DBT_match_id_arr[i] = DBT_match_id;
+    }
+
+#ifdef PERLOOKUPTIME_SECOND
+    for (int i = 0; i < packetNum; ++i) {
+      fprintf(DBT_res_fp, "Packet %d \t Result %u \t Time(ns) %f\n", i,
+              DBT_match_id_arr[i], DBT_y(i) / 1.0);
+    }
+    fclose(DBT_res_fp);
+#endif
+
+    cout << "|- Average search time: " << DBT_search_time / packetNum << "ns\n";
+    dbt.search_with_log(DBT_packets);
+    //// DBT ////
+
+    //// KSet ////
+    // KSet classification
+    cout << ("\n**************** Classification(KSet) ****************\n");
+    cout << "\tThe number of packet in the trace file = " << packetNum << "\n";
+    cout << "\tTotal packets run " << trials
+         << " times circularly: " << packetNum * trials << "\n";
+    // JIA
+    // if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+
+#ifdef PERLOOKUPTIME_SECOND
+    FILE *KSet_res_fp = nullptr;
+    KSet_res_fp = fopen("./INFO/KSet_results2.txt", "w");
+#endif
+
+    for (size_t t = 0; t < trials; ++t) {
+      for (size_t i = 0; i < packetNum; ++i) {
+        kset_match_pri = -1;
+        timer.timeReset();
+        if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
+        if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+          kset_match_pri =
+              max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+        if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+          kset_match_pri =
+              max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+        if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+          kset_match_pri =
+              max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+        _KSet_search_time = timer.elapsed_ns();
+        KSet_y(i) = static_cast<double>(_KSet_search_time);
+        KSet_search_time += _KSet_search_time;
+        kset_match_pri_arr[i] = (number_rule - 1) - kset_match_pri;
+      }
+    }
+
+#ifdef PERLOOKUPTIME_SECOND
+    for (int i = 0; i < packetNum; ++i) {
+      fprintf(KSet_res_fp, "Packet %d \t Result %u \t Time(ns) %f\n", i,
+              kset_match_pri_arr[i], KSet_y(i) / 1.0);
+    }
+    fclose(KSet_res_fp);
+#endif
+
+    cout << fixed << setprecision(3)  // 設定小數點後 3 位
+         << "\tTotal classification time: " << (KSet_search_time * trials)
+         << " ns" << endl
+         << "\tAverage classification time: "
+         << (KSet_search_time / (trials * packetNum)) << " ns\n";
+    ///////// Individual /////////
+    /*************************************************************************/
   }
-#endif
+
   return 0;
 }

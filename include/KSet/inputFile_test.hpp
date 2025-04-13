@@ -1,5 +1,5 @@
 /**
- * @file inputFile_test.cpp
+ * @file inputFile_test.hpp
  * @brief
  * @author jiachang (jiachanggit@gmail.com)
  * @version 1.0
@@ -15,7 +15,20 @@
  * </table>
  */
 
-#include "inputFile_test.hpp"
+#ifndef __IO_INPUTFILE_TEST_HPP__
+#define __IO_INPUTFILE_TEST_HPP__
+
+#include <fstream>
+
+#include "KSet_data_structure.hpp"
+
+class InputFile_test {
+ public:
+  void loadRule_test(const std::vector<Rule>&, const char*);
+  void loadPacket_test(const std::vector<Packet>&, const char*);
+};
+
+// ------------------- 實作區 -------------------
 
 void InputFile_test::loadRule_test(const std::vector<Rule>& ruleV,
                                    const char* fileName) {
@@ -61,3 +74,5 @@ void InputFile_test::loadPacket_test(const std::vector<Packet>& packetV,
 
   outFile.close();
 }
+
+#endif

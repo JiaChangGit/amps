@@ -100,7 +100,7 @@ CTestTestfile.cmake
 _deps
 
 ### CMake Patch ###
-# External projects
+# external projects
 *-prefix/
 
 ### Git ###

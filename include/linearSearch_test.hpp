@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "data_structure.hpp"
+#include "KSet_data_structure.hpp"
 
 class LinearSearch {
  public:

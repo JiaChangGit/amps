@@ -30,7 +30,7 @@
 
 #include "PT_methods.hpp"
 #include "PT_read.hpp"
-#include "pt_tree.hpp"
+#include "PT_tree.hpp"
 
 using namespace std;
 

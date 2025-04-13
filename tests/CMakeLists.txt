@@ -1,8 +1,8 @@
 # tests/CMakeLists.txt
 
-# KSet_new 需要 input_lib 和 my_KSet
+# KSet_new  my_KSet
 add_executable(KSet_new KSet_new.cpp)
-target_link_libraries(KSet_new PRIVATE input_lib my_KSet)
+target_link_libraries(KSet_new PRIVATE  my_KSet)
 
 
 # PT_main 需要 my_PT
@@ -14,8 +14,8 @@ add_executable(DBTable_main DBTable_main.cpp)
 target_link_libraries(DBTable_main PRIVATE my_DBTable)
 
 
-# main 需要 input_lib 和 my_KSet my_PT my_DBTable Eigen3::Eigen
+# main 需要 my_KSet my_PT my_DBTable Eigen3::Eigen
 find_package(Eigen3 REQUIRED)
 #find_package(dlib REQUIRED)
 add_executable(main main.cpp)
-target_link_libraries(main PRIVATE input_lib my_KSet my_PT my_DBTable Eigen3::Eigen )
+target_link_libraries(main PRIVATE my_KSet my_PT my_DBTable Eigen3::Eigen )

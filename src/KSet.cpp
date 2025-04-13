@@ -577,3 +577,107 @@ void KSet::InsertRule(const Rule &insert_rule) {
     ++numrules;
   }
 }
+KSet::KSet(const KSet &other)
+    : num(other.num),
+      usedbit(other.usedbit),
+      locate_segment(other.locate_segment),
+      tablesize(other.tablesize),
+      numrules(other.numrules),
+      threshold(other.threshold),
+      threshold2(other.threshold2),
+      bigSetPrefix(other.bigSetPrefix),
+      bigSetPrefix3(other.bigSetPrefix3),
+      Total_Rules_in_Linear_Node(other.Total_Rules_in_Linear_Node),
+      Total_Rules_in_Big_Node(other.Total_Rules_in_Big_Node),
+      Total_Tablesize_in_Big_Node(other.Total_Tablesize_in_Big_Node),
+      NULL_Node_Count(other.NULL_Node_Count),
+      Small_Node_Count(other.Small_Node_Count),
+      Big_Node_Count(other.Big_Node_Count),
+      total_tablesize_memory_in_KB(other.total_tablesize_memory_in_KB),
+      total_linear_memory_in_KB(other.total_linear_memory_in_KB),
+      total_big_memory_in_KB(other.total_big_memory_in_KB),
+      total_memory_in_KB(other.total_memory_in_KB) {
+  nodeKSet = new SegmentNode[tablesize];
+  std::copy(other.nodeKSet, other.nodeKSet + tablesize, nodeKSet);
+}
+KSet &KSet::operator=(const KSet &other) {
+  if (this != &other) {
+    delete[] nodeKSet;
+    tablesize = other.tablesize;
+    nodeKSet = new SegmentNode[tablesize];
+    std::copy(other.nodeKSet, other.nodeKSet + tablesize, nodeKSet);
+
+    // 其餘成員照抄
+    num = other.num;
+    usedbit = other.usedbit;
+    locate_segment = other.locate_segment;
+    numrules = other.numrules;
+    threshold = other.threshold;
+    threshold2 = other.threshold2;
+    bigSetPrefix = other.bigSetPrefix;
+    bigSetPrefix3 = other.bigSetPrefix3;
+    Total_Rules_in_Linear_Node = other.Total_Rules_in_Linear_Node;
+    Total_Rules_in_Big_Node = other.Total_Rules_in_Big_Node;
+    Total_Tablesize_in_Big_Node = other.Total_Tablesize_in_Big_Node;
+    NULL_Node_Count = other.NULL_Node_Count;
+    Small_Node_Count = other.Small_Node_Count;
+    Big_Node_Count = other.Big_Node_Count;
+    total_tablesize_memory_in_KB = other.total_tablesize_memory_in_KB;
+    total_linear_memory_in_KB = other.total_linear_memory_in_KB;
+    total_big_memory_in_KB = other.total_big_memory_in_KB;
+    total_memory_in_KB = other.total_memory_in_KB;
+  }
+  return *this;
+}
+KSet::KSet(KSet &&other) noexcept
+    : nodeKSet(other.nodeKSet),
+      num(other.num),
+      usedbit(other.usedbit),
+      locate_segment(other.locate_segment),
+      tablesize(other.tablesize),
+      numrules(other.numrules),
+      threshold(other.threshold),
+      threshold2(other.threshold2),
+      bigSetPrefix(other.bigSetPrefix),
+      bigSetPrefix3(other.bigSetPrefix3),
+      Total_Rules_in_Linear_Node(other.Total_Rules_in_Linear_Node),
+      Total_Rules_in_Big_Node(other.Total_Rules_in_Big_Node),
+      Total_Tablesize_in_Big_Node(other.Total_Tablesize_in_Big_Node),
+      NULL_Node_Count(other.NULL_Node_Count),
+      Small_Node_Count(other.Small_Node_Count),
+      Big_Node_Count(other.Big_Node_Count),
+      total_tablesize_memory_in_KB(other.total_tablesize_memory_in_KB),
+      total_linear_memory_in_KB(other.total_linear_memory_in_KB),
+      total_big_memory_in_KB(other.total_big_memory_in_KB),
+      total_memory_in_KB(other.total_memory_in_KB) {
+  other.nodeKSet = nullptr;
+}
+KSet &KSet::operator=(KSet &&other) noexcept {
+  if (this != &other) {
+    delete[] nodeKSet;
+    nodeKSet = other.nodeKSet;
+    tablesize = other.tablesize;
+
+    num = other.num;
+    usedbit = other.usedbit;
+    locate_segment = other.locate_segment;
+    numrules = other.numrules;
+    threshold = other.threshold;
+    threshold2 = other.threshold2;
+    bigSetPrefix = other.bigSetPrefix;
+    bigSetPrefix3 = other.bigSetPrefix3;
+    Total_Rules_in_Linear_Node = other.Total_Rules_in_Linear_Node;
+    Total_Rules_in_Big_Node = other.Total_Rules_in_Big_Node;
+    Total_Tablesize_in_Big_Node = other.Total_Tablesize_in_Big_Node;
+    NULL_Node_Count = other.NULL_Node_Count;
+    Small_Node_Count = other.Small_Node_Count;
+    Big_Node_Count = other.Big_Node_Count;
+    total_tablesize_memory_in_KB = other.total_tablesize_memory_in_KB;
+    total_linear_memory_in_KB = other.total_linear_memory_in_KB;
+    total_big_memory_in_KB = other.total_big_memory_in_KB;
+    total_memory_in_KB = other.total_memory_in_KB;
+
+    other.nodeKSet = nullptr;
+  }
+  return *this;
+}

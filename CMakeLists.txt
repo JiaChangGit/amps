@@ -1,5 +1,5 @@
 # ./
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 project(MyProject)
 
 # 設定 C++ 標準
@@ -50,7 +50,7 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG")  # 禁用斷言，提升效能
 
 # 添加 src 和 tests 子目錄（確保third_party/dlib在前，以及src 在前，tests 依賴 src）
-add_subdirectory(third_party/dlib)
+#add_subdirectory(third_party/dlib)
 add_subdirectory(src)
 add_subdirectory(tests)
 

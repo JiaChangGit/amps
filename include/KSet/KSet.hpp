@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iomanip>  // 用於設置小數點位數
 
-#include "data_structure.hpp"
+#include "KSet_data_structure.hpp"
 using namespace std;
 
 #define PTR_SIZE 4
@@ -135,6 +135,11 @@ class KSet {
  public:
   KSet(int num1, vector<Rule>& classifier, int usedbits);
   ~KSet();
+  KSet(const KSet& other);                 // 複製建構子
+  KSet& operator=(const KSet& other);      // 複製指派
+  KSet(KSet&& other) noexcept;             // 移動建構子
+  KSet& operator=(KSet&& other) noexcept;  // 移動指派
+
   virtual void ConstructClassifier(const vector<Rule>& rules);
   virtual int ClassifyAPacket(const Packet& packet);
   virtual void DeleteRule(const Rule& delete_rule);
@@ -190,7 +195,6 @@ class KSet {
   }
 
  private:
-  // vector<Rule> rules;
   SegmentNode* nodeKSet;
 
   size_t num;  // identify which sets

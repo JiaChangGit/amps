@@ -51,25 +51,20 @@ inline void evaluateModel(const VectorXd &y_pred, const VectorXd &y_true,
   int n = y_true.size();
   double mae = 0.0, mse = 0.0;
   double y_mean = y_true.mean();
-  double ss_res = 0.0, ss_tot = 0.0;
 
   for (int i = 0; i < n; ++i) {
     double error = y_pred(i) - y_true(i);
     mae += std::abs(error);
     mse += error * error;
-    ss_res += error * error;
-    ss_tot += (y_true(i) - y_mean) * (y_true(i) - y_mean);
   }
 
   mae /= n;
   mse /= n;
   double rmse = std::sqrt(mse);
-  double r2 = (ss_tot > 1e-8) ? (1.0 - (ss_res / ss_tot)) : 0.0;
 
   cout << "\n[" << label << " model evaluation]" << endl;
   cout << "MAE  = " << mae << " ns" << endl;
   cout << "RMSE = " << rmse << " ns" << endl;
-  cout << "R^2  = " << r2 << endl;
 }
 
 inline double predict3(const VectorXd &a, double x1, double x2, double x3) {
@@ -88,5 +83,41 @@ inline double predict11(const VectorXd &a, double x1, double x2, double x3,
   assert(a.size() == 11);
   return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 + a(5) * x6 +
          a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 + a(10) * x11 + a(11);
+}
+// 取得平均值
+double computeMean(const Eigen::VectorXd &v) { return v.mean(); }
+
+// 取得中位數
+double computeMedian(Eigen::VectorXd v) {
+  std::vector<double> data(v.data(), v.data() + v.size());
+  std::nth_element(data.begin(), data.begin() + data.size() / 2, data.end());
+
+  if (data.size() % 2 == 1) {
+    return data[data.size() / 2];
+  } else {
+    auto mid1 = data.begin() + data.size() / 2 - 1;
+    auto mid2 = data.begin() + data.size() / 2;
+    std::nth_element(data.begin(), mid1, data.end());
+    return (*mid1 + *mid2) / 2.0;
+  }
+}
+
+// 取得第 p 百分位數（例如 99th）
+double computePercentile(Eigen::VectorXd v, double p) {
+  std::vector<double> data(v.data(), v.data() + v.size());
+  std::sort(data.begin(), data.end());
+
+  if (data.empty()) return 0.0;
+
+  double rank = p * (data.size() - 1);  // p ∈ [0.0, 1.0]
+  size_t lower_idx = static_cast<size_t>(std::floor(rank));
+  size_t upper_idx = static_cast<size_t>(std::ceil(rank));
+
+  if (lower_idx == upper_idx) {
+    return data[lower_idx];
+  } else {
+    double weight = rank - lower_idx;
+    return data[lower_idx] * (1.0 - weight) + data[upper_idx] * weight;
+  }
 }
 #endif  // LINEAR_REGRESSION_MODEL_HPP

@@ -1,5 +1,5 @@
 /**
- * @file input.cpp
+ * @file input.hpp
  * @brief
  * @author jiachang (jiachanggit@gmail.com)
  * @version 1.0
@@ -15,7 +15,21 @@
  * </table>
  */
 
-#include "input.hpp"
+#ifndef __IO_INPUT_HPP__
+#define __IO_INPUT_HPP__
+
+#include <cstdio>
+#include <cstdlib>
+
+#include "KSet_data_structure.hpp"
+
+class InputFile {
+ public:
+  void loadRule(std::vector<Rule> &, const char *);
+  void loadPacket(std::vector<Packet> &, const char *);
+};
+
+// ------------------- 實作區 -------------------
 
 void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
   FILE *fp = nullptr;
@@ -214,3 +228,5 @@ void InputFile::loadPacket(std::vector<Packet> &packets, const char *fileName) {
 // The Filter Number simply records the filter used to generate the header.
 // This may NOT be the best-matching (or first-matching) filter for the packet
 // header.
+
+#endif

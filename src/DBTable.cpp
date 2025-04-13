@@ -476,15 +476,21 @@ void CacuInfo::CacuIpMask(MASK& mask) {
     int old_bucket_num = bucket_num;
     partition_by_ip(bRank[0].id, _rules);
     if (target_bucket_num == old_target_bucket_num &&
-        old_max_bucket_size == max_bucket_size && old_bucket_num == bucket_num)
+        old_max_bucket_size == max_bucket_size &&
+        old_bucket_num == bucket_num) {
+      // std::cout << "480\n";  //// JIA
       break;
+    }
     if (bRank[0].id < 32)
       mask.i_32.smask |= getBit[bRank[0].id];
     else
       mask.i_32.dmask |= getBit[bRank[0].id - 32];
     // fetched_bit_id.emplace_back(bRank[0].id);
     ++dbs_size;
-    if (((double)target_bucket_num / (double)bucket_num) > END_BOUND) break;
+    if (((double)target_bucket_num / (double)bucket_num) > END_BOUND) {
+      // std::cout << "490\n";  //// JIA
+      break;
+    }
   }
 
   print_bucket(_rules);
@@ -849,8 +855,8 @@ void DBTable::construct() {
   uint32_t bucket_num = 0;
   bitset<64> bits;
   bits = subsets.mask.i_64;
-  std::cout << "DBTable.cpp bits: " << bits
-            << std::endl;  // 印出整個 64 位元序列
+  // std::cout << "DBTable.cpp bits: " << bits
+  //           << std::endl;  // 印出整個 64 位元序列
   bucket_num = (1 << bits.count()) + 1;
   subsets.size = bucket_num;
   subsets.ipNodes = new ip_node[bucket_num]();
