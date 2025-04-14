@@ -68,6 +68,7 @@ int read_rules(const char* file_name, vector<Rule>& list) {
     list.emplace_back(r);
     ++i;
   }
+  list.shrink_to_fit();
   fclose(fp);
   return 1;
 }
@@ -89,6 +90,7 @@ int read_packets(const char* file_name, vector<Packet>& list,
     check_list.emplace_back(result);
     list.emplace_back(p);
   }
+  list.shrink_to_fit();
   fclose(fp);
   return 1;
 }

@@ -14,7 +14,10 @@ KSet::KSet(int num1, vector<Rule> &classifier, int usedbits) {
   bigSetPrefix = 30;
   bigSetPrefix3 = 7;
 
-  nodeKSet = new SegmentNode[tablesize];
+  // JIA
+  nodeKSetBuffer.resize(tablesize);
+  nodeKSet = nodeKSetBuffer.data();
+  // nodeKSet = new SegmentNode[tablesize];
 
   Total_Rules_in_Linear_Node = 0;
   Total_Rules_in_Big_Node = 0;
@@ -30,7 +33,8 @@ KSet::KSet(int num1, vector<Rule> &classifier, int usedbits) {
   total_memory_in_KB = 0;
 }
 
-KSet::~KSet() { delete[] nodeKSet; }
+KSet::~KSet() {  // delete[] nodeKSet;
+}
 
 // return the used table size
 int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
@@ -39,8 +43,6 @@ int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
   uint32_t v;
   int hash;
   int r = 0;
-
-  vector<Rule> tmp[4];
 
   for (i = 0; i < rules.size(); ++i) {
     if (rules[i].prefix_length[0] >= bits) {  // SrcIP
@@ -55,6 +57,7 @@ int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
       rmd.push_back(rules[i]);
     }
   }
+  rmd.shrink_to_fit();
 
   for (i = 0; i < 4; ++i) {
     if (b[i].list.size() == 0) {
@@ -65,9 +68,8 @@ int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
       b[i].bf = 0;
       b[i].uf = part_oder(i);
       ++r;
-    }
-
-    else {  // big, need build hash
+      b[i].list.shrink_to_fit();
+    } else {  // big, need build hash
       b[i].bf = 1;
       b[i].uf = part_oder(i);
 
@@ -117,6 +119,7 @@ void KSet::ConstructClassifier(const vector<Rule> &rules) {
     }
     nodeKSet[value].classifier.push_back(rules[i]);
     ++nodeKSet[value].nrules;
+    nodeKSet[value].classifier.shrink_to_fit();
   }
   for (i = 0; i < tablesize; ++i) {
     if (nodeKSet[i].nrules == 0) {
@@ -172,9 +175,8 @@ void KSet::ConstructClassifier(const vector<Rule> &rules) {
 
 int linear_search(const Packet &packet, const vector<Rule> &rules) {
   int match_id = -1;
-  size_t i;
 
-  for (i = 0; i < rules.size(); ++i) {
+  for (size_t i = 0; i < rules.size(); ++i) {
     if ((packet[0] >= rules[i].range[0][0]) &&
         (packet[0] <= rules[i].range[0][1]) &&
         (packet[1] >= rules[i].range[1][0]) &&
@@ -570,6 +572,7 @@ void KSet::InsertRule(const Rule &insert_rule) {
     nodeKSet[value].flag = 0;
     ++nodeKSet[value].nrules;
     nodeKSet[value].classifier.push_back(insert_rule);
+    nodeKSet[value].classifier.shrink_to_fit();
     nodeKSet[value].classifier.insert(
         upper_bound(nodeKSet[value].classifier.begin(),
                     nodeKSet[value].classifier.end(), insert_rule, cmpp),

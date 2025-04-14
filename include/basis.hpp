@@ -14,8 +14,8 @@
  * </table>
  */
 
-#ifndef __LIB_BASIS_HPP__
-#define __LIB_BASIS_HPP__
+#ifndef _BASIS_HPP_
+#define _BASIS_HPP_
 
 #include <getopt.h>
 
@@ -139,6 +139,7 @@ class CommandLineParser {
             std::cout << tmp_in_field[i] << " ";
             set_field.emplace_back(tmp_in_field[i]);
           }
+          set_field.shrink_to_fit();
           std::cout << "\nSet aTree port field: " << tmp_in_field[i] << "\n";
           set_port = tmp_in_field[i];
           break;

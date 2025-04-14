@@ -1,5 +1,5 @@
-#ifndef LINEAR_REGRESSION_MODEL_HPP
-#define LINEAR_REGRESSION_MODEL_HPP
+#ifndef _LINEAR_REGRESSION_MODEL_HPP_
+#define _LINEAR_REGRESSION_MODEL_HPP_
 
 #include <Eigen/Dense>
 #include <cassert>  // for runtime checks

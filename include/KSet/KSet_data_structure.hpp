@@ -10,7 +10,7 @@
 #define HighDim 1
 #define MAXDIMENSIONS 5
 
-typedef std::vector<uint32_t> Packet;
+using Packet = std::array<uint32_t, 6>;
 
 struct Rule {
   Rule(unsigned int dim = 5)

@@ -1,0 +1,206 @@
+Build directory not found. Creating one...
+Test executable not found. Building the project...
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found OpenMP_C: -fopenmp (found version "4.5")
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- Eigen3 found: /usr/include/eigen3
+-- Using GCC/G++ Compiler - Enabling Optimizations with BMI2
+-- Final CXX Flags:  -fopenmp -Wall -Wextra -pedantic -O3 -march=native -mtune=native -mbmi2 -fopenmp -funroll-loops -finline-functions -flto -DNDEBUG
+-- Final Linker Flags:   -flto
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/user/PC/multiple_parallel_PC/build
+[  7%] Building CXX object src/CMakeFiles/my_PT.dir/PT_tree.cpp.o
+[ 14%] Building CXX object src/CMakeFiles/my_DBTable.dir/DBTable.cpp.o
+[ 21%] Building CXX object src/CMakeFiles/my_KSet.dir/KSet.cpp.o
+[ 28%] Linking CXX static library libmy_KSet.a
+[ 28%] Built target my_KSet
+[ 35%] Building CXX object tests/CMakeFiles/KSet_new.dir/KSet_new.cpp.o
+[ 42%] Linking CXX static library libmy_PT.a
+[ 42%] Built target my_PT
+[ 50%] Building CXX object tests/CMakeFiles/PT_main.dir/PT_main.cpp.o
+[ 57%] Linking CXX static library libmy_DBTable.a
+[ 57%] Built target my_DBTable
+[ 64%] Building CXX object tests/CMakeFiles/DBTable_main.dir/DBTable_main.cpp.o
+[ 71%] Building CXX object tests/CMakeFiles/main.dir/main.cpp.o
+[ 78%] Linking CXX executable KSet_new
+[ 85%] Linking CXX executable PT_main
+[ 92%] Linking CXX executable DBTable_main
+[ 92%] Built target KSet_new
+[ 92%] Built target PT_main
+[ 92%] Built target DBTable_main
+[100%] Linking CXX executable main
+[100%] Built target main
+Running tests...
+The number of rules = 89229
+The number of packets = 892290
+
+PT search config time: 2.15678 s
+0 4 2
+**************** Construction(PT) ****************
+
+Start build for single thread...
+|- Using fields:     0,4,2,1
+|- Construct time:   7051673ns
+|- tree.totalNodes: 23734
+|- Memory footprint: 10.8329MB
+binth=4 th_b=0.8 K=4 th_c=32
+
+**************** Construction(DBT) ****************
+buckets        : 24283
+max bucket size: 836
+target buckets : 19759 81.37%
+(10,50]        : 1470 6.05%
+(50,100]       : 120 0.49%
+big cell       : 30 0.12%
+
+DBS bitsNum: 17
+
+
+rule_num 89229 89229
+in_bucket 28861 0.32
+in_tuple 60368 0.68
+total buckets  : 189199
+used buckets   : 41835 22.11%
+max bucket size: 42
+target buckets : 36226 86.59%
+(10,50]        : 848 2.03%
+(50,100]       : 0 0.00%
+big cell       : 0 0.00%
+tuple spaces   : 131
+avg tuples     : 3.48
+max tuples     : 17
+
+Construction Time: 2158443056 ns
+
+Total memory 12.14 MB
+
+================KSet Precompute=============
+Set 0: 61768, Set 1: 13149, Set 2: 13174, Set 3: 1138
+max_pri[0]: 89228, max_pri[1]: 70780, max_pri[2]: 70961, max_pri[3]: 12092
+Set 0: 15 bits, Set 1: 13 bits, Set 2: 13 bits
+================Compute=============
+Set 0: 66377, Set 1: 14771, Set 2: 7339, Set 3: 742
+max_pri[0]: 89228, max_pri[1]: 68568, max_pri[2]: 67749, max_pri[3]: 8467
+non-empty_seg[0] = 0, non-empty_seg[1] = 0, non-empty_seg[2] = 0
+AVG[0]: inf, AVG[1]: inf, AVG[2]: inf
+MAX[0]: 2116669696, MAX[1]: 32684, MAX[2]: 32684
+**************** Construction(KSet) ****************
+	Construction time: 20145042 ns
+
+	***Set 0:***
+	rules in set: 66377, rules in small node: 13470, rules in big node: 52907
+	tablesize: 32768, NULL_Node_Count = 26157, Small_Node_Count = 5407, Big_Node_Count = 1204
+	Table_memory: 128.000(KB), Total_Rules_memory(Small): 368.320(KB), Total_Rules_memory(Big): 1581.660(KB)
+	Total memory: 2077.980(KB), Byte/rule: 32.057
+
+	***Set 1:***
+	rules in set: 14771, rules in small node: 1764, rules in big node: 13007
+	tablesize: 8192, NULL_Node_Count = 7382, Small_Node_Count = 467, Big_Node_Count = 343
+	Table_memory: 32.000(KB), Total_Rules_memory(Small): 48.234(KB), Total_Rules_memory(Big): 380.414(KB)
+	Total memory: 460.648(KB), Byte/rule: 31.934
+
+	***Set 2:***
+	rules in set: 7339, rules in small node: 506, rules in big node: 6833
+	tablesize: 8192, NULL_Node_Count = 7834, Small_Node_Count = 223, Big_Node_Count = 135
+	Table_memory: 32.000(KB), Total_Rules_memory(Small): 13.836(KB), Total_Rules_memory(Big): 199.281(KB)
+	Total memory: 245.117(KB), Byte/rule: 34.201
+
+	***Set 3:***
+	rules in set: 742, rules in small node: 0, rules in big node: 742
+	tablesize: 1, NULL_Node_Count = 0, Small_Node_Count = 0, Big_Node_Count = 1
+	Table_memory: 0.004(KB), Total_Rules_memory(Small): 0.000(KB), Total_Rules_memory(Big): 22.551(KB)
+	Total memory: 22.555(KB), Byte/rule: 31.127
+
+**************** Classification(TOTAL) ****************
+	The number of packet in the trace file = 892290
+	Total packets run 2times circularly: 1784580
+
+[PT 3-feature model] (x1, x2, x3, bias):
+ 0.096 -0.059  0.075 18.925
+
+[PT 11-feature model] (x1~x11, bias):
+ 0.110 -0.082  0.062  0.096  0.030  0.087  0.052  0.030  0.146 -0.123 -0.046 18.925
+
+[DBT 3-feature model] (x1, x2, x3, bias):
+-0.232 -0.065 -0.205 20.390
+
+[DBT 11-feature model] (x1~x11, bias):
+-0.218 -0.069  0.051  0.036 -0.206  0.009 -0.027  0.009  0.188 -0.019  0.004 20.390
+
+[KSet 3-feature model] (x1, x2, x3, bias):
+ -2.864  -1.347   2.204 100.475
+
+[KSet 11-feature model] (x1~x11, bias):
+ -2.085  -0.191  -0.407   1.641   0.465   2.710  -1.169   2.499   3.435  12.534   8.220 100.475
+
+[PT-3-feature model evaluation]
+MAE  = 4.668 ns
+RMSE = 63.250 ns
+
+[PT-11-feature model evaluation]
+MAE  = 4.666 ns
+RMSE = 63.250 ns
+
+[KSet-3-feature model evaluation]
+MAE  = 63.075 ns
+RMSE = 176.722 ns
+
+[KSet-11-feature model evaluation]
+MAE  = 60.476 ns
+RMSE = 175.928 ns
+
+[DBT-3-feature model evaluation]
+MAE  = 5.772 ns
+RMSE = 112.751 ns
+
+[DBT-11-feature model evaluation]
+MAE  = 5.785 ns
+RMSE = 112.751 ns
+to pt_prediction_result.txt...
+to DBT_prediction_result.txt...
+to KSet_prediction_result.txt...
+    AVG predict_time(ns): 102
+|--- PT_y Mean: 18.925
+|--- PT_y Median: 20.000
+|--- PT_y 25th Percentile: 10.000
+|--- PT_y 95th Percentile: 20.000
+|--- PT_y 99th Percentile: 80.000
+|--- DBT_y Mean: 20.390
+|--- DBT_y Median: 20.000
+|--- DBT_y 25th Percentile: 11.000
+|--- DBT_y 95th Percentile: 41.000
+|--- DBT_y 99th Percentile: 70.000
+|--- KSet_y Mean: 100.475
+|--- KSet_y Median: 70.000
+|--- KSet_y 25th Percentile: 40.000
+|--- KSet_y 95th Percentile: 250.000
+|--- KSet_y 99th Percentile: 381.000
+
+**************** Classification(PT) ****************
+|- Average search time: 149ns
+
+**************** Classification(DBT) ****************
+|- Average search time: 121ns
+
+avg_acc_bucket: 1.563 max: 2
+avg_acc_tuple: 5.047 max: 22
+avg_acc_rule: 7.181 max: 70
+
+**************** Classification(KSet) ****************
+	The number of packet in the trace file = 892290
+	Total packets run 2 times circularly: 1784580
+	Total classification time: 1074681700 ns
+	Average classification time: 301 ns

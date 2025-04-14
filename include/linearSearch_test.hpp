@@ -1,5 +1,5 @@
-#ifndef _CLASSIFIERS_LINEARSEARCH_HPP_
-#define _CLASSIFIERS_LINEARSEARCH_HPP_
+#ifndef _LINEARSEARCH_HPP_
+#define _LINEARSEARCH_HPP_
 
 #include <fstream>
 

@@ -9,7 +9,7 @@ with open(file_path + tail_name, "r", encoding="utf-8") as file:
 
 # 使用正則表達式提取 Result 和 Time(ns)
 #pattern = re.compile(r"Result\s+(\d+)\s+Time\(ns\)\s+([\d.]+)")
-pattern = re.compile(r"Packet (\d+)\s+Predict3 ([\d.]+)\s+Predict11 ([\d.]+)\s+RealTime\(ns\) ([\d.]+)")
+pattern = re.compile(r"Packet (\d+)\s+Predict ([\d.]+)\s+RealTime\(ns\) ([\d.]+)")
 
 # 存儲提取的數據
 data = []
@@ -21,14 +21,13 @@ for line in lines:
 #        data.append((result, time))
     if match:
         result = int(match.group(1))
-        time = float(match.group(2))
-        time_11 = float(match.group(3))
+        timeP = float(match.group(2))
         time_R = float(match.group(4))
-        data.append((result, time,time_11,time_R))
+        data.append((result, timeP,time_R))
 
 # 轉換為 DataFrame
 #df = pd.DataFrame(data, columns=["Result", "Time (ns)"])
-df = pd.DataFrame(data, columns=["Result", "Time (ns)","Time11 (ns)","TimeR (ns)"])
+df = pd.DataFrame(data, columns=["Result", "TimeP (ns)","TimeR (ns)"])
 
 # 將數據儲存到 Excel
 excel_path = file_path + ".xlsx"

@@ -1,7 +1,6 @@
 
-
-#pragma once
-
+#ifndef __BLOOM_HPP__
+#define __BLOOM_HPP__
 #include <immintrin.h>  // 包含所有 AVX 指令
 #include <x86intrin.h>  // 包含所有 x86 指令，包括 BMI2 和 PEXT
 
@@ -94,23 +93,26 @@ class BloomFilter {
     std::array<uint64_t, HashCount> hashes{};
     size_t h1 = std::hash<T>{}(item);
     size_t h2 = std::hash<std::string>{}(std::to_string(h1));
-
+#ifdef HASH_DEBUG
     // 準備輸出檔案
     std::ofstream file("hash_debug.txt", std::ios::app);
     file << "h1: " << h1 << "\n";
     file << "h2: " << h2 << "\n";
-
+#endif
     for (size_t i = 0; i < HashCount; ++i) {
 #ifdef __BMI2__
       hashes[i] = __builtin_ia32_pext_di(h1 + i * h2, BitSize - 1);
 #else
       hashes[i] = h1 + i * h2;
 #endif
+#ifdef HASH_DEBUG
       file << "hashes[" << i << "]: " << hashes[i] << "\n";
+#endif
     }
-
+#ifdef HASH_DEBUG
     file << "--------------------------\n";
     file.close();
+#endif
     return hashes;
   }
 };
@@ -212,3 +214,79 @@ struct hash<DBT::Rule> {
   }
 };
 }  // namespace std
+
+namespace std {
+template <>
+struct hash<std::array<uint32_t, 6>> {
+  size_t operator()(const std::array<uint32_t, 6>& arr) const {
+    size_t seed = 0;
+    for (size_t i = 0; i < 5; ++i) {
+      uint64_t h = static_cast<uint64_t>(arr[i]);
+      h ^= h >> 33;
+      h *= 0xff51afd7ed558ccdULL;
+      h ^= h >> 33;
+      h *= 0xc4ceb9fe1a85ec53ULL;
+      h ^= h >> 33;
+      seed ^= h + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+}  // namespace std
+namespace DBT {
+inline bool operator==(const Packet& a, const Packet& b) {
+  return a.protocol == b.protocol && a.ip.i_64 == b.ip.i_64 &&
+         a.Port[0] == b.Port[0] && a.Port[1] == b.Port[1];
+}
+}  // namespace DBT
+
+namespace std {
+template <>
+struct hash<DBT::Packet> {
+  size_t operator()(const DBT::Packet& p) const {
+    std::array<uint32_t, 6> tmp = {p.ip.i_32.sip,
+                                   p.ip.i_32.dip,
+                                   static_cast<uint32_t>(p.Port[0]),
+                                   static_cast<uint32_t>(p.Port[1]),
+                                   static_cast<uint32_t>(p.protocol),
+                                   0};
+    return std::hash<std::array<uint32_t, 6>>{}(tmp);
+  }
+};
+}  // namespace std
+inline bool operator==(const PT_Packet& a, const PT_Packet& b) {
+  return a.protocol == b.protocol &&
+         std::memcmp(a.source_ip, b.source_ip, 4) == 0 &&
+         std::memcmp(a.destination_ip, b.destination_ip, 4) == 0 &&
+         a.source_port == b.source_port &&
+         a.destination_port == b.destination_port;
+}
+namespace std {
+template <>
+struct hash<PT_Packet> {
+  size_t operator()(const PT_Packet& pkt) const {
+    uint32_t sip = 0, dip = 0;
+    std::memcpy(&sip, pkt.source_ip, 4);
+    std::memcpy(&dip, pkt.destination_ip, 4);
+
+    std::array<uint64_t, 2> data = {
+        (static_cast<uint64_t>(sip) << 32) | dip,
+        (static_cast<uint64_t>(pkt.source_port) << 48) |
+            (static_cast<uint64_t>(pkt.destination_port) << 32) |
+            (static_cast<uint64_t>(pkt.protocol) << 24)};
+
+    size_t seed = 0;
+    for (auto val : data) {
+      val ^= val >> 33;
+      val *= 0xff51afd7ed558ccdULL;
+      val ^= val >> 33;
+      val *= 0xc4ceb9fe1a85ec53ULL;
+      val ^= val >> 33;
+      seed ^= val + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+}  // namespace std
+
+#endif

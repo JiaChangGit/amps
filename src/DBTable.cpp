@@ -494,7 +494,7 @@ void CacuInfo::CacuIpMask(MASK& mask) {
   }
 
   print_bucket(_rules);
-  cout << "\nDBS size: " << dbs_size << "\n\n";
+  cout << "\nDBS bitsNum: " << dbs_size << "\n\n";
 
   for (auto _r : _rules) delete _r;
 }
@@ -655,8 +655,8 @@ uint16_t CacuInfo::CacuPortMask(int type) {
 
   // print_bucket(_rules);
   // sort(fetched_bit_id.begin(), fetched_bit_id.end());
-  /*for (auto x : fetched_bit_id)cout << x << " ";
-  cout << endl << endl;*/
+  // for (auto x : fetched_bit_id)cout << x << " ";
+  // cout << endl << endl;
 
   for (auto& _r : _rules) delete _r;
 

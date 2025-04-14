@@ -183,6 +183,7 @@ void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
     r.pri = number_rule;
     rule.emplace_back(r);
   }
+  rule.shrink_to_fit();
 
   // std::cout<<"the number of rules = "<< number_rule<<"\n";
   max_pri = number_rule - 1;
@@ -207,17 +208,11 @@ void InputFile::loadPacket(std::vector<Packet> &packets, const char *fileName) {
     if (fscanf(fp, "%u\t%u\t%u\t%u\t%u\t%u\t%u\n", &header[0], &header[1],
                &header[2], &header[3], &header[4], &proto_mask, &fid) == EOF)
       break;
-    Packet p;
-    p.emplace_back(header[0]);
-    p.emplace_back(header[1]);
-    p.emplace_back(header[2]);
-    p.emplace_back(header[3]);
-    p.emplace_back(header[4]);
-    p.emplace_back(fid);
+    Packet p = {header[0], header[1], header[2], header[3], header[4], fid};
     ++number_pkt;
     packets.emplace_back(p);
   }
-
+  packets.shrink_to_fit();
   // std::cout<<"the number of pkts = "<< number_pkt<<"\n";
 
   return;
