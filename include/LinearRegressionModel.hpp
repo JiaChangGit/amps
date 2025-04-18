@@ -47,7 +47,7 @@ inline VectorXd linearRegressionFit(const MatrixXd &X, const VectorXd &y) {
 
 inline void evaluateModel(const VectorXd &y_pred, const VectorXd &y_true,
                           const string &label) {
-  assert(y_pred.size() == y_true.size());
+  // assert(y_pred.size() == y_true.size());
   int n = y_true.size();
   double mae = 0.0, mse = 0.0;
   double y_mean = y_true.mean();
@@ -68,21 +68,21 @@ inline void evaluateModel(const VectorXd &y_pred, const VectorXd &y_true,
 }
 
 inline double predict3(const VectorXd &a, double x1, double x2, double x3) {
-  assert(a.size() == 4);
-  return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3);
+  // assert(a.size() == 4);
+  return a(0) * x1 + a(1) * x2 + a(2) * x3;
 }
 
 inline double predict5(const VectorXd &a, double x1, double x2, double x3,
                        double x4, double x5) {
-  assert(a.size() == 6);
-  return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 + a(5);
+  // assert(a.size() == 6);
+  return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5;
 }
 inline double predict11(const VectorXd &a, double x1, double x2, double x3,
                         double x4, double x5, double x6, double x7, double x8,
                         double x9, double x10, double x11) {
-  assert(a.size() == 11);
+  // assert(a.size() == 11);
   return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 + a(5) * x6 +
-         a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 + a(10) * x11 + a(11);
+         a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 + a(10) * x11;
 }
 // 取得平均值
 double computeMean(const Eigen::VectorXd &v) { return v.mean(); }

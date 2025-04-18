@@ -449,30 +449,35 @@ vector<Rule> convertFromDBTRules(const vector<DBT::Rule> &dbt_rules) {
   return rules;
 }
 
-void warmup_PT(PT::PTtree &tree, const std::vector<PT::PT_Packet> &PT_packets,
-               const size_t packetNum) {
-  for (int i = 0; i < packetNum; ++i) {
-    tree.search(PT_packets[i]);
-  }
-}
-void warmup_DBT(DBT::DBTable &dbt, const std::vector<DBT::Packet> &DBT_packets,
-                const size_t packetNum) {
-  for (int i = 0; i < packetNum; ++i) {
-    dbt.search(DBT_packets[i]);
-  }
-}
-void warmup_KSet(vector<KSet> &set, const std::vector<Packet> &packets,
-                 const size_t packetNum, const int num_set[]) {
-  for (int i = 0; i < packetNum; ++i) {
-    if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
-    if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
-      kset_match_pri = max(kset_match_pri, set[1].ClassifyAPacket(packets[i]));
-    if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
-      kset_match_pri = max(kset_match_pri, set[2].ClassifyAPacket(packets[i]));
-    if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
-      kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
-  }
-}
+// void warmup_PT(PT::PTtree &tree, const std::vector<PT::PT_Packet>
+// &PT_packets,
+//                const size_t packetNum) {
+//   for (int i = 0; i < packetNum; ++i) {
+//     tree.search(PT_packets[i]);
+//   }
+// }
+// void warmup_DBT(DBT::DBTable &dbt, const std::vector<DBT::Packet>
+// &DBT_packets,
+//                 const size_t packetNum) {
+//   for (int i = 0; i < packetNum; ++i) {
+//     dbt.search(DBT_packets[i]);
+//   }
+// }
+// void warmup_KSet(vector<KSet> &set, const std::vector<Packet> &packets,
+//                  const size_t packetNum, const int num_set[]) {
+//   for (int i = 0; i < packetNum; ++i) {
+//     if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
+//     if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+//       kset_match_pri = max(kset_match_pri,
+//       set[1].ClassifyAPacket(packets[i]));
+//     if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+//       kset_match_pri = max(kset_match_pri,
+//       set[2].ClassifyAPacket(packets[i]));
+//     if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+//       kset_match_pri = max(kset_match_pri,
+//       set[3].ClassifyAPacket(packets[i]));
+//   }
+// }
 /////////////////
 int main(int argc, char *argv[]) {
   CommandLineParser parser;
@@ -482,7 +487,7 @@ int main(int argc, char *argv[]) {
   InputFile inputFile;
   InputFile_test inputFile_test;
   Timer timer;
-  constexpr int trials = 3;  // run 3 times circularly
+  constexpr int trials = 5;  // run 5 times circularly
 
   inputFile.loadRule(rule, parser.getRulesetFile());
   inputFile.loadPacket(packets, parser.getTraceFile());
@@ -617,7 +622,6 @@ int main(int argc, char *argv[]) {
   set2.prints();
   set3.prints();
 
-  if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
   //// KSet ////
   ///////// Construct /////////
   /*************************************************************************/
@@ -638,16 +642,16 @@ int main(int argc, char *argv[]) {
 
       ///////// train ////////
       // 三維模型
-      MatrixXd X3(packetNum, 4);  // 3 features + bias
-      VectorXd PT_model_3(4);
-      VectorXd DBT_model_3(4);
-      VectorXd KSet_model_3(4);
+      MatrixXd X3(packetNum, 3);  // 3 features
+      VectorXd PT_model_3(3);
+      VectorXd DBT_model_3(3);
+      VectorXd KSet_model_3(3);
 
       // 11維模型
-      MatrixXd X11(packetNum, 12);  // 11 features + bias
-      VectorXd PT_model_11(12);
-      VectorXd DBT_model_11(12);
-      VectorXd KSet_model_11(12);
+      MatrixXd X11(packetNum, 11);  // 11 features
+      VectorXd PT_model_11(11);
+      VectorXd DBT_model_11(11);
+      VectorXd KSet_model_11(11);
 
       // y 向量共用 (3, 11)
       VectorXd PT_y(packetNum);
@@ -663,130 +667,183 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_MODEL
       FILE *PT_match_fp = nullptr;
-      PT_match_fp = fopen("./INFO/PT_IndivResults.txt", "w");
+      PT_match_fp = fopen("./INFO/PT_ModelResults.txt", "w");
       FILE *DBT_match_fp = nullptr;
-      DBT_match_fp = fopen("./INFO/DBT_IndivResults.txt", "w");
+      DBT_match_fp = fopen("./INFO/DBT_ModelResults.txt", "w");
       FILE *KSet_match_fp = nullptr;
-      KSet_match_fp = fopen("./INFO/KSet_IndivResults.txt", "w");
+      KSet_match_fp = fopen("./INFO/KSet_ModelResults.txt", "w");
       int PT_match_id_arr[packetNum];
       uint32_t DBT_match_id_arr[packetNum];
       int KSet_match_pri_arr[packetNum];
 #endif
-      warmup_PT(tree, PT_packets, packetNum);
-      warmup_DBT(dbt, DBT_packets, packetNum);
-      warmup_KSet(set, packets, packetNum, num_set);
-      for (int i = 0; i < packetNum; ++i) {
-        // 特徵轉換
-        // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
-        // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
-        ////
-        float out[4] = {0};
-        extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
-        x_source_ip_0 = static_cast<double>(out[0]);
-        x_source_ip_1 = static_cast<double>(out[1]);
-        x_source_ip_2 = static_cast<double>(out[2]);
-        x_source_ip_3 = static_cast<double>(out[3]);
+      // warmup_PT(tree, PT_packets, packetNum);
+      // warmup_DBT(dbt, DBT_packets, packetNum);
+      // warmup_KSet(set, packets, packetNum, num_set);
 
-        extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
-        x_destination_ip_0 = static_cast<double>(out[0]);
-        x_destination_ip_1 = static_cast<double>(out[1]);
-        x_destination_ip_2 = static_cast<double>(out[2]);
-        x_destination_ip_3 = static_cast<double>(out[3]);
-        ////
-        x_source_port = static_cast<double>(PT_packets[i].source_port);
-        x_destination_port =
-            static_cast<double>(PT_packets[i].destination_port);
-        x_protocol = static_cast<double>(PT_packets[i].protocol);
+      for (int t = 0; t < 2; ++t) {
+        for (int i = 0; i < packetNum; ++i) {
+          // 特徵轉換
+          // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
+          // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
+          ////
+          float out[4] = {0};
+          extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
+          x_source_ip_0 = static_cast<double>(out[0]);
+          x_source_ip_1 = static_cast<double>(out[1]);
+          x_source_ip_2 = static_cast<double>(out[2]);
+          x_source_ip_3 = static_cast<double>(out[3]);
+
+          extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
+          x_destination_ip_0 = static_cast<double>(out[0]);
+          x_destination_ip_1 = static_cast<double>(out[1]);
+          x_destination_ip_2 = static_cast<double>(out[2]);
+          x_destination_ip_3 = static_cast<double>(out[3]);
+          ////
+          x_source_port = static_cast<double>(PT_packets[i].source_port);
+          x_destination_port =
+              static_cast<double>(PT_packets[i].destination_port);
+          x_protocol = static_cast<double>(PT_packets[i].protocol);
 
 // 搜尋時間量測 (PT)
 #ifdef CACHE
-        tree.search(PT_packets[i]);
+          PT_match_id = tree.search(PT_packets[i]);
 #endif
-        timer.timeReset();
+          timer.timeReset();
 
 #ifdef PERLOOKUPTIME_MODEL
-        PT_match_id = tree.search(PT_packets[i]);
-        _PT_search_time = timer.elapsed_ns();
-        PT_y(i) = static_cast<double>(_PT_search_time);
-        --PT_match_id;
-        PT_match_id_arr[i] = PT_match_id;
+          PT_match_id = tree.search(PT_packets[i]);
+          _PT_search_time = timer.elapsed_ns();
+          PT_y(i) = static_cast<double>(_PT_search_time);
+          --PT_match_id;
+          PT_match_id_arr[i] = PT_match_id;
 #else
-        tree.search(PT_packets[i]);
-        _PT_search_time = timer.elapsed_ns();
-        PT_y(i) = static_cast<double>(_PT_search_time);
+          PT_match_id = tree.search(PT_packets[i]);
+          _PT_search_time = timer.elapsed_ns();
+          PT_y(i) = static_cast<double>(_PT_search_time);
 #endif
+        }
+      }
+      for (int t = 0; t < 2; ++t) {
+        for (int i = 0; i < packetNum; ++i) {
+          // 特徵轉換
+          // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
+          // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
+          ////
+          float out[4] = {0};
+          extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
+          x_source_ip_0 = static_cast<double>(out[0]);
+          x_source_ip_1 = static_cast<double>(out[1]);
+          x_source_ip_2 = static_cast<double>(out[2]);
+          x_source_ip_3 = static_cast<double>(out[3]);
+
+          extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
+          x_destination_ip_0 = static_cast<double>(out[0]);
+          x_destination_ip_1 = static_cast<double>(out[1]);
+          x_destination_ip_2 = static_cast<double>(out[2]);
+          x_destination_ip_3 = static_cast<double>(out[3]);
+          ////
+          x_source_port = static_cast<double>(PT_packets[i].source_port);
+          x_destination_port =
+              static_cast<double>(PT_packets[i].destination_port);
+          x_protocol = static_cast<double>(PT_packets[i].protocol);
 
 // 搜尋時間量測 (DBT)
 #ifdef CACHE
-        dbt.search(DBT_packets[i]);
+          DBT_match_id = dbt.search(DBT_packets[i]);
 #endif
-        timer.timeReset();
+          timer.timeReset();
 
 #ifdef PERLOOKUPTIME_MODEL
-        DBT_match_id = dbt.search(DBT_packets[i]);
-        _DBT_search_time = timer.elapsed_ns();
-        DBT_y(i) = static_cast<double>(_DBT_search_time);
-        --DBT_match_id;
-        DBT_match_id_arr[i] = DBT_match_id;
+          DBT_match_id = dbt.search(DBT_packets[i]);
+          _DBT_search_time = timer.elapsed_ns();
+          DBT_y(i) = static_cast<double>(_DBT_search_time);
+          --DBT_match_id;
+          DBT_match_id_arr[i] = DBT_match_id;
 #else
-        dbt.search(DBT_packets[i]);
-        _DBT_search_time = timer.elapsed_ns();
-        DBT_y(i) = static_cast<double>(_DBT_search_time);
+          DBT_match_id = dbt.search(DBT_packets[i]);
+          _DBT_search_time = timer.elapsed_ns();
+          DBT_y(i) = static_cast<double>(_DBT_search_time);
 #endif
+        }
+      }
+      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+      for (int t = 0; t < 2; ++t) {
+        for (int i = 0; i < packetNum; ++i) {
+          // 特徵轉換
+          // x_source_ip = ip_to_uint32_be(PT_packets[i].source_ip);
+          // x_destination_ip = ip_to_uint32_be(PT_packets[i].destination_ip);
+          ////
+          float out[4] = {0};
+          extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
+          x_source_ip_0 = static_cast<double>(out[0]);
+          x_source_ip_1 = static_cast<double>(out[1]);
+          x_source_ip_2 = static_cast<double>(out[2]);
+          x_source_ip_3 = static_cast<double>(out[3]);
+
+          extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
+          x_destination_ip_0 = static_cast<double>(out[0]);
+          x_destination_ip_1 = static_cast<double>(out[1]);
+          x_destination_ip_2 = static_cast<double>(out[2]);
+          x_destination_ip_3 = static_cast<double>(out[3]);
+          ////
+          x_source_port = static_cast<double>(PT_packets[i].source_port);
+          x_destination_port =
+              static_cast<double>(PT_packets[i].destination_port);
+          x_protocol = static_cast<double>(PT_packets[i].protocol);
 
 // 搜尋時間量測 (KSet)
 #ifdef CACHE
-        kset_match_pri = -1;
-        if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-        if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
-          kset_match_pri =
-              max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-        if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
-          kset_match_pri =
-              max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-        if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
-          kset_match_pri =
-              max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+          kset_match_pri = -1;
+          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
+          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+            kset_match_pri =
+                max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+            kset_match_pri =
+                max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+            kset_match_pri =
+                max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
 #endif
-        kset_match_pri = -1;
+          kset_match_pri = -1;
 
-        timer.timeReset();
-        if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-        if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
-          kset_match_pri =
-              max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-        if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
-          kset_match_pri =
-              max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-        if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
-          kset_match_pri =
-              max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
-        _KSet_search_time = timer.elapsed_ns();
-        KSet_y(i) = static_cast<double>(_KSet_search_time);
+          timer.timeReset();
+          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
+          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+            kset_match_pri =
+                max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+            kset_match_pri =
+                max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+            kset_match_pri =
+                max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+          _KSet_search_time = timer.elapsed_ns();
+          KSet_y(i) = static_cast<double>(_KSet_search_time);
 
 #ifdef PERLOOKUPTIME_MODEL
-        KSet_match_pri_arr[i] = (number_rule - 1) - kset_match_pri;
+          KSet_match_pri_arr[i] = (number_rule - 1) - kset_match_pri;
 #endif
 
-        // 填入三維特徵
-        X3(i, 0) = x_source_ip_0;
-        X3(i, 1) = x_source_ip_1;
-        X3(i, 2) = x_destination_ip_0;
-        X3(i, 3) = 1.0;
-        ////
-        // 填入11維特徵
-        X11(i, 0) = x_source_ip_0;
-        X11(i, 1) = x_source_ip_1;
-        X11(i, 2) = x_source_ip_2;
-        X11(i, 3) = x_source_ip_3;
-        X11(i, 4) = x_destination_ip_0;
-        X11(i, 5) = x_destination_ip_1;
-        X11(i, 6) = x_destination_ip_2;
-        X11(i, 7) = x_destination_ip_3;
-        X11(i, 8) = x_source_port;
-        X11(i, 9) = x_destination_port;
-        X11(i, 10) = x_protocol;
-        X11(i, 11) = 1.0;
+          // 填入三維特徵
+          X3(i, 0) = x_source_ip_0;
+          X3(i, 1) = x_source_ip_1;
+          X3(i, 2) = x_destination_ip_0;
+
+          ////
+          // 填入11維特徵
+          X11(i, 0) = x_source_ip_0;
+          X11(i, 1) = x_source_ip_1;
+          X11(i, 2) = x_source_ip_2;
+          X11(i, 3) = x_source_ip_3;
+          X11(i, 4) = x_destination_ip_0;
+          X11(i, 5) = x_destination_ip_1;
+          X11(i, 6) = x_destination_ip_2;
+          X11(i, 7) = x_destination_ip_3;
+          X11(i, 8) = x_source_port;
+          X11(i, 9) = x_destination_port;
+          X11(i, 10) = x_protocol;
+        }
       }
 
 #ifdef PERLOOKUPTIME_MODEL
@@ -834,28 +891,28 @@ int main(int argc, char *argv[]) {
       ///////// train ////////
 
       /////// benchmark ///////
-      evaluateModel(X3 * PT_model_3, PT_y, "PT-3-feature");
-      evaluateModel(X11 * PT_model_11, PT_y, "PT-11-feature");
-      evaluateModel(X3 * DBT_model_3, DBT_y, "DBT-3-feature");
-      evaluateModel(X11 * DBT_model_11, DBT_y, "DBT-11-feature");
-      evaluateModel(X3 * KSet_model_3, KSet_y, "KSet-3-feature");
-      evaluateModel(X11 * KSet_model_11, KSet_y, "KSet-11-feature");
+      // evaluateModel(X3 * PT_model_3, PT_y, "PT-3-feature");
+      // evaluateModel(X11 * PT_model_11, PT_y, "PT-11-feature");
+      // evaluateModel(X3 * DBT_model_3, DBT_y, "DBT-3-feature");
+      // evaluateModel(X11 * DBT_model_11, DBT_y, "DBT-11-feature");
+      // evaluateModel(X3 * KSet_model_3, KSet_y, "KSet-3-feature");
+      // evaluateModel(X11 * KSet_model_11, KSet_y, "KSet-11-feature");
       /////// benchmark ///////
 
       // 輸出封包預測與實際搜尋時間至結果檔案
-      ofstream pt_prediction_out("./INFO/PT_prediction_result.txt");
-      if (!pt_prediction_out) {
-        cerr << "Cannot open PT_prediction_result.txt！" << endl;
+      ofstream pt_prediction_3_out("./INFO/PT_prediction_3_result.txt");
+      if (!pt_prediction_3_out) {
+        cerr << "Cannot open PT_prediction_3_result.txt！" << endl;
         return 1;
       }
-      ofstream DBT_prediction_out("./INFO/DBT_prediction_result.txt");
-      if (!DBT_prediction_out) {
-        cerr << "Cannot open DBT_prediction_out.txt！" << endl;
+      ofstream DBT_prediction_3_out("./INFO/DBT_prediction_3_result.txt");
+      if (!DBT_prediction_3_out) {
+        cerr << "Cannot open DBT_prediction_3_result.txt！" << endl;
         return 1;
       }
-      ofstream kset_prediction_out("./INFO/KSet_prediction_result.txt");
-      if (!kset_prediction_out) {
-        cerr << "Cannot open KSet_prediction_result.txt！" << endl;
+      ofstream kset_prediction_3_out("./INFO/KSet_prediction_3_result.txt");
+      if (!kset_prediction_3_out) {
+        cerr << "Cannot open KSet_prediction_3_result.txt！" << endl;
         return 1;
       }
 
@@ -907,9 +964,9 @@ int main(int argc, char *argv[]) {
         */
 
         double actual_time = PT_y(i);
-        pt_prediction_out << "Packet " << i << "\tPredict " << fixed
-                          << setprecision(4) << predicted_time_3
-                          << "\tRealTime(ns) " << actual_time << endl;
+        pt_prediction_3_out << "Packet " << i << "\tPredict " << fixed
+                            << setprecision(4) << predicted_time_3
+                            << "\tRealTime(ns) " << actual_time << endl;
         //// PT
 
         //// DBT
@@ -925,9 +982,9 @@ int main(int argc, char *argv[]) {
         */
 
         actual_time = DBT_y(i);
-        DBT_prediction_out << "Packet " << i << "\tPredict " << fixed
-                           << setprecision(4) << predicted_time_3
-                           << "\tRealTime(ns) " << actual_time << endl;
+        DBT_prediction_3_out << "Packet " << i << "\tPredict " << fixed
+                             << setprecision(4) << predicted_time_3
+                             << "\tRealTime(ns) " << actual_time << endl;
         //// DBT
 
         //// KSet
@@ -943,15 +1000,34 @@ int main(int argc, char *argv[]) {
         */
 
         actual_time = KSet_y(i);
-        kset_prediction_out << "Packet " << i << "\tPredict " << fixed
-                            << setprecision(4) << predicted_time_3
-                            << "\tRealTime(ns) " << actual_time << endl;
+        kset_prediction_3_out << "Packet " << i << "\tPredict " << fixed
+                              << setprecision(4) << predicted_time_3
+                              << "\tRealTime(ns) " << actual_time << endl;
         //// KSet
       }
+      pt_prediction_3_out.close();
+      DBT_prediction_3_out.close();
+      kset_prediction_3_out.close();
       cout << "    AVG predict_time-3(ns): " << Total_predict_time / packetNum
            << endl;
       //// 3-D
 
+      // 輸出封包預測與實際搜尋時間至結果檔案
+      ofstream pt_prediction_11_out("./INFO/pt_prediction_11_out.txt");
+      if (!pt_prediction_11_out) {
+        cerr << "Cannot open pt_prediction_11_out.txt！" << endl;
+        return 1;
+      }
+      ofstream DBT_prediction_11_out("./INFO/DBT_prediction_11_out.txt");
+      if (!DBT_prediction_11_out) {
+        cerr << "Cannot open DBT_prediction_11_out.txt！" << endl;
+        return 1;
+      }
+      ofstream kset_prediction_11_out("./INFO/kset_prediction_11_out.txt");
+      if (!kset_prediction_11_out) {
+        cerr << "Cannot open kset_prediction_11_out.txt！" << endl;
+        return 1;
+      }
       Total_predict_time = 0;
       for (int i = 0; i < packetNum; ++i) {
         float out[4] = {0};
@@ -1015,9 +1091,9 @@ int main(int argc, char *argv[]) {
         */
 
         double actual_time = PT_y(i);
-        pt_prediction_out << "Packet " << i << fixed << setprecision(4)
-                          << "\tPredict " << predicted_time_11
-                          << "\tRealTime(ns) " << actual_time << endl;
+        pt_prediction_11_out << "Packet " << i << fixed << setprecision(4)
+                             << "\tPredict " << predicted_time_11
+                             << "\tRealTime(ns) " << actual_time << endl;
         //// PT
 
         //// DBT
@@ -1038,9 +1114,9 @@ int main(int argc, char *argv[]) {
         */
 
         actual_time = DBT_y(i);
-        DBT_prediction_out << "Packet " << i << fixed << setprecision(4)
-                           << "\tPredict " << predicted_time_11
-                           << "\tRealTime(ns) " << actual_time << endl;
+        DBT_prediction_11_out << "Packet " << i << fixed << setprecision(4)
+                              << "\tPredict " << predicted_time_11
+                              << "\tRealTime(ns) " << actual_time << endl;
         //// DBT
 
         //// KSet
@@ -1061,27 +1137,23 @@ int main(int argc, char *argv[]) {
         */
 
         actual_time = KSet_y(i);
-        kset_prediction_out << "Packet " << i << fixed << setprecision(4)
-                            << "\tPredict " << predicted_time_11
-                            << "\tRealTime(ns) " << actual_time << endl;
+        kset_prediction_11_out << "Packet " << i << fixed << setprecision(4)
+                               << "\tPredict " << predicted_time_11
+                               << "\tRealTime(ns) " << actual_time << endl;
         //// KSet
       }
+      pt_prediction_11_out.close();
+      DBT_prediction_11_out.close();
+      kset_prediction_11_out.close();
       cout << "    AVG predict_time-11(ns): " << Total_predict_time / packetNum
            << endl;
       //// 11-D
-
-      pt_prediction_out.close();
-      cout << "to pt_prediction_result.txt..." << endl;
-      DBT_prediction_out.close();
-      cout << "to DBT_prediction_result.txt..." << endl;
-      kset_prediction_out.close();
-      cout << "to KSet_prediction_result.txt..." << endl;
 
       cout << "|--- PT_y Mean: " << (mean_PT = computeMean(PT_y)) << endl;
       cout << "|--- PT_y Median: " << (median_PT = computeMedian(PT_y)) << endl;
       cout << "|--- PT_y 25th Percentile: "
            << (per25_PT = computePercentile(PT_y, 0.25))
-           << "---|--- PT_y 75th Percentile: "
+           << " -|--- PT_y 75th Percentile: "
            << (per75_PT = computePercentile(PT_y, 0.75)) << endl;
       cout << "|--- PT_y 95th Percentile: "
            << (per95_PT = computePercentile(PT_y, 0.95)) << endl;
@@ -1093,7 +1165,7 @@ int main(int argc, char *argv[]) {
            << endl;
       cout << "|--- DBT_y 25th Percentile: "
            << (per25_DBT = computePercentile(DBT_y, 0.25))
-           << "---|--- DBT_y 75th Percentile: "
+           << " -|--- DBT_y 75th Percentile: "
            << (per75_DBT = computePercentile(DBT_y, 0.75)) << endl;
       cout << "|--- DBT_y 95th Percentile: "
            << (per95_DBT = computePercentile(DBT_y, 0.95)) << endl;
@@ -1105,7 +1177,7 @@ int main(int argc, char *argv[]) {
            << endl;
       cout << "|--- KSet_y 25th Percentile: "
            << (per25_KSet = computePercentile(KSet_y, 0.25))
-           << "---|--- KSet_y 75th Percentile: "
+           << " -|--- KSet_y 75th Percentile: "
            << (per75_KSet = computePercentile(KSet_y, 0.75)) << endl;
       cout << "|--- KSet_y 95th Percentile: "
            << (per95_KSet = computePercentile(KSet_y, 0.95)) << endl;
@@ -1115,9 +1187,103 @@ int main(int argc, char *argv[]) {
 
       ///////// Model Total /////////
       cout << ("\n**************** Classification(TOTAL) ****************\n");
-      int model11_counter_DBT = 0, model11_counter_PT = 0,
-          model11_counter_KSet = 0;
+      int model_counter_DBT = 0, model_counter_PT = 0, model_counter_KSet = 0;
       Total_predict_time = 0;
+      Total_search_time = 0;
+      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+      for (size_t t = 0; t < trials; ++t) {
+        for (int i = 0; i < packetNum; ++i) {
+          float out[4] = {0};
+          kset_match_pri = -1;
+
+          timer.timeReset();
+          extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
+          x_source_ip_0 = static_cast<double>(out[0]);
+          x_source_ip_1 = static_cast<double>(out[1]);
+          // x_source_ip_2 = static_cast<double>(out[2]);
+          // x_source_ip_3 = static_cast<double>(out[3]);
+
+          extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
+          x_destination_ip_0 = static_cast<double>(out[0]);
+          // x_destination_ip_1 = static_cast<double>(out[1]);
+          // x_destination_ip_2 = static_cast<double>(out[2]);
+          // x_destination_ip_3 = static_cast<double>(out[3]);
+
+          /* JIA normalizeFeatures */
+          double x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
+          double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
+          double x3_norm_3 =
+              toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
+
+          //// PT
+          double predicted_time_3_pt =
+              predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+          //// PT
+
+          //// DBT
+          double predicted_time_3_dbt =
+              predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+          //// DBT
+
+          //// KSet
+          double predicted_time_3_kset =
+              predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+          //// KSet
+          if ((predicted_time_3_dbt <= predicted_time_3_pt) &&
+              (predicted_time_3_dbt <= predicted_time_3_kset)) {
+            _Total_predict_time = timer.elapsed_ns();
+            Total_predict_time += _Total_predict_time;
+            timer.timeReset();
+            dbt.search(DBT_packets[i]);
+            _Total_search_time = timer.elapsed_ns();
+            Total_search_time += _Total_search_time;
+            ++model_counter_DBT;
+          } else if ((predicted_time_3_pt <= predicted_time_3_dbt) &&
+                     (predicted_time_3_pt <= predicted_time_3_kset)) {
+            _Total_predict_time = timer.elapsed_ns();
+            Total_predict_time += _Total_predict_time;
+            timer.timeReset();
+            tree.search(PT_packets[i]);
+            _Total_search_time = timer.elapsed_ns();
+            Total_search_time += _Total_search_time;
+            ++model_counter_PT;
+          } else {
+            _Total_predict_time = timer.elapsed_ns();
+            Total_predict_time += _Total_predict_time;
+            timer.timeReset();
+            if (num_set[0] > 0)
+              kset_match_pri = set0.ClassifyAPacket(packets[i]);
+            if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+              kset_match_pri =
+                  max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+            if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+              kset_match_pri =
+                  max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+            if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+              kset_match_pri =
+                  max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+            _Total_search_time = timer.elapsed_ns();
+            Total_search_time += _Total_search_time;
+            ++model_counter_KSet;
+          }
+        }
+      }
+      cout << "|=== AVG predict time(Model-3): "
+           << Total_predict_time / (packetNum * trials) << "ns\n";
+      cout << "|=== AVG search with predict time(Model-3): "
+           << (Total_predict_time + Total_search_time) / (packetNum * trials)
+           << "ns\n";
+      cout << "|=== PT, DBT, KSET: "
+           << (model_counter_PT / trials) / (packetNum * 1.0) << ", "
+           << (model_counter_DBT / trials) / (packetNum * 1.0) << ", "
+           << (model_counter_KSet / trials) / (packetNum * 1.0) << "\n";
+
+      model_counter_DBT = 0;
+      model_counter_PT = 0;
+      model_counter_KSet = 0;
+      Total_predict_time = 0;
+      Total_search_time = 0;
+      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < trials; ++t) {
         for (int i = 0; i < packetNum; ++i) {
           float out[4] = {0};
@@ -1171,21 +1337,6 @@ int main(int argc, char *argv[]) {
               predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                         x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                         x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          /* JIA non-normalizeFeatures */
-          /*
-          double predicted_time_11_pt =
-              predict11(PT_model_11, x_source_ip_0, x_source_ip_1,
-          x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-                        x_destination_ip_2, x_destination_ip_3, x_source_port,
-                        x_destination_port, x_protocol);
-          */
-          // if (predicted_time_11_pt < per75_PT) {
-          //   tree.search(PT_packets[i]);
-          //   _Total_search_time = timer.elapsed_ns();
-          //   Total_search_time += _Total_search_time;
-          //   ++model11_counter_PT;
-          //   continue;
-          // }
           //// PT
 
           //// DBT
@@ -1193,21 +1344,6 @@ int main(int argc, char *argv[]) {
               predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                         x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                         x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          /* JIA non-normalizeFeatures */
-          /*
-          predicted_time_11_dbt =
-          predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
-          x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-          x_destination_ip_2, x_destination_ip_3, x_source_port,
-          x_destination_port, x_protocol);
-          */
-          // if (predicted_time_11_dbt < per75_DBT) {
-          //   dbt.search(DBT_packets[i]);
-          //   _Total_search_time = timer.elapsed_ns();
-          //   Total_search_time += _Total_search_time;
-          //   ++model11_counter_DBT;
-          //   continue;
-          // }
           //// DBT
 
           //// KSet
@@ -1215,51 +1351,25 @@ int main(int argc, char *argv[]) {
               predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                         x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                         x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-
-          /* JIA non-normalizeFeatures */
-          /*
-          predicted_time_11_kset =
-              predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
-          x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-                        x_destination_ip_2, x_destination_ip_3, x_source_port,
-                        x_destination_port, x_protocol);
-          */
-          // if (predicted_time_11_kset < per75_KSet) {
-          //   if (num_set[0] > 0) kset_match_pri =
-          //   set0.ClassifyAPacket(packets[i]); if (kset_match_pri <
-          //   max_pri_set[1] && num_set[1] > 0)
-          //     kset_match_pri =
-          //         max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          //   if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
-          //     kset_match_pri =
-          //         max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          //   if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
-          //     kset_match_pri =
-          //         max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
-          //   _Total_search_time = timer.elapsed_ns();
-          //   Total_search_time += _Total_search_time;
-          //   ++model11_counter_KSet;
-          //   continue;
-          // }
           //// KSet
-          if ((predicted_time_11_pt <= predicted_time_11_dbt) &&
-              (predicted_time_11_pt <= predicted_time_11_kset)) {
+          if ((predicted_time_11_dbt <= predicted_time_11_pt) &&
+              (predicted_time_11_dbt <= predicted_time_11_kset)) {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
             timer.timeReset();
             dbt.search(DBT_packets[i]);
             _Total_search_time = timer.elapsed_ns();
             Total_search_time += _Total_search_time;
-            ++model11_counter_DBT;
-          } else if ((predicted_time_11_dbt <= predicted_time_11_pt) &&
-                     (predicted_time_11_dbt <= predicted_time_11_kset)) {
+            ++model_counter_DBT;
+          } else if ((predicted_time_11_pt <= predicted_time_11_dbt) &&
+                     (predicted_time_11_pt <= predicted_time_11_kset)) {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
             timer.timeReset();
             tree.search(PT_packets[i]);
             _Total_search_time = timer.elapsed_ns();
             Total_search_time += _Total_search_time;
-            ++model11_counter_PT;
+            ++model_counter_PT;
           } else {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
@@ -1277,19 +1387,19 @@ int main(int argc, char *argv[]) {
                   max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
             _Total_search_time = timer.elapsed_ns();
             Total_search_time += _Total_search_time;
-            ++model11_counter_KSet;
+            ++model_counter_KSet;
           }
         }
       }
-      cout << "|=== AVG predict time(Model): "
+      cout << "|=== AVG predict time(Model-11): "
            << Total_predict_time / (packetNum * trials) << "ns\n";
-      cout << "|=== AVG search with predict time(Model): "
+      cout << "|=== AVG search with predict time(Model-11): "
            << (Total_predict_time + Total_search_time) / (packetNum * trials)
            << "ns\n";
       cout << "|=== PT, DBT, KSET: "
-           << (model11_counter_PT / trials) / (packetNum * 1.0) << ", "
-           << (model11_counter_DBT / trials) / (packetNum * 1.0) << ", "
-           << (model11_counter_KSet / trials) / (packetNum * 1.0) << "\n";
+           << (model_counter_PT / trials) / (packetNum * 1.0) << ", "
+           << (model_counter_DBT / trials) / (packetNum * 1.0) << ", "
+           << (model_counter_KSet / trials) / (packetNum * 1.0) << "\n";
     }
     ///////// Model Total /////////
     /*************************************************************************/
@@ -1303,9 +1413,9 @@ int main(int argc, char *argv[]) {
       VectorXd DBT_y(packetNum);
       VectorXd KSet_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      BloomFilter<(1 << 12), 4> bloom_filter_pt;
-      BloomFilter<(1 << 12), 4> bloom_filter_dbt;
-      BloomFilter<(1 << 12), 4> bloom_filter_kset;
+      BloomFilter<(1 << 16), 2> bloom_filter_pt;
+      BloomFilter<(1 << 16), 2> bloom_filter_dbt;
+      BloomFilter<(1 << 16), 2> bloom_filter_kset;
       for (size_t t = 0; t < 2; ++t) {
         for (int i = 0; i < packetNum; ++i) {
 #ifdef CACHE
@@ -1328,6 +1438,7 @@ int main(int argc, char *argv[]) {
           DBT_y(i) = static_cast<double>(_DBT_search_time);
         }
       }
+      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
@@ -1363,13 +1474,13 @@ int main(int argc, char *argv[]) {
       auto packets_bloom_pt = convertFromPTPackets(PT_packets);
       auto packets_bloom_dbt = convertFromDBTPackets(DBT_packets);
       for (size_t i = 0; i < packetNum; ++i) {
-        if (PT_y(i) > per95_PT) {
+        if (PT_y(i) > per75_PT) {
           bloom_filter_pt.insert(packets_bloom_pt[i]);
         }
-        if (DBT_y(i) > per95_DBT) {
+        if (DBT_y(i) > per75_DBT) {
           bloom_filter_dbt.insert(packets_bloom_dbt[i]);
         }
-        if (KSet_y(i) > per95_KSet) {
+        if (KSet_y(i) > per75_KSet) {
           bloom_filter_kset.insert(packets[i]);
         }
       }
@@ -1391,9 +1502,9 @@ int main(int argc, char *argv[]) {
       PT_search_time = 0;
       DBT_search_time = 0;
       KSet_search_time = 0;
-      int model11_counter_DBT = 0;
-      int model11_counter_PT = 0;
-      int model11_counter_KSet = 0;
+      int model_counter_DBT = 0;
+      int model_counter_PT = 0;
+      int model_counter_KSet = 0;
       for (size_t t = 0; t < trials; ++t) {
         for (int i = 0; i < packetNum; ++i) {
           timer.timeReset();
@@ -1416,7 +1527,7 @@ int main(int argc, char *argv[]) {
             perLook_bloom[t * packetNum + i][0] = _DBT_search_time;
             perLook_bloom[t * packetNum + i][1] = 1;
 #endif
-            ++model11_counter_DBT;
+            ++model_counter_DBT;
           } else if (!bloom_filter_pt.contains(packets_bloom_pt[i])) {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
@@ -1436,7 +1547,7 @@ int main(int argc, char *argv[]) {
             perLook_bloom[t * packetNum + i][0] = _PT_search_time;
             perLook_bloom[t * packetNum + i][1] = 0;
 #endif
-            ++model11_counter_PT;
+            ++model_counter_PT;
           } else if (!bloom_filter_kset.contains(packets[i])) {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
@@ -1463,7 +1574,7 @@ int main(int argc, char *argv[]) {
             perLook_bloom[t * packetNum + i][0] = _KSet_search_time;
             perLook_bloom[t * packetNum + i][1] = 2;
 #endif
-            ++model11_counter_KSet;
+            ++model_counter_KSet;
           } else {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
@@ -1483,7 +1594,7 @@ int main(int argc, char *argv[]) {
             perLook_bloom[t * packetNum + i][0] = _PT_search_time;
             perLook_bloom[t * packetNum + i][1] = 0;
 #endif
-            ++model11_counter_PT;
+            ++model_counter_PT;
           }
         }
       }
@@ -1495,9 +1606,9 @@ int main(int argc, char *argv[]) {
                   (packetNum * trials)
            << "ns\n";
       cout << "|=== PT, DBT, KSET: "
-           << (model11_counter_PT / trials) / (packetNum * 1.0) << ", "
-           << (model11_counter_DBT / trials) / (packetNum * 1.0) << ", "
-           << (model11_counter_KSet / trials) / (packetNum * 1.0) << "\n";
+           << (model_counter_PT / trials) / (packetNum * 1.0) << ", "
+           << (model_counter_DBT / trials) / (packetNum * 1.0) << ", "
+           << (model_counter_KSet / trials) / (packetNum * 1.0) << "\n";
 
 #ifdef PERLOOKUPTIME_BLOOM
       // 寫入 CSV 表頭
@@ -1542,7 +1653,7 @@ int main(int argc, char *argv[]) {
       cout << ("\n**************** Classification(PT) ****************\n");
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       FILE *PT_res_fp = nullptr;
-      PT_res_fp = fopen("./INFO/PT_ModelResults.txt", "w");
+      PT_res_fp = fopen("./INFO/PT_IndivResults.txt", "w");
 #endif
 
       // warmup_PT(tree, PT_packets, packetNum);
@@ -1577,7 +1688,7 @@ int main(int argc, char *argv[]) {
       cout << ("\n**************** Classification(DBT) ****************\n");
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       FILE *DBT_res_fp = nullptr;
-      DBT_res_fp = fopen("./INFO/DBT_ModelResults.txt", "w");
+      DBT_res_fp = fopen("./INFO/DBT_IndivResults.txt", "w");
 #endif
 
       // warmup_DBT(dbt, DBT_packets, packetNum);
@@ -1617,10 +1728,11 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       FILE *KSet_res_fp = nullptr;
-      KSet_res_fp = fopen("./INFO/KSet_ModelResults.txt", "w");
+      KSet_res_fp = fopen("./INFO/KSet_IndivResults.txt", "w");
 #endif
 
       // warmup_KSet(set,packets,packetNum,num_set);
+      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           kset_match_pri = -1;

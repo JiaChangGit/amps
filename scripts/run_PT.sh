@@ -11,8 +11,8 @@ BUILD_DIR="./build"
 #############
 TEST_KSET_MAIN_EXEC="$BUILD_DIR/tests/PT_main"
 #############
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
+RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
+TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
 
 # 檢查並建立 build 目錄（如果不存在）
 if [ ! -d "$BUILD_DIR" ]; then

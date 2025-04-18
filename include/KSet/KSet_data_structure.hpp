@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstdint>
 #define LowDim 0
 #define HighDim 1
 #define MAXDIMENSIONS 5

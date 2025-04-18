@@ -27,6 +27,9 @@ This implementation is based on the following research papers:
 
 ## How to Compile and Run
 
+sudo apt-get install libeigen3-dev
+
+sudo sh ./scripts/run.sh
 
 ### Compilation:
 
