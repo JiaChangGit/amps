@@ -47,34 +47,67 @@ inline VectorXd linearRegressionFit(const MatrixXd &X, const VectorXd &y) {
 
 inline void evaluateModel(const VectorXd &y_pred, const VectorXd &y_true,
                           const string &label) {
-  // assert(y_pred.size() == y_true.size());
-  int n = y_true.size();
-  double mae = 0.0, mse = 0.0;
+  const int n = y_true.size();
+  if (n == 0 || y_pred.size() != n) {
+    std::cerr << "Error: input size mismatch or empty vectors.\n";
+    return;
+  }
+
+  double mae = 0.0, mse = 0.0, maxae = 0.0;
   double y_mean = y_true.mean();
+  double ss_tot = 0.0, ss_res = 0.0;
+  vector<double> abs_errors;
+  abs_errors.reserve(n);
+
+  double mape = 0.0;
+  const double eps = 1e-8;  // 避免除以 0
 
   for (int i = 0; i < n; ++i) {
     double error = y_pred(i) - y_true(i);
-    mae += std::abs(error);
+    double abs_error = std::abs(error);
+
+    mae += abs_error;
     mse += error * error;
+    maxae = std::max(maxae, abs_error);
+    abs_errors.push_back(abs_error);
+
+    if (std::abs(y_true(i)) > eps) {
+      mape += abs_error / std::abs(y_true(i));
+    }
+
+    ss_res += error * error;
+    ss_tot += (y_true(i) - y_mean) * (y_true(i) - y_mean);
   }
 
   mae /= n;
   mse /= n;
+  mape = (mape / n) * 100.0;
   double rmse = std::sqrt(mse);
+  double r2 = (ss_tot > eps) ? (1.0 - ss_res / ss_tot) : 0.0;
 
-  cout << "\n[" << label << " model evaluation]" << endl;
-  cout << "MAE  = " << mae << " ns" << endl;
-  cout << "RMSE = " << rmse << " ns" << endl;
+  std::nth_element(abs_errors.begin(), abs_errors.begin() + n / 2, abs_errors.end());
+  double medae = abs_errors[n / 2];
+
+  // ===== 評估結果輸出 =====
+  cout << "\n[" << label << " model evaluation]\n";
+  cout << "-------------------------------\n";
+  cout << "MAE     = " << mae   << " ns  (Mean Absolute Error)\n";
+  cout << "RMSE    = " << rmse  << " ns  (Root Mean Square Error)\n";
+  cout << "MAPE    = " << mape  << " %   (Mean Absolute Percentage Error)\n";
+  cout << "MedAE   = " << medae << " ns  (Median Absolute Error)\n";
+  cout << "MaxAE   = " << maxae << " ns  (Maximum Absolute Error)\n";
+  cout << "R^2     = " << r2    << "     (Coefficient of Determination)\n";
+  cout << "-------------------------------\n";
 }
 
 inline double predict3(const VectorXd &a, double x1, double x2, double x3) {
-  // assert(a.size() == 4);
+  // assert(a.size() == 3);
   return a(0) * x1 + a(1) * x2 + a(2) * x3;
 }
 
 inline double predict5(const VectorXd &a, double x1, double x2, double x3,
                        double x4, double x5) {
-  // assert(a.size() == 6);
+  // assert(a.size() == 5);
   return a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5;
 }
 inline double predict11(const VectorXd &a, double x1, double x2, double x3,

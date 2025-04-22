@@ -31,12 +31,6 @@ sudo apt-get install libeigen3-dev
 
 sudo sh ./scripts/run.sh
 
-### Compilation:
-
-
-### Execution:
-
-
 
 ## Performance Evaluation
 
