@@ -9,11 +9,14 @@
 # 設定變數
 BUILD_DIR="./build"
 TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
-#TRACE_PATH="../classbench_set/classbench_Orobin/trace/acl2_100k_trace"
-# TRACE_PATH="../classbench_set/ipv4-trace/part0.txt"
-#TRACE_PATH="../classbench_set/ipv4-trace/part_0.txt"
+#RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
+#TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
+
+RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
+TRACE_PATH="../classbench_set/ipv4-trace/ipc2_100k_trace"
+
+#TRACE_PATH="../classbench_set/ipv4-trace/part0"
+#TRACE_PATH="../classbench_set/ipv4-trace/part_0"
 
 # 檢查並建立 build 目錄（如果不存在）
 if [ ! -d "$BUILD_DIR" ]; then

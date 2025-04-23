@@ -33,9 +33,7 @@ uint32_t DBT::getBit[32] = {
     0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004,
     0x00000002, 0x00000001};
 ///////// DBT /////////
-///////// bloomFilter /////////
-#include "bloomFilter.hpp"
-///////// bloomFilter /////////
+
 using namespace std;
 
 #ifndef TIMER_METHOD
@@ -45,7 +43,12 @@ using namespace std;
 #define PERLOOKUPTIME_BLOOM
 #define PERLOOKUPTIME_INDIVIDUAL
 #define CACHE
-#define BLOOM
+// #define BLOOM
+///////// bloomFilter /////////
+#ifdef BLOOM
+#include "bloomFilter.hpp"
+#endif
+///////// bloomFilter /////////
 constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
 // 靜態成員初始化
@@ -473,6 +476,23 @@ void warmup_KSet(vector<KSet> &set, const std::vector<Packet> &packets,
     if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
       kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
   }
+}
+// 回傳格式：{min_value, min_id, max_value, max_id}
+inline std::tuple<int, int> get_min_max_time(int predicted_time_pt,
+                                             int predicted_time_dbt,
+                                             int predicted_time_kset) {
+  int min_3 = predicted_time_pt;
+  int min_id_predict = 0;
+
+  if (predicted_time_dbt < min_3) {
+    min_3 = predicted_time_dbt;
+    min_id_predict = 1;
+  }
+  if (predicted_time_kset < min_3) {
+    min_3 = predicted_time_kset;
+    min_id_predict = 2;
+  }
+  return {min_3, min_id_predict};
 }
 /////////////////
 int main(int argc, char *argv[]) {
@@ -908,7 +928,17 @@ int main(int argc, char *argv[]) {
         cerr << "Cannot open KSet_prediction_3_result.txt！" << endl;
         return 1;
       }
-
+      ofstream total_prediction_3_out("./INFO/Total_prediction_3_result.txt");
+      if (!total_prediction_3_out) {
+        cerr << "Cannot open Total_prediction_3_result.txt！" << endl;
+        return 1;
+      }
+      int model_acc = 0, model_fail = 0;
+      int model_longTail = 0;              // 出現 long-tail 的樣本數
+      int model_select_longTail = 0;       // 被選中的 min_id 是 long-tail 模型
+      std::vector<int> long_tail_indices;  // 出現 long-tail 的樣本索引
+      std::vector<int>
+          select_long_tail_indices;  // 預測選中 long-tail 模型的索引
       //// 3-D model
       for (int i = 0; i < packetNum; ++i) {
         float out[4] = {0};
@@ -943,85 +973,150 @@ int main(int argc, char *argv[]) {
         double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
         double x3_norm_3 =
             toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
-        timer.timeReset();
-        //// PT
-        double predicted_time_3 =
-            predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
 
-        _Total_predict_time = timer.elapsed_ns();
-        Total_predict_time += _Total_predict_time;
+        //// PT
+        double predicted_time_3_pt =
+            predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
         /* JIA non-normalizeFeatures */
         /*
-        double predicted_time_3 = predict3(PT_model_3, x_source_ip_0,
+        double predicted_time_3_pt = predict3(PT_model_3, x_source_ip_0,
                                            x_source_ip_1, x_destination_ip_0);
         */
 
         double actual_time = PT_y(i);
         pt_prediction_3_out << "Packet " << i << "\tPredict " << fixed
-                            << setprecision(4) << predicted_time_3
+                            << setprecision(4) << predicted_time_3_pt
                             << "\tRealTime(ns) " << actual_time << endl;
         //// PT
 
         //// DBT
-        timer.timeReset();
-        predicted_time_3 =
+        double predicted_time_3_dbt =
             predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-        _Total_predict_time = timer.elapsed_ns();
-        Total_predict_time += _Total_predict_time;
         /* JIA non-normalizeFeatures */
         /*
-        predicted_time_3 = predict3(DBT_model_3, x_source_ip_0, x_source_ip_1,
-                      x_destination_ip_0);
+        predicted_time_3_dbt = predict3(DBT_model_3, x_source_ip_0,
+        x_source_ip_1, x_destination_ip_0);
         */
 
         actual_time = DBT_y(i);
         DBT_prediction_3_out << "Packet " << i << "\tPredict " << fixed
-                             << setprecision(4) << predicted_time_3
+                             << setprecision(4) << predicted_time_3_dbt
                              << "\tRealTime(ns) " << actual_time << endl;
         //// DBT
 
         //// KSet
-        timer.timeReset();
-        predicted_time_3 =
+        double predicted_time_3_kset =
             predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-        _Total_predict_time = timer.elapsed_ns();
-        Total_predict_time += _Total_predict_time;
         /* JIA non-normalizeFeatures */
         /*
-        predicted_time_3 = predict3(KSet_model_3, x_source_ip_0, x_source_ip_1,
-                                    x_destination_ip_0);
+        predicted_time_3_kset = predict3(KSet_model_3, x_source_ip_0,
+        x_source_ip_1, x_destination_ip_0);
         */
 
         actual_time = KSet_y(i);
         kset_prediction_3_out << "Packet " << i << "\tPredict " << fixed
-                              << setprecision(4) << predicted_time_3
+                              << setprecision(4) << predicted_time_3_kset
                               << "\tRealTime(ns) " << actual_time << endl;
         //// KSet
+        //// acc
+        auto [min_val, min_id_predict] = get_min_max_time(
+            predicted_time_3_pt, predicted_time_3_dbt, predicted_time_3_kset);
+
+        // 建立實際值陣列，方便比較與存取
+        std::array<double, 3> real_values = {PT_y(i), DBT_y(i), KSet_y(i)};
+
+        // 找出實際最小值與最大值的模型索引
+        int real_min_label =
+            std::min_element(real_values.begin(), real_values.end()) -
+            real_values.begin();
+        int real_max_label =
+            std::max_element(real_values.begin(), real_values.end()) -
+            real_values.begin();
+
+        // 實際的最小與最大值
+        double real_min_val = real_values[real_min_label];
+        double real_max_val = real_values[real_max_label];
+
+        // 平均預測時間
+        double avg_pred = (predicted_time_3_pt + predicted_time_3_dbt +
+                           predicted_time_3_kset) /
+                          3.0;
+
+        // Long-tail 偵測
+        std::array<double, 3> predicted_times = {
+            predicted_time_3_pt, predicted_time_3_dbt, predicted_time_3_kset};
+        std::vector<bool> is_tail(3);
+        for (int j = 0; j < 3; ++j) {
+          is_tail[j] = predicted_times[j] > (20.0 * avg_pred);
+        }
+
+        bool has_long_tail = std::any_of(is_tail.begin(), is_tail.end(),
+                                         [](bool b) { return b; });
+        bool selected_long_tail = is_tail[min_id_predict];
+
+        // 統計與記錄 long-tail 資訊
+        if (has_long_tail) {
+          ++model_longTail;
+          long_tail_indices.push_back(i);
+          if (selected_long_tail) {
+            ++model_select_longTail;
+            select_long_tail_indices.push_back(i);
+          }
+        }
+
+        // 輸出 log 訊息
+        total_prediction_3_out
+            << "PT " << PT_y(i) << "\tDBT " << DBT_y(i) << "\tKSet "
+            << KSet_y(i) << "\tmin " << real_min_val << "\treal_min_id "
+            << real_min_label << "\tmin_id_predict " << min_id_predict
+            << "\tMAX " << real_max_val << "\treal_max_id " << real_max_label
+            << "\tTAIL " << (selected_long_tail ? "1" : "0") << std::endl;
+
+        // 預測準確與錯誤統計
+        if (min_id_predict == real_min_label) ++model_acc;
+        if (min_id_predict == real_max_label) ++model_fail;
+        //// acc
       }
       pt_prediction_3_out.close();
       DBT_prediction_3_out.close();
       kset_prediction_3_out.close();
-      cout << "    AVG predict_time-3(ns): " << Total_predict_time / packetNum
+      total_prediction_3_out.close();
+      cout << "    model_acc 3: " << model_acc / (packetNum * 1.0) << endl;
+      cout << "    model_fail 3: " << model_fail / (packetNum * 1.0) << endl;
+      cout << "    model_longTail 3: " << model_longTail / (packetNum * 1.0)
            << endl;
+      cout << "    model_select_longTail 3: "
+           << model_select_longTail / (packetNum * 1.0) << endl;
       //// 3-D
 
       // 輸出封包預測與實際搜尋時間至結果檔案
-      ofstream pt_prediction_11_out("./INFO/PT_prediction_11_out.txt");
+      ofstream pt_prediction_11_out("./INFO/PT_prediction_11_result.txt");
       if (!pt_prediction_11_out) {
-        cerr << "Cannot open PT_prediction_11_out.txt！" << endl;
+        cerr << "Cannot open PT_prediction_11_result.txt！" << endl;
         return 1;
       }
-      ofstream DBT_prediction_11_out("./INFO/DBT_prediction_11_out.txt");
+      ofstream DBT_prediction_11_out("./INFO/DBT_prediction_11_result.txt");
       if (!DBT_prediction_11_out) {
-        cerr << "Cannot open DBT_prediction_11_out.txt！" << endl;
+        cerr << "Cannot open DBT_prediction_11_result.txt！" << endl;
         return 1;
       }
-      ofstream kset_prediction_11_out("./INFO/KSet_prediction_11_out.txt");
+      ofstream kset_prediction_11_out("./INFO/KSet_prediction_11_result.txt");
       if (!kset_prediction_11_out) {
-        cerr << "Cannot open KSet_prediction_11_out.txt！" << endl;
+        cerr << "Cannot open KSet_prediction_11_result.txt！" << endl;
         return 1;
       }
-      Total_predict_time = 0;
+      ofstream total_prediction_11_out("./INFO/Total_prediction_11_result.txt");
+      if (!total_prediction_11_out) {
+        cerr << "Cannot open Total_prediction_11_result.txt！" << endl;
+        return 1;
+      }
+
+      model_acc = 0;
+      model_fail = 0;
+      model_longTail = 0;
+      model_select_longTail = 0;
+      std::vector<int>().swap(long_tail_indices);
+      std::vector<int>().swap(select_long_tail_indices);
       for (int i = 0; i < packetNum; ++i) {
         float out[4] = {0};
 
@@ -1067,16 +1162,14 @@ int main(int argc, char *argv[]) {
             toNormalized(x_destination_port, mean_X11[9], std_X11[9]);
         double x11_norm_11 =
             toNormalized(x_protocol, mean_X11[10], std_X11[10]);
-        timer.timeReset();
-        double predicted_time_11 =
+
+        double predicted_time_11_pt =
             predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-        _Total_predict_time = timer.elapsed_ns();
-        Total_predict_time += _Total_predict_time;
         /* JIA non-normalizeFeatures */
         /*
-        double predicted_time_11 =
+        double predicted_time_11_pt =
             predict11(PT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
                       x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
                       x_destination_ip_2, x_destination_ip_3, x_source_port,
@@ -1085,21 +1178,18 @@ int main(int argc, char *argv[]) {
 
         double actual_time = PT_y(i);
         pt_prediction_11_out << "Packet " << i << fixed << setprecision(4)
-                             << "\tPredict " << predicted_time_11
+                             << "\tPredict " << predicted_time_11_pt
                              << "\tRealTime(ns) " << actual_time << endl;
         //// PT
 
         //// DBT
-        timer.timeReset();
-        predicted_time_11 =
+        double predicted_time_11_dbt =
             predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-        _Total_predict_time = timer.elapsed_ns();
-        Total_predict_time += _Total_predict_time;
         /* JIA non-normalizeFeatures */
         /*
-        predicted_time_11 =
+        predicted_time_11_dbt =
         predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
         x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
         x_destination_ip_2, x_destination_ip_3, x_source_port,
@@ -1108,21 +1198,18 @@ int main(int argc, char *argv[]) {
 
         actual_time = DBT_y(i);
         DBT_prediction_11_out << "Packet " << i << fixed << setprecision(4)
-                              << "\tPredict " << predicted_time_11
+                              << "\tPredict " << predicted_time_11_dbt
                               << "\tRealTime(ns) " << actual_time << endl;
         //// DBT
 
         //// KSet
-        timer.timeReset();
-        predicted_time_11 =
+        double predicted_time_11_kset =
             predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-        _Total_predict_time = timer.elapsed_ns();
-        Total_predict_time += _Total_predict_time;
         /* JIA non-normalizeFeatures */
         /*
-        predicted_time_11 =
+        predicted_time_11_kset =
             predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
         x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
                       x_destination_ip_2, x_destination_ip_3, x_source_port,
@@ -1131,15 +1218,80 @@ int main(int argc, char *argv[]) {
 
         actual_time = KSet_y(i);
         kset_prediction_11_out << "Packet " << i << fixed << setprecision(4)
-                               << "\tPredict " << predicted_time_11
+                               << "\tPredict " << predicted_time_11_kset
                                << "\tRealTime(ns) " << actual_time << endl;
         //// KSet
+        //// acc
+        auto [min_val, min_id_predict] =
+            get_min_max_time(predicted_time_11_pt, predicted_time_11_dbt,
+                             predicted_time_11_kset);
+
+        // 建立實際值陣列，方便比較與存取
+        std::array<double, 3> real_values = {PT_y(i), DBT_y(i), KSet_y(i)};
+
+        // 找出實際最小值與最大值的模型索引
+        int real_min_label =
+            std::min_element(real_values.begin(), real_values.end()) -
+            real_values.begin();
+        int real_max_label =
+            std::max_element(real_values.begin(), real_values.end()) -
+            real_values.begin();
+
+        // 實際的最小與最大值
+        double real_min_val = real_values[real_min_label];
+        double real_max_val = real_values[real_max_label];
+
+        // 平均預測時間
+        double avg_pred = (predicted_time_11_pt + predicted_time_11_dbt +
+                           predicted_time_11_kset) /
+                          3.0;
+
+        // Long-tail 偵測
+        std::array<double, 3> predicted_times = {predicted_time_11_pt,
+                                                 predicted_time_11_dbt,
+                                                 predicted_time_11_kset};
+        std::vector<bool> is_tail(3);
+        for (int j = 0; j < 3; ++j) {
+          is_tail[j] = predicted_times[j] > (20.0 * avg_pred);
+        }
+
+        bool has_long_tail = std::any_of(is_tail.begin(), is_tail.end(),
+                                         [](bool b) { return b; });
+        bool selected_long_tail = is_tail[min_id_predict];
+
+        // 統計與記錄 long-tail 資訊
+        if (has_long_tail) {
+          ++model_longTail;
+          long_tail_indices.push_back(i);
+          if (selected_long_tail) {
+            ++model_select_longTail;
+            select_long_tail_indices.push_back(i);
+          }
+        }
+
+        // 輸出 log 訊息
+        total_prediction_11_out
+            << "PT " << PT_y(i) << "\tDBT " << DBT_y(i) << "\tKSet "
+            << KSet_y(i) << "\tmin " << real_min_val << "\treal_min_id "
+            << real_min_label << "\tmin_id_predict " << min_id_predict
+            << "\tMAX " << real_max_val << "\treal_max_id " << real_max_label
+            << "\tTAIL " << (selected_long_tail ? "1" : "0") << std::endl;
+
+        // 預測準確與錯誤統計
+        if (min_id_predict == real_min_label) ++model_acc;
+        if (min_id_predict == real_max_label) ++model_fail;
+        //// acc
       }
       pt_prediction_11_out.close();
       DBT_prediction_11_out.close();
       kset_prediction_11_out.close();
-      cout << "    AVG predict_time-11(ns): " << Total_predict_time / packetNum
+      total_prediction_11_out.close();
+      cout << "    model_acc 11: " << model_acc / (packetNum * 1.0) << endl;
+      cout << "    model_fail 11: " << model_fail / (packetNum * 1.0) << endl;
+      cout << "    model_longTail 11: " << model_longTail / (packetNum * 1.0)
            << endl;
+      cout << "    model_select_longTail 11: "
+           << model_select_longTail / (packetNum * 1.0) << endl;
       //// 11-D
 
       cout << "|--- PT_y Mean: " << (mean_PT = computeMean(PT_y)) << endl;
@@ -1184,9 +1336,9 @@ int main(int argc, char *argv[]) {
       Total_predict_time = 0;
       Total_search_time = 0;
 
+      warmup_KSet(set, packets, packetNum, num_set);
       warmup_PT(tree, PT_packets, packetNum);
       warmup_DBT(dbt, DBT_packets, packetNum);
-      warmup_KSet(set, packets, packetNum, num_set);
       if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < trials; ++t) {
         for (int i = 0; i < packetNum; ++i) {
@@ -1279,9 +1431,10 @@ int main(int argc, char *argv[]) {
       model_counter_KSet = 0;
       Total_predict_time = 0;
       Total_search_time = 0;
+
+      warmup_KSet(set, packets, packetNum, num_set);
       warmup_PT(tree, PT_packets, packetNum);
       warmup_DBT(dbt, DBT_packets, packetNum);
-      warmup_KSet(set, packets, packetNum, num_set);
       if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < trials; ++t) {
         for (int i = 0; i < packetNum; ++i) {
@@ -1411,9 +1564,10 @@ int main(int argc, char *argv[]) {
       VectorXd DBT_y(packetNum);
       VectorXd KSet_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      BloomFilter<(1 << 10), 2> bloom_filter_pt;
-      BloomFilter<(1 << 10), 2> bloom_filter_dbt;
+      BloomFilter<(1 << 10), 4> bloom_filter_pt /*("./INFO/PT")*/;
+      BloomFilter<(1 << 10), 4> bloom_filter_dbt /*("./INFO/DBT")*/;
       // BloomFilter<(1 << 12), 2> bloom_filter_kset;
+
       for (size_t t = 0; t < 2; ++t) {
         for (int i = 0; i < packetNum; ++i) {
 #ifdef CACHE
@@ -1498,9 +1652,10 @@ int main(int argc, char *argv[]) {
       int model_counter_DBT = 0;
       int model_counter_PT = 0;
       int model_counter_KSet = 0;
+
+      warmup_KSet(set, packets, packetNum, num_set);
       warmup_PT(tree, PT_packets, packetNum);
       warmup_DBT(dbt, DBT_packets, packetNum);
-      warmup_KSet(set, packets, packetNum, num_set);
       if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < trials; ++t) {
         for (int i = 0; i < packetNum; ++i) {

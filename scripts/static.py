@@ -10,9 +10,10 @@ import matplotlib.patheffects as pe
 from scipy.stats import entropy, skew
 
 # 參數設定
-#FILE_PATH = "./part_0.txt"    # flow trace 檔案路徑（五欄位）
-FILE_PATH = "./acl2_100k_trace"    # flow trace 檔案路徑（五欄位）
-# 這份 trace 中，有 349,075 個獨特的五維 flow，各自對應一個出現次數 count。(acl2_100k_trace)
+#FILE_PATH = "../classbench_set/ipv4-trace/part_0.txt"    # flow trace 檔案路徑（五欄位）
+FILE_PATH = "../classbench_set/ipv4-trace/acl2_100k_trace"    # flow trace 檔案路徑（五欄位）
+FILE_NAME = os.path.basename(FILE_PATH).replace(".txt", "")
+# 這份 trace 中，有 349,075 個獨特的五維 flow，各自對應一個出現次數 count (acl2_100k_trace)
 TOP_K = 20                         # Top-K 熱點 flow 數量
 NUM_CLUSTERS = 7                  # 分群數量
 MAX_TSNE_POINTS = 1000000          # t-SNE 最大抽樣點數
@@ -28,7 +29,7 @@ def load_trace(file_path):
     grouped = df.groupby(df.columns.tolist()).size().reset_index(name='count')
     return grouped
 
-def plot_topk_flows(df, k):
+def plot_topk_flows(df, k, tag=""):
     topk = df.sort_values(by='count', ascending=False).head(k).copy()
     topk['flow'] = (topk['source_ip'].astype(str) + ':' + topk['source_port'].astype(str) +
                     ' > ' + topk['destination_ip'].astype(str) + ':' + topk['destination_port'].astype(str))
@@ -39,7 +40,7 @@ def plot_topk_flows(df, k):
     plt.xlabel("Flow (src > dst)")
     plt.ylabel("Count")
     plt.tight_layout()
-    plt.savefig("topk_flows_verbose.png")
+    plt.savefig(f"topk_flows_verbose_{tag}.png")
     plt.close()
 
 def perform_clustering(df, n_clusters):
@@ -192,7 +193,7 @@ def plot_bitset_distribution_from_words(file_path, title='Bitset Distribution'):
 def main():
     np.random.seed(42)
     df = load_trace(FILE_PATH)
-    plot_topk_flows(df, TOP_K)
+    plot_topk_flows(df, TOP_K, tag=FILE_NAME)
 
     #df['bucket'] = df.apply(lambda row: murmur_style_hash([row['source_ip'], row['destination_ip'],row['source_port'], row['destination_port'],row['protocol']]) % 1024, axis=1)
 

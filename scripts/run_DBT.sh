@@ -47,4 +47,4 @@ echo "Running search tests..."
 "$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" > "$TEST_KSET_MAIN_EXEC"_c_log.txt
 
 echo "Running upd tests..."
-#"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt
+"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt
