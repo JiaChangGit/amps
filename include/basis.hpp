@@ -217,5 +217,22 @@ inline void extract_ip_bytes_to_float(const unsigned char ip[4], float out[4]) {
     out[i] = static_cast<float>(ip[i]);
   }
 }
-
+// inline void bytes_reverse(uint32_t ip, uint8_t bytes[4]) {
+//   bytes[0] = (ip >> 24) & 0xFF;
+//   bytes[1] = (ip >> 16) & 0xFF;
+//   bytes[2] = (ip >> 8) & 0xFF;
+//   bytes[3] = ip & 0xFF;
+// }
+inline void bytes_allocate(uint32_t ip, uint8_t bytes[4]) {
+  bytes[0] = ip & 0xFF;
+  bytes[1] = (ip >> 8) & 0xFF;
+  bytes[2] = (ip >> 16) & 0xFF;
+  bytes[3] = (ip >> 24) & 0xFF;
+}
+inline void bytes_allocate_rev(const uint8_t bytes[4], uint32_t& ip) {
+  ip = static_cast<uint32_t>(bytes[0]) |
+       (static_cast<uint32_t>(bytes[1]) << 8) |
+       (static_cast<uint32_t>(bytes[2]) << 16) |
+       (static_cast<uint32_t>(bytes[3]) << 24);
+}
 #endif

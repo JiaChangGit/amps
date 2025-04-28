@@ -9,11 +9,26 @@
 # 設定變數
 BUILD_DIR="./build"
 TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
-#RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
-#TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
 
-RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/ipc2_100k_trace"
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
+
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl3_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl3_100k_trace"
+
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl4_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl4_100k_trace"
+
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl5_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl5_100k_trace"
+
+RULESET_PATH="../classbench_set/ipv4-ruleset/fw1_100k"
+TRACE_PATH="../classbench_set/ipv4-trace/fw1_100k_trace"
+
+# RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/ipc2_100k_trace"
 
 #TRACE_PATH="../classbench_set/ipv4-trace/part0"
 #TRACE_PATH="../classbench_set/ipv4-trace/part_0"

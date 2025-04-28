@@ -213,24 +213,6 @@ void anaK(const size_t number_rule, const vector<Rule> &rule, int *usedbits,
        << ", MAX[2]: " << max[2] << endl;
 }
 /////////////////
-// inline void bytes_reverse(uint32_t ip, uint8_t bytes[4]) {
-//   bytes[0] = (ip >> 24) & 0xFF;
-//   bytes[1] = (ip >> 16) & 0xFF;
-//   bytes[2] = (ip >> 8) & 0xFF;
-//   bytes[3] = ip & 0xFF;
-// }
-inline void bytes_allocate(uint32_t ip, uint8_t bytes[4]) {
-  bytes[0] = ip & 0xFF;
-  bytes[1] = (ip >> 8) & 0xFF;
-  bytes[2] = (ip >> 16) & 0xFF;
-  bytes[3] = (ip >> 24) & 0xFF;
-}
-inline void bytes_allocate_rev(const uint8_t bytes[4], uint32_t &ip) {
-  ip = static_cast<uint32_t>(bytes[0]) |
-       (static_cast<uint32_t>(bytes[1]) << 8) |
-       (static_cast<uint32_t>(bytes[2]) << 16) |
-       (static_cast<uint32_t>(bytes[3]) << 24);
-}
 // ===============================
 // Convert Packet -> PT_Packet
 // ===============================
@@ -477,23 +459,6 @@ void warmup_KSet(vector<KSet> &set, const std::vector<Packet> &packets,
       kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
   }
 }
-// 回傳格式：{min_value, min_id, max_value, max_id}
-inline std::tuple<int, int> get_min_max_time(int predicted_time_pt,
-                                             int predicted_time_dbt,
-                                             int predicted_time_kset) {
-  int min_3 = predicted_time_pt;
-  int min_id_predict = 0;
-
-  if (predicted_time_dbt < min_3) {
-    min_3 = predicted_time_dbt;
-    min_id_predict = 1;
-  }
-  if (predicted_time_kset < min_3) {
-    min_3 = predicted_time_kset;
-    min_id_predict = 2;
-  }
-  return {min_3, min_id_predict};
-}
 /////////////////
 int main(int argc, char *argv[]) {
   CommandLineParser parser;
@@ -654,25 +619,25 @@ int main(int argc, char *argv[]) {
       cout << "\tThe number of packet in the trace file = " << packetNum
            << "\n";
       cout << "\tTotal packets run " << trials
-           << "times circularly: " << packetNum * trials << "\n";
+           << " times circularly: " << packetNum * trials << "\n";
 
       ///////// train ////////
       // 三維模型
-      MatrixXd X3(packetNum, 3);  // 3 features
-      VectorXd PT_model_3(3);
-      VectorXd DBT_model_3(3);
-      VectorXd KSet_model_3(3);
+      Eigen::MatrixXd X3(packetNum, 3);  // 3 features
+      Eigen::VectorXd PT_model_3(3);
+      Eigen::VectorXd DBT_model_3(3);
+      Eigen::VectorXd KSet_model_3(3);
 
       // 11維模型
-      MatrixXd X11(packetNum, 11);  // 11 features
-      VectorXd PT_model_11(11);
-      VectorXd DBT_model_11(11);
-      VectorXd KSet_model_11(11);
+      Eigen::MatrixXd X11(packetNum, 11);  // 11 features
+      Eigen::VectorXd PT_model_11(11);
+      Eigen::VectorXd DBT_model_11(11);
+      Eigen::VectorXd KSet_model_11(11);
 
       // y 向量共用 (3, 11)
-      VectorXd PT_y(packetNum);
-      VectorXd DBT_y(packetNum);
-      VectorXd KSet_y(packetNum);
+      Eigen::VectorXd PT_y(packetNum);
+      Eigen::VectorXd DBT_y(packetNum);
+      Eigen::VectorXd KSet_y(packetNum);
 
       double x_source_ip = 0, x_destination_ip = 0;
       double x_source_port = 0, x_destination_port = 0, x_protocol = 0;
@@ -818,9 +783,9 @@ int main(int argc, char *argv[]) {
             kset_match_pri =
                 max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
 #endif
-          kset_match_pri = -1;
 
           timer.timeReset();
+          kset_match_pri = -1;
           if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
           if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
             kset_match_pri =
@@ -872,10 +837,14 @@ int main(int argc, char *argv[]) {
       fclose(DBT_match_fp);
       fclose(KSet_match_fp);
 #endif
-
-      vector<double> mean_X3, std_X3;
-      vector<double> mean_X5, std_X5;
-      vector<double> mean_X11, std_X11;
+      cout << "|--- PT_y Mean: " << (mean_PT = computeMean(PT_y)) << endl;
+      cout << "|--- DBT_y Mean: " << (mean_DBT = computeMean(DBT_y)) << endl;
+      cout << "|--- KSet_y Mean: " << (mean_KSet = computeMean(KSet_y)) << endl;
+      std::array<double, 3> long_tail_real_time = {mean_PT * 5, mean_DBT * 5,
+                                                   mean_KSet * 5};
+      Eigen::VectorXd mean_X3, std_X3;
+      // Eigen::VectorXdmean_X5, std_X5;
+      Eigen::VectorXd mean_X11, std_X11;
 
       /* JIA normalizeFeatures */ normalizeFeatures(X3, mean_X3, std_X3);
       /* JIA normalizeFeatures */ normalizeFeatures(X11, mean_X11, std_X11);
@@ -977,11 +946,10 @@ int main(int argc, char *argv[]) {
         //// PT
         double predicted_time_3_pt =
             predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+
         /* JIA non-normalizeFeatures */
-        /*
-        double predicted_time_3_pt = predict3(PT_model_3, x_source_ip_0,
-                                           x_source_ip_1, x_destination_ip_0);
-        */
+        // double predicted_time_3_pt = predict3(
+        //     PT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
 
         double actual_time = PT_y(i);
         pt_prediction_3_out << "Packet " << i << "\tPredict " << fixed
@@ -992,11 +960,10 @@ int main(int argc, char *argv[]) {
         //// DBT
         double predicted_time_3_dbt =
             predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+
         /* JIA non-normalizeFeatures */
-        /*
-        predicted_time_3_dbt = predict3(DBT_model_3, x_source_ip_0,
-        x_source_ip_1, x_destination_ip_0);
-        */
+        // double predicted_time_3_dbt = predict3(
+        //     DBT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
 
         actual_time = DBT_y(i);
         DBT_prediction_3_out << "Packet " << i << "\tPredict " << fixed
@@ -1007,11 +974,10 @@ int main(int argc, char *argv[]) {
         //// KSet
         double predicted_time_3_kset =
             predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+
         /* JIA non-normalizeFeatures */
-        /*
-        predicted_time_3_kset = predict3(KSet_model_3, x_source_ip_0,
-        x_source_ip_1, x_destination_ip_0);
-        */
+        // double predicted_time_3_kset = predict3(
+        //     KSet_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
 
         actual_time = KSet_y(i);
         kset_prediction_3_out << "Packet " << i << "\tPredict " << fixed
@@ -1037,17 +1003,14 @@ int main(int argc, char *argv[]) {
         double real_min_val = real_values[real_min_label];
         double real_max_val = real_values[real_max_label];
 
-        // 平均預測時間
-        double avg_pred = (predicted_time_3_pt + predicted_time_3_dbt +
-                           predicted_time_3_kset) /
-                          3.0;
-
         // Long-tail 偵測
-        std::array<double, 3> predicted_times = {
-            predicted_time_3_pt, predicted_time_3_dbt, predicted_time_3_kset};
-        std::vector<bool> is_tail(3);
+        std::array<bool, 3> is_tail;
         for (int j = 0; j < 3; ++j) {
-          is_tail[j] = predicted_times[j] > (20.0 * avg_pred);
+          if (real_values[j] > (long_tail_real_time[j]))
+            is_tail[j] = true;
+          else {
+            is_tail[j] = false;
+          }
         }
 
         bool has_long_tail = std::any_of(is_tail.begin(), is_tail.end(),
@@ -1086,7 +1049,7 @@ int main(int argc, char *argv[]) {
       cout << "    model_longTail 3: " << model_longTail / (packetNum * 1.0)
            << endl;
       cout << "    model_select_longTail 3: "
-           << model_select_longTail / (packetNum * 1.0) << endl;
+           << model_select_longTail / ((model_longTail + 0.0001) * 1.0) << endl;
       //// 3-D
 
       // 輸出封包預測與實際搜尋時間至結果檔案
@@ -1167,14 +1130,13 @@ int main(int argc, char *argv[]) {
             predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
+
         /* JIA non-normalizeFeatures */
-        /*
-        double predicted_time_11_pt =
-            predict11(PT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
-                      x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-                      x_destination_ip_2, x_destination_ip_3, x_source_port,
-                      x_destination_port, x_protocol);
-        */
+        // double predicted_time_11_pt =
+        //     predict11(PT_model_11, x_source_ip_0, x_source_ip_1,
+        // x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+        //               x_destination_ip_2, x_destination_ip_3, x_source_port,
+        //               x_destination_port, x_protocol);
 
         double actual_time = PT_y(i);
         pt_prediction_11_out << "Packet " << i << fixed << setprecision(4)
@@ -1187,14 +1149,13 @@ int main(int argc, char *argv[]) {
             predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
+
         /* JIA non-normalizeFeatures */
-        /*
-        predicted_time_11_dbt =
-        predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
-        x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-        x_destination_ip_2, x_destination_ip_3, x_source_port,
-        x_destination_port, x_protocol);
-        */
+        // predicted_time_11_dbt =
+        // predict11(DBT_model_11, x_source_ip_0, x_source_ip_1,
+        // x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+        // x_destination_ip_2, x_destination_ip_3, x_source_port,
+        // x_destination_port, x_protocol);
 
         actual_time = DBT_y(i);
         DBT_prediction_11_out << "Packet " << i << fixed << setprecision(4)
@@ -1207,14 +1168,13 @@ int main(int argc, char *argv[]) {
             predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
+
         /* JIA non-normalizeFeatures */
-        /*
-        predicted_time_11_kset =
-            predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
-        x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
-                      x_destination_ip_2, x_destination_ip_3, x_source_port,
-                      x_destination_port, x_protocol);
-        */
+        // predicted_time_11_kset =
+        //     predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
+        // x_source_ip_2, x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+        //               x_destination_ip_2, x_destination_ip_3, x_source_port,
+        //               x_destination_port, x_protocol);
 
         actual_time = KSet_y(i);
         kset_prediction_11_out << "Packet " << i << fixed << setprecision(4)
@@ -1241,18 +1201,14 @@ int main(int argc, char *argv[]) {
         double real_min_val = real_values[real_min_label];
         double real_max_val = real_values[real_max_label];
 
-        // 平均預測時間
-        double avg_pred = (predicted_time_11_pt + predicted_time_11_dbt +
-                           predicted_time_11_kset) /
-                          3.0;
-
         // Long-tail 偵測
-        std::array<double, 3> predicted_times = {predicted_time_11_pt,
-                                                 predicted_time_11_dbt,
-                                                 predicted_time_11_kset};
-        std::vector<bool> is_tail(3);
+        std::array<bool, 3> is_tail;
         for (int j = 0; j < 3; ++j) {
-          is_tail[j] = predicted_times[j] > (20.0 * avg_pred);
+          if (real_values[j] > (long_tail_real_time[j]))
+            is_tail[j] = true;
+          else {
+            is_tail[j] = false;
+          }
         }
 
         bool has_long_tail = std::any_of(is_tail.begin(), is_tail.end(),
@@ -1291,10 +1247,9 @@ int main(int argc, char *argv[]) {
       cout << "    model_longTail 11: " << model_longTail / (packetNum * 1.0)
            << endl;
       cout << "    model_select_longTail 11: "
-           << model_select_longTail / (packetNum * 1.0) << endl;
+           << model_select_longTail / ((model_longTail + 0.0001) * 1.0) << endl;
       //// 11-D
 
-      cout << "|--- PT_y Mean: " << (mean_PT = computeMean(PT_y)) << endl;
       cout << "|--- PT_y Median: " << (median_PT = computeMedian(PT_y)) << endl;
       cout << "|--- PT_y 25th Percentile: "
            << (per25_PT = computePercentile(PT_y, 0.25))
@@ -1305,7 +1260,6 @@ int main(int argc, char *argv[]) {
       cout << "|--- PT_y 99th Percentile: "
            << (per99_PT = computePercentile(PT_y, 0.99)) << endl;
 
-      cout << "|--- DBT_y Mean: " << (mean_DBT = computeMean(DBT_y)) << endl;
       cout << "|--- DBT_y Median: " << (median_DBT = computeMedian(DBT_y))
            << endl;
       cout << "|--- DBT_y 25th Percentile: "
@@ -1317,7 +1271,6 @@ int main(int argc, char *argv[]) {
       cout << "|--- DBT_y 99th Percentile: "
            << (per99_DBT = computePercentile(DBT_y, 0.99)) << endl;
 
-      cout << "|--- KSet_y Mean: " << (mean_KSet = computeMean(KSet_y)) << endl;
       cout << "|--- KSet_y Median: " << (median_KSet = computeMedian(KSet_y))
            << endl;
       cout << "|--- KSet_y 25th Percentile: "
@@ -1377,17 +1330,29 @@ int main(int argc, char *argv[]) {
           double predicted_time_3_kset =
               predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
           //// KSet
-          if ((predicted_time_3_dbt <= predicted_time_3_pt) &&
-              (predicted_time_3_dbt <= predicted_time_3_kset)) {
-            _Total_predict_time = timer.elapsed_ns();
-            Total_predict_time += _Total_predict_time;
-            timer.timeReset();
-            dbt.search(DBT_packets[i]);
-            _Total_search_time = timer.elapsed_ns();
-            Total_search_time += _Total_search_time;
-            ++model_counter_DBT;
-          } else if ((predicted_time_3_pt <= predicted_time_3_dbt) &&
-                     (predicted_time_3_pt <= predicted_time_3_kset)) {
+          /* JIA normalizeFeatures */
+
+          // /* JIA non-normalizeFeatures */
+          // timer.timeReset();
+          // //// PT
+          // double predicted_time_3_pt = predict3(
+          //     PT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+          // //// PT
+
+          // //// DBT
+          // double predicted_time_3_dbt = predict3(
+          //     DBT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+          // //// DBT
+
+          // //// KSet
+          // double predicted_time_3_kset = predict3(
+          //     KSet_model_3, x_source_ip_0, x_source_ip_1,
+          //     x_destination_ip_0);
+          // //// KSet
+          // /* JIA non-normalizeFeatures */
+
+          if ((predicted_time_3_pt <= predicted_time_3_dbt) &&
+              (predicted_time_3_pt <= predicted_time_3_kset)) {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
             timer.timeReset();
@@ -1395,6 +1360,15 @@ int main(int argc, char *argv[]) {
             _Total_search_time = timer.elapsed_ns();
             Total_search_time += _Total_search_time;
             ++model_counter_PT;
+          } else if ((predicted_time_3_dbt <= predicted_time_3_pt) &&
+                     (predicted_time_3_dbt <= predicted_time_3_kset)) {
+            _Total_predict_time = timer.elapsed_ns();
+            Total_predict_time += _Total_predict_time;
+            timer.timeReset();
+            dbt.search(DBT_packets[i]);
+            _Total_search_time = timer.elapsed_ns();
+            Total_search_time += _Total_search_time;
+            ++model_counter_DBT;
           } else {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
@@ -1503,17 +1477,9 @@ int main(int argc, char *argv[]) {
                         x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                         x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
           //// KSet
-          if ((predicted_time_11_dbt <= predicted_time_11_pt) &&
-              (predicted_time_11_dbt <= predicted_time_11_kset)) {
-            _Total_predict_time = timer.elapsed_ns();
-            Total_predict_time += _Total_predict_time;
-            timer.timeReset();
-            dbt.search(DBT_packets[i]);
-            _Total_search_time = timer.elapsed_ns();
-            Total_search_time += _Total_search_time;
-            ++model_counter_DBT;
-          } else if ((predicted_time_11_pt <= predicted_time_11_dbt) &&
-                     (predicted_time_11_pt <= predicted_time_11_kset)) {
+
+          if ((predicted_time_11_pt <= predicted_time_11_dbt) &&
+              (predicted_time_11_pt <= predicted_time_11_kset)) {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
             timer.timeReset();
@@ -1521,6 +1487,15 @@ int main(int argc, char *argv[]) {
             _Total_search_time = timer.elapsed_ns();
             Total_search_time += _Total_search_time;
             ++model_counter_PT;
+          } else if ((predicted_time_11_dbt <= predicted_time_11_pt) &&
+                     (predicted_time_11_dbt <= predicted_time_11_kset)) {
+            _Total_predict_time = timer.elapsed_ns();
+            Total_predict_time += _Total_predict_time;
+            timer.timeReset();
+            dbt.search(DBT_packets[i]);
+            _Total_search_time = timer.elapsed_ns();
+            Total_search_time += _Total_search_time;
+            ++model_counter_DBT;
           } else {
             _Total_predict_time = timer.elapsed_ns();
             Total_predict_time += _Total_predict_time;
@@ -1560,9 +1535,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef BLOOM
     {
-      VectorXd PT_y(packetNum);
-      VectorXd DBT_y(packetNum);
-      VectorXd KSet_y(packetNum);
+      Eigen::VectorXd PT_y(packetNum);
+      Eigen::VectorXd DBT_y(packetNum);
+      Eigen::VectorXd KSet_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
       BloomFilter<(1 << 10), 4> bloom_filter_pt /*("./INFO/PT")*/;
       BloomFilter<(1 << 10), 4> bloom_filter_dbt /*("./INFO/DBT")*/;
@@ -1771,9 +1746,9 @@ int main(int argc, char *argv[]) {
     /*************************************************************************/
     ///////// Individual /////////
     {
-      VectorXd PT_y(packetNum);
-      VectorXd DBT_y(packetNum);
-      VectorXd KSet_y(packetNum);
+      Eigen::VectorXd PT_y(packetNum);
+      Eigen::VectorXd DBT_y(packetNum);
+      Eigen::VectorXd KSet_y(packetNum);
       int PT_match_id_arr[packetNum];
       uint32_t DBT_match_id_arr[packetNum];
       int KSet_match_pri_arr[packetNum];
