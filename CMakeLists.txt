@@ -25,7 +25,7 @@ else()
 endif()
 
 # 通用編譯選項
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -ffast-math ")
 
 # 最佳化選項（明確支持 BMI2）
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

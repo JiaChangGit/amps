@@ -53,7 +53,7 @@ void single_thread(bool enable_update, vector<Rule>& rules,
   cout << "\nstart search...\n";
   uint32_t res = 0;
   FILE* res_fp = nullptr;
-  res_fp = fopen("./INFO/DBT_results.txt", "w");
+  res_fp = fopen("./INFO/DBT_main_results.txt", "w");
   unsigned long long search_time = 0, _search_time = 0;
 
   const size_t packetNum = packets.size();

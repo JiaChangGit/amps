@@ -1,50 +1,125 @@
-
 #!/bin/bash
 
 ## How to use
-## chmod +x scripts/run_test.sh
-## ./scripts/run_test.sh
-### Or
-### sudo sh ./scripts/run_test.sh
+## chmod +x scripts/run_DBT.sh
+## sudo bash ./scripts/run_DBT.sh
 
-# 設定變數
+set -e
+set -o pipefail
+
+# ==============================================================================
+# 變數設定區
+# ==============================================================================
+
 BUILD_DIR="./build"
-#############
-TEST_KSET_MAIN_EXEC="$BUILD_DIR/tests/DBTable_main"
-#############
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
+EXECUTABLE="$BUILD_DIR/tests/DBTable_main"
 
-# 檢查並建立 build 目錄（如果不存在）
-if [ ! -d "$BUILD_DIR" ]; then
-    echo "Build directory not found. Creating one..."
-    mkdir -p "$BUILD_DIR"
-fi
+RULESET_LIST=(
+  acl1_100k
+  acl2_100k
+  acl3_100k
+  acl4_100k
+  acl5_100k
+  fw1_100k
+  fw2_100k
+  fw3_100k
+  fw4_100k
+  fw5_100k
+  ipc1_100k
+  ipc2_100k
+)
 
-# 檢查並執行 build.sh 來編譯
-if [ ! -f "$TEST_KSET_MAIN_EXEC" ]; then
-    echo "Test executable not found. Building the project..."
-    chmod +x scripts/build.sh
-    ./scripts/build.sh
-fi
+RULESET_DIR="../classbench_set/ipv4-ruleset"
+TRACE_DIR="../classbench_set/ipv4-trace"
 
-# 確保測試執行檔存在
-if [ ! -f "$TEST_KSET_MAIN_EXEC" ]; then
-    echo "Error: Test executable still not found after build. Exiting."
-    exit 1
-fi
+OUTPUT_DIR="$BUILD_DIR"
+RUN_UPDATE_TEST=false  # 是否同時測 update 測試，預設關閉
 
-# 確保規則集與測試資料存在
-if [ ! -f "$RULESET_PATH" ] || [ ! -f "$TRACE_PATH" ]; then
-    echo "Error: Ruleset or trace file not found!"
-    exit 1
-fi
+# ==============================================================================
+# 功能函式區
+# ==============================================================================
 
-# 執行測試
-ulimit -s 81920
+prepare_build_dir() {
+    if [ ! -d "$BUILD_DIR" ]; then
+        echo "[Info] Build directory not found. Creating..."
+        mkdir -p "$BUILD_DIR"
+    fi
+}
 
-echo "Running search tests..."
-"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" > "$TEST_KSET_MAIN_EXEC"_c_log.txt
+build_project() {
+    if [ ! -f "$EXECUTABLE" ]; then
+        echo "[Info] Test executable not found. Building project..."
+        chmod +x scripts/build.sh
+        ./scripts/build.sh
+    fi
 
-echo "Running upd tests..."
-"$TEST_KSET_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -u > "$TEST_KSET_MAIN_EXEC"_u_log.txt
+    if [ ! -f "$EXECUTABLE" ]; then
+        echo "[Error] Build failed. Test executable still missing."
+        exit 1
+    fi
+}
+
+verify_input_files() {
+    local ruleset_path="$1"
+    local trace_path="$2"
+
+    if [ ! -f "$ruleset_path" ]; then
+        echo "[Error] Ruleset file not found: $ruleset_path"
+        exit 1
+    fi
+    if [ ! -f "$trace_path" ]; then
+        echo "[Error] Trace file not found: $trace_path"
+        exit 1
+    fi
+}
+
+setup_environment() {
+    ulimit -s 81920
+}
+
+run_search_test() {
+    local ruleset_name="$1"
+    local ruleset_path="$2"
+    local trace_path="$3"
+    local short_name="${ruleset_name%%_*}"  # 取 acl1、fw2、ipc1 等
+    local output_file="${OUTPUT_DIR}/${EXECUTABLE##*/}_c_${short_name}.txt"
+
+    echo "[Info] Running search test for: $ruleset_name"
+    "$EXECUTABLE" -r "$ruleset_path" -p "$trace_path" > "$output_file"
+    echo "[Info] Search output saved to: $output_file"
+}
+
+run_update_test() {
+    local ruleset_name="$1"
+    local ruleset_path="$2"
+    local trace_path="$3"
+    local short_name="${ruleset_name%%_*}"
+    local output_file="${OUTPUT_DIR}/${EXECUTABLE##*/}_u_${short_name}.txt"
+
+    echo "[Info] Running update test for: $ruleset_name"
+    "$EXECUTABLE" -r "$ruleset_path" -p "$trace_path" -u > "$output_file"
+    echo "[Info] Update output saved to: $output_file"
+}
+
+# ==============================================================================
+# 主程式入口
+# ==============================================================================
+
+prepare_build_dir
+build_project
+setup_environment
+
+for ruleset in "${RULESET_LIST[@]}"; do
+    RULESET_PATH="$RULESET_DIR/$ruleset"
+    TRACE_PATH="$TRACE_DIR/${ruleset}_trace"
+
+    verify_input_files "$RULESET_PATH" "$TRACE_PATH"
+
+    run_search_test "$ruleset" "$RULESET_PATH" "$TRACE_PATH"
+
+    if [ "$RUN_UPDATE_TEST" = true ]; then
+        run_update_test "$ruleset" "$RULESET_PATH" "$TRACE_PATH"
+    fi
+done
+
+echo "[All Done] All rulesets tested successfully."

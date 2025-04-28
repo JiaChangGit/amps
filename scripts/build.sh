@@ -2,9 +2,9 @@
 
 ## How to use
 ## chmod +x scripts/build.sh
-## ./scripts/build.sh
+## bash ./scripts/build.sh
 ### Or
-### sudo sh ./scripts/build.sh
+### sudo bash ./scripts/build.sh
 
 # 設定變數
 BUILD_DIR="./build"
