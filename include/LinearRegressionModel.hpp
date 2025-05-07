@@ -12,6 +12,14 @@
 #include <tuple>
 #include <vector>
 
+/**
+ * @brief 對資料矩陣進行欄位（特徵）標準化，使每一欄資料轉為 mean = 0, std = 1。
+ *
+ * @param X        [in/out]
+ * 每列為一筆樣本、每欄為一個特徵，將就地標準化（zero-mean, unit-variance）。
+ * @param mean_out [out]    每個特徵的平均值（用於還原或後續推論）。
+ * @param std_out  [out]    每個特徵的標準差（用於還原或後續推論）。
+ */
 inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
                               Eigen::VectorXd &std_out) {
   const int rows = X.rows();
@@ -21,21 +29,61 @@ inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
   std_out.resize(cols);
 
   for (int j = 0; j < cols; ++j) {
+    // 取得第 j 欄作為 array（方便進行 element-wise 運算）
     const auto col = X.col(j).array();
+
+    // 計算該欄的平均值與中心化後的向量
     const double mean = col.mean();
-    const double sq_sum = (col - mean).square().sum();
-    double stddev = std::sqrt(sq_sum / rows);
+    const Eigen::ArrayXd centered = col - mean;
 
-    if (stddev < 1e-8) stddev = 1.0;  // 避免除以零問題
+    // 計算標準差（使用 population stddev，分母為 N）
+    double stddev = std::sqrt(centered.square().sum() / rows);
 
+    // 若 stddev 太小（表示資料無變化），避免除以零或產生數值爆炸
+    if (stddev < 1e-8) stddev = 1.0;
+
+    // 儲存該欄的統計資訊
     mean_out(j) = mean;
     std_out(j) = stddev;
 
-    X.col(j) = (col - mean) / stddev;
+    // 將第 j 欄就地標準化（zero-mean, unit-variance）
+    X.col(j) = centered / stddev;
   }
 }
 
+// JIA bias
+// inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
+//                               Eigen::VectorXd &std_out) {
+//   int rows = X.rows();
+//   int cols = X.cols();
+
+//   mean_out.resize(cols - 1);
+//   std_out.resize(cols - 1);
+
+//   for (int j = 0; j < cols - 1; ++j) {
+//     auto col = X.col(j).array();
+//     double mean = col.mean();
+//     double sq_sum = (col - mean).square().sum();
+//     double stddev = std::sqrt(sq_sum / rows);
+
+//     if (stddev < 1e-8) stddev = 1.0;
+
+//     mean_out[j] = mean;
+//     std_out[j] = stddev;
+
+//     X.col(j) = (col - mean) / stddev;
+//   }
+// }
+/**
+ * @brief 將單一特徵值轉換為標準化後的值。
+ *
+ * @param value   原始特徵值
+ * @param mean    對應特徵的平均值
+ * @param stddev  對應特徵的標準差
+ * @return double 標準化後的數值（若 stddev 幾乎為 0，則回傳 0）
+ */
 inline double toNormalized(double value, double mean, double stddev) {
+  // 若標準差太小（特徵無變化），視為常數特徵，直接回傳 0
   return (stddev < 1e-8) ? 0.0 : (value - mean) / stddev;
 }
 
@@ -106,7 +154,10 @@ inline void evaluateModel(const Eigen::VectorXd &y_pred,
 inline double predict3(const Eigen::VectorXd &a, double x1, double x2,
                        double x3) {
   assert(a.size() == 3);
-  return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3);
+  return std::
+      abs(a(0) * x1 + a(1) * x2 +
+          a(2) * x3 /*+
+a(3)*/);            /* + a(3) JIA bias */
 }
 
 inline double predict5(const Eigen::VectorXd &a, double x1, double x2,
@@ -121,7 +172,7 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
   assert(a.size() == 11);
   return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
                   a(5) * x6 + a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 +
-                  a(10) * x11);
+                  a(10) * x11 /*+ a(11)*/); /* + a(12) JIA bias */
 }
 
 // inline double predict3_poly2(const Eigen::VectorXd &a, double x1, double x2,

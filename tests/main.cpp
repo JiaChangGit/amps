@@ -6,8 +6,8 @@
 #include "LinearRegressionModel.hpp"
 #include "basis.hpp"
 #include "input.hpp"
-#include "inputFile_test.hpp"
-#include "linearSearch_test.hpp"
+// #include "inputFile_test.hpp"
+// #include "linearSearch_test.hpp"
 ///////// PT //////////
 #include "PT_tree.hpp"
 ///////// PT //////////
@@ -40,14 +40,20 @@ using namespace std;
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
 
+// #define SHUFFLE
+#define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
 #define EIGEN_UNROLL_LOOP_LIMIT 256
-#define CACHE
 #define PERLOOKUPTIME_MODEL
 #define PERLOOKUPTIME_INDIVIDUAL
+///////// Shuffle /////////
+#ifdef SHUFFLE
+#include <random>
+#endif
+///////// Shuffle /////////
+///////// bloomFilter /////////
 // #define PERLOOKUPTIME_BLOOM
 // #define BLOOM
-///////// bloomFilter /////////
 #ifdef BLOOM
 #include "bloomFilter.hpp"
 #endif
@@ -469,12 +475,21 @@ int main(int argc, char *argv[]) {
   vector<Rule> rule;
   vector<Packet> packets;
   InputFile inputFile;
-  InputFile_test inputFile_test;
+  // InputFile_test inputFile_test;
   Timer timer;
   constexpr int trials = 5;  // run 5 times circularly
 
   inputFile.loadRule(rule, parser.getRulesetFile());
   inputFile.loadPacket(packets, parser.getTraceFile());
+
+#ifdef SHUFFLE
+  // 初始化亂數生成器
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  // 使用 std::shuffle 打亂整個 array 為單位的順序
+  std::shuffle(packets.begin(), packets.end(), gen);
+#endif
+
   // if (parser.isTestMode()) {
   //   Timer timerTest;
   //   timerTest.timeReset();
@@ -626,13 +641,13 @@ int main(int argc, char *argv[]) {
 
       ///////// train ////////
       // 三維模型
-      Eigen::MatrixXd X3(packetNum, 3);  // 3 features
+      Eigen::MatrixXd X3(packetNum, 3);  // 3 features /* JIA 3 bias */
       Eigen::VectorXd PT_model_3(3);
       Eigen::VectorXd DBT_model_3(3);
       Eigen::VectorXd KSet_model_3(3);
 
       // 11維模型
-      Eigen::MatrixXd X11(packetNum, 11);  // 11 features
+      Eigen::MatrixXd X11(packetNum, 11);  // 11 features /* JIA 12 bias */
       Eigen::VectorXd PT_model_11(11);
       Eigen::VectorXd DBT_model_11(11);
       Eigen::VectorXd KSet_model_11(11);
@@ -776,6 +791,7 @@ int main(int argc, char *argv[]) {
         X3(i, 0) = x_source_ip_0;
         X3(i, 1) = x_source_ip_1;
         X3(i, 2) = x_destination_ip_0;
+        // X3(i, 3) = 1.0;  // bias
 
         ////
         // 填入11維特徵
@@ -790,6 +806,7 @@ int main(int argc, char *argv[]) {
         X11(i, 8) = x_source_port;
         X11(i, 9) = x_destination_port;
         X11(i, 10) = x_protocol;
+        // X11(i, 11) = 1.0;  // bias
       }
 
       cout << "|--- PT_y Mean: " << (mean_PT = computeMean(PT_y)) << endl;
@@ -885,6 +902,7 @@ int main(int argc, char *argv[]) {
         X3(i, 0) = x_source_ip_0;
         X3(i, 1) = x_source_ip_1;
         X3(i, 2) = x_destination_ip_0;
+        // X3(i, 3) = 1.0;  // bias
 
         ////
         // 填入11維特徵
@@ -899,6 +917,7 @@ int main(int argc, char *argv[]) {
         X11(i, 8) = x_source_port;
         X11(i, 9) = x_destination_port;
         X11(i, 10) = x_protocol;
+        // X11(i, 11) = 1.0;  // bias
       }
 
       Eigen::VectorXd mean_X3, std_X3;
@@ -961,7 +980,7 @@ int main(int argc, char *argv[]) {
         cerr << "Cannot open Total_prediction_3_result.txt！" << endl;
         return 1;
       }
-      int model_acc = 0, model_fail = 0;
+      int model_acc = 0, model_fail = 0, model_oth = 0;
       int model_longTail = 0;              // 出現 long-tail 的樣本數
       int model_select_longTail = 0;       // 被選中的 min_id 是 long-tail 模型
       std::vector<int> long_tail_indices;  // 出現 long-tail 的樣本索引
@@ -1095,8 +1114,13 @@ int main(int argc, char *argv[]) {
             << "\tTAIL " << (selected_long_tail ? "1" : "0") << std::endl;
 
         // 預測準確與錯誤統計
-        if (min_id_predict == real_min_label) ++model_acc;
-        if (min_id_predict == real_max_label) ++model_fail;
+        if (min_id_predict == real_min_label)
+          ++model_acc;
+        else if (min_id_predict == real_max_label)
+          ++model_fail;
+        else {
+          ++model_oth;
+        }
         //// acc
       }
       pt_prediction_3_out.close();
@@ -1108,7 +1132,7 @@ int main(int argc, char *argv[]) {
       cout << "    model_longTail 3: " << model_longTail / (packetNum * 1.0)
            << endl;
       cout << "    model_select_longTail 3: "
-           << model_select_longTail / ((model_longTail + 1e-6) * 1.0) << endl;
+           << model_select_longTail / ((model_longTail + 1e-8) * 1.0) << endl;
       //// 3-D
 
       // 輸出封包預測與實際搜尋時間至結果檔案
@@ -1135,6 +1159,7 @@ int main(int argc, char *argv[]) {
 
       model_acc = 0;
       model_fail = 0;
+      model_oth = 0;
       model_longTail = 0;
       model_select_longTail = 0;
       std::vector<int>().swap(long_tail_indices);
@@ -1293,8 +1318,13 @@ int main(int argc, char *argv[]) {
             << "\tTAIL " << (selected_long_tail ? "1" : "0") << std::endl;
 
         // 預測準確與錯誤統計
-        if (min_id_predict == real_min_label) ++model_acc;
-        if (min_id_predict == real_max_label) ++model_fail;
+        if (min_id_predict == real_min_label)
+          ++model_acc;
+        else if (min_id_predict == real_max_label)
+          ++model_fail;
+        else {
+          ++model_oth;
+        }
         //// acc
       }
       pt_prediction_11_out.close();
@@ -1306,7 +1336,7 @@ int main(int argc, char *argv[]) {
       cout << "    model_longTail 11: " << model_longTail / (packetNum * 1.0)
            << endl;
       cout << "    model_select_longTail 11: "
-           << model_select_longTail / ((model_longTail + 1e-6) * 1.0) << endl;
+           << model_select_longTail / ((model_longTail + 1e-8) * 1.0) << endl;
       //// 11-D
       ///////// Model /////////
 

@@ -97,7 +97,7 @@ void CacuInfo::read_fields() {
     fprintf(stderr, "error - can not open L3.txt\n");
     exit(0);
   }
-  while (fscanf(fp_l3, "%u %u %u \n", &tmp_fields[0], &tmp_fields[1],
+  while (fscanf(fp_l3, "%hhu %hhu %hhu \n", &tmp_fields[0], &tmp_fields[1],
                 &tmp_fields[2]) != EOF) {
     fields.emplace_back(tmp_fields);
   }
@@ -1951,7 +1951,7 @@ void PTtree::print_node_info(const size_t rules) {
         int c_num = 0;
         list<IpTable>::iterator it = n->tableList.begin();
         for (; it != n->tableList.end(); ++it) c_num += it->child.size();
-        fprintf(fp, "%u\t%u\t%u\t%u\t%d\n", n->id, n->layer, n->field,
+        fprintf(fp, "%u\t%u\t%u\t%lu\t%d\n", n->id, n->layer, n->field,
                 n->tableList.size(), c_num);
       }
       break;
@@ -1994,11 +1994,11 @@ void PTtree::print_node_info(const size_t rules) {
       << "|- Write aTree inner node infomation to aInnerNode_info.txt...\n";
   fp = fopen("./INFO/PT_aInnerNode_info.txt", "w");
   fprintf(fp, "Protocol Node [ID TABLE_NUM CHILD_NUM]\n\n");
-  fprintf(fp, "0\t1\t%u\n\n", this->aTree->child.size());
+  fprintf(fp, "0\t1\t%lu\n\n", this->aTree->child.size());
   fprintf(fp, "Port Node [ID TABLE_NUM CHILD_NUM]\n\n");
   for (auto node : this->portNodeList) {
     PortNode_static* n = (PortNode_static*)node;
-    fprintf(fp, "%u\t2\t%u\n", n->id, n->child.size());
+    fprintf(fp, "%u\t2\t%lu\n", n->id, n->child.size());
   }
   fclose(fp);
 
@@ -2007,7 +2007,7 @@ void PTtree::print_node_info(const size_t rules) {
   fprintf(fp,
           "Leaf Node [ID SIZE]\n|- Rule [PRI SIP DIP SPORT DPORT PROTOCOL]\n");
   for (int i = 0; i < this->aLeafNodeList.size(); ++i) {
-    fprintf(fp, "\n%d\t%u\n", i, this->aLeafNodeList[i]->rule.size());
+    fprintf(fp, "\n%d\t%lu\n", i, this->aLeafNodeList[i]->rule.size());
     for (auto r : this->aLeafNodeList[i]->rule)
       fprintf(fp,
               "|- "

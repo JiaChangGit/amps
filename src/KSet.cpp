@@ -14,10 +14,10 @@ KSet::KSet(int num1, vector<Rule> &classifier, int usedbits) {
   bigSetPrefix = 30;
   bigSetPrefix3 = 7;
 
-  // JIA
-  nodeKSetBuffer.resize(tablesize);
-  nodeKSet = nodeKSetBuffer.data();
-  // nodeKSet = new SegmentNode[tablesize];
+  // // JIA
+  // nodeKSetBuffer.resize(tablesize);
+  // nodeKSet = nodeKSetBuffer.data();
+  nodeKSet = new SegmentNode[tablesize];
 
   Total_Rules_in_Linear_Node = 0;
   Total_Rules_in_Big_Node = 0;

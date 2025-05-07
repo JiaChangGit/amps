@@ -1,8 +1,6 @@
 #ifndef __KSET_HPP__
 #define __KSET_HPP__
 
-#include <immintrin.h>  // for _pext_u32
-
 #include <cmath>
 #include <iomanip>  // 用於設置小數點位數
 
@@ -197,11 +195,11 @@ class KSet {
   }
 
  private:
-  // JIA
-  std::vector<SegmentNode> nodeKSetBuffer;  // 真正持有資料的 vector
-  SegmentNode* nodeKSet;                    // raw pointer，與原本程式相容
+  // // JIA
+  // std::vector<SegmentNode> nodeKSetBuffer;  // 真正持有資料的 vector
+  // SegmentNode* nodeKSet;                    // raw pointer，與原本程式相容
 
-  // SegmentNode* nodeKSet;
+  SegmentNode* nodeKSet;
 
   size_t num;  // identify which sets
   size_t usedbit;

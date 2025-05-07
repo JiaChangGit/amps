@@ -10,8 +10,8 @@
 BUILD_DIR="./build"
 TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
 
-# RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
-# TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
+RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
+TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
 
 # RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
@@ -22,8 +22,8 @@ TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
 # RULESET_PATH="../classbench_set/ipv4-ruleset/acl4_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/acl4_100k_trace"
 
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl5_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl5_100k_trace"
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl5_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl5_100k_trace"
 
 # RULESET_PATH="../classbench_set/ipv4-ruleset/fw1_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/fw1_100k_trace"
@@ -78,5 +78,7 @@ fi
 ulimit -s 81920
 
 echo "Running tests..."
-"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0.txt
-"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0.txt
+"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_acl1.txt
+"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_acl1.txt
+#"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_acl1.txt
+#"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_acl1.txt
