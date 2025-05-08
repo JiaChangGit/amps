@@ -15,6 +15,9 @@
 /**
  * @brief 對資料矩陣進行欄位（特徵）標準化，使每一欄資料轉為 mean = 0, std = 1。
  *
+ * 使用公式：x_j^{(i)} := (x_j^{(i)} - mean_j) / std_j
+ * 其中 j 為特徵索引，i 為樣本編號
+ *
  * @param X        [in/out]
  * 每列為一筆樣本、每欄為一個特徵，將就地標準化（zero-mean, unit-variance）。
  * @param mean_out [out]    每個特徵的平均值（用於還原或後續推論）。
@@ -74,25 +77,36 @@ inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
 //     X.col(j) = (col - mean) / stddev;
 //   }
 // }
+
 /**
  * @brief 將單一特徵值轉換為標準化後的值。
- *
- * @param value   原始特徵值
- * @param mean    對應特徵的平均值
- * @param stddev  對應特徵的標準差
- * @return double 標準化後的數值（若 stddev 幾乎為 0，則回傳 0）
+ * 使用公式：normalized_value = (value - mean) / stddev
+ * 若 stddev 太小則視為常數特徵，直接回傳 0
  */
 inline double toNormalized(double value, double mean, double stddev) {
-  // 若標準差太小（特徵無變化），視為常數特徵，直接回傳 0
   return (stddev < 1e-8) ? 0.0 : (value - mean) / stddev;
 }
 
+/**
+ * @brief 計算線性回歸模型係數
+ * 利用最小平方法 Least Squares 解以下問題：
+ *    beta = argmin ||X * beta - y||^2
+ * 解法：beta = (X^T X)^-1 X^T y，這裡用 Householder QR 分解求解
+ */
 inline Eigen::VectorXd linearRegressionFit(const Eigen::MatrixXd &X,
                                            const Eigen::VectorXd &y) {
   assert(X.rows() == y.size());
   return X.householderQr().solve(y);
 }
 
+/**
+ * @brief 評估模型預測結果的誤差，並輸出常見統計指標：
+ * - MAE, RMSE, MAPE, MedAE, MaxAE, R^2
+ *
+ * RMSE = sqrt( MSE )
+ * MAE = mean( |y_true - y_pred| )
+ * R^2 = 1 - sum((y_i - pred_i)^2) / sum((y_i - mean_y)^2)
+ */
 inline void evaluateModel(const Eigen::VectorXd &y_pred,
                           const Eigen::VectorXd &y_true,
                           const std::string &label,
@@ -182,40 +196,110 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
 //   + x3 * x3));
 // }
 
-inline double computeMean(const Eigen::VectorXd &v) { return v.mean(); }
+// inline double computeMean(const Eigen::VectorXd &v) { return v.mean(); }
 
-inline double computeMedian(Eigen::VectorXd v) {
+// inline double computeMedian(Eigen::VectorXd v) {
+//   const int n = v.size();
+//   assert(n > 0);
+
+//   std::vector<double> data(v.data(), v.data() + n);
+//   std::nth_element(data.begin(), data.begin() + n / 2, data.end());
+
+//   if (n % 2 == 1) {
+//     return data[n / 2];
+//   } else {
+//     std::nth_element(data.begin(), data.begin() + n / 2 - 1, data.end());
+//     return (data[n / 2] + data[n / 2 - 1]) / 2.0;
+//   }
+// }
+
+// -----------------------------------------------------------------------------
+// 計算 Eigen 向量中的指定百分位數（Percentile）
+//
+// @param v [in]  欲計算的數值向量（必須為 Eigen::VectorXd）
+// @param p [in]  百分位數值，需介於 0.0 到 1.0 之間，例如 0.95 表示第 95 百分位
+// @return        回傳對應百分位的值（使用線性內插）
+// -----------------------------------------------------------------------------
+inline double computePercentile(const Eigen::VectorXd &v, double p) {
   const int n = v.size();
-  assert(n > 0);
+  assert(n > 0 && "向量不能為空");
+  assert(p >= 0.0 && p <= 1.0 && "百分位數 p 必須介於 0.0 與 1.0 之間");
 
+  // 將 Eigen 向量轉為 std::vector 以便排序
   std::vector<double> data(v.data(), v.data() + n);
-  std::nth_element(data.begin(), data.begin() + n / 2, data.end());
+  std::sort(data.begin(), data.end());  // 遞增排序
 
-  if (n % 2 == 1) {
-    return data[n / 2];
+  // 根據百分位數計算對應的索引位置（可為浮點數）
+  const double rank = p * (n - 1);
+  const size_t lower = static_cast<size_t>(std::floor(rank));  // 向下取整
+  const size_t upper = static_cast<size_t>(std::ceil(rank));   // 向上取整
+
+  // 若 rank 為整數，直接回傳該位置的值
+  if (lower == upper) {
+    return data[lower];
   } else {
-    std::nth_element(data.begin(), data.begin() + n / 2 - 1, data.end());
-    return (data[n / 2] + data[n / 2 - 1]) / 2.0;
+    // 否則進行線性內插（interpolation）
+    const double weight = rank - lower;
+    return data[lower] * (1.0 - weight) + data[upper] * weight;
   }
 }
 
-inline double computePercentile(Eigen::VectorXd v, double p) {
+// -----------------------------------------------------------------------------
+// 計算 Eigen 向量的母體標準差（Population Standard Deviation）
+//
+// @param v     [in] 欲計算的向量資料（Eigen::VectorXd）
+// @param mean  [in] 事先計算好的平均值（為避免重複運算而外部傳入）
+// @return           回傳標準差（stddev = sqrt(Σ(x - μ)² / n)）
+// -----------------------------------------------------------------------------
+inline double computeStdDev(const Eigen::VectorXd &v, double mean) {
   const int n = v.size();
-  assert(n > 0 && p >= 0.0 && p <= 1.0);
+  if (n <= 1) return 0.0;  // 單一元素無標準差
 
-  std::vector<double> data(v.data(), v.data() + n);
-  std::sort(data.begin(), data.end());
+  // 將向量中心化後平方，然後加總
+  double sum_sq = (v.array() - mean).square().sum();
 
-  const double rank = p * (n - 1);
-  const size_t lower_idx = static_cast<size_t>(std::floor(rank));
-  const size_t upper_idx = static_cast<size_t>(std::ceil(rank));
+  // 採用母體標準差（分母為 n，而非 n-1）
+  return std::sqrt(sum_sq / n);
+}
 
-  if (lower_idx == upper_idx) {
-    return data[lower_idx];
-  } else {
-    const double weight = rank - lower_idx;
-    return data[lower_idx] * (1.0 - weight) + data[upper_idx] * weight;
-  }
+// -----------------------------------------------------------------------------
+// 輸出統計摘要，並回傳 tuple<double, double, double, double, double, double>
+// 代表：mean, median, p25, p75, p95, p99
+// -----------------------------------------------------------------------------
+inline std::tuple<double, double, double, double, double, double>
+printStatistics(const string &label, const Eigen::VectorXd &data) {
+  const double mean = data.mean();
+  const double median = computePercentile(data, 0.5);
+  const double p25 = computePercentile(data, 0.25);
+  const double p75 = computePercentile(data, 0.75);
+  const double p95 = computePercentile(data, 0.95);
+  const double p99 = computePercentile(data, 0.99);
+  const double stddev = computeStdDev(data, mean);
+
+  // 統一輸出格式
+  // std::cout << "|--- " << label << " Mean: " << mean << endl;
+  std::cout << "|--- " << label << " 25th Percentile: " << p25 << endl;
+  std::cout << "|--- " << label << " median Percentile: " << median << endl;
+  std::cout << "|--- " << label << " 75th Percentile: " << p75 << endl;
+  std::cout << "|--- " << label << " 95th Percentile: " << p95 << endl;
+  std::cout << "|--- " << label << " 99th Percentile: " << p99 << endl;
+  cout << "|--- " << label << " StdDev: " << stddev << " (dispersity)" << endl;
+
+  // 回傳統計結果
+  return {mean, median, p25, p75, p95, p99};
+}
+
+inline std::tuple<double, double, double, double, double, double>
+printStatistics(const Eigen::VectorXd &data) {
+  const double mean = data.mean();
+  const double median = computePercentile(data, 0.5);
+  const double p25 = computePercentile(data, 0.25);
+  const double p75 = computePercentile(data, 0.75);
+  const double p95 = computePercentile(data, 0.95);
+  const double p99 = computePercentile(data, 0.99);
+
+  // 回傳統計結果
+  return {mean, median, p25, p75, p95, p99};
 }
 
 inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,
@@ -234,5 +318,4 @@ inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,
   }
   return {min_val, min_id_predict};
 }
-
 #endif  // LINEAR_REGRESSION_MODEL_HPP

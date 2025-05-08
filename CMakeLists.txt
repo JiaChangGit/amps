@@ -15,14 +15,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
-# # 尋找並啟用 OpenMP
-# find_package(OpenMP REQUIRED)
-# if (OPENMP_FOUND)
-#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-#     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-# else()
-#     message(FATAL_ERROR "OpenMP not found. Please install it (e.g., sudo apt install libomp-dev)")
-# endif()
+# 尋找並啟用 OpenMP
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+else()
+    message(FATAL_ERROR "OpenMP not found. Please install it (e.g., sudo apt install libomp-dev)")
+endif()
 
 # ==============================================================================
 # 尋找 Eigen3 數學函式庫（用於線性代數、矩陣運算）
@@ -61,6 +61,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer -fprefetch-loop-arr
 # 根據編譯器選擇啟用最佳化參數（GCC / Clang）
 # 包含：
 # - `-O3`：最高等級優化
+# - `DNDEBUG`：表示定義「非除錯模式」，`assert()` 巨集會被移除
 # - `-march=native` + `-mtune=native`：針對本地 CPU 架構做優化
 # - `-mbmi2`：啟用 Intel BMI2 指令集（加速 bit manipulation）
 # - `-funroll-loops`：展開迴圈增加 pipeline 效率
@@ -68,20 +69,19 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer -fprefetch-loop-arr
 # - `-fassociative-math`：更寬鬆的數學重排自由度（注意：非 IEEE 精確）
 # - `-flto`：Link-time Optimization，跨模組優化
 # - `-fipa-pta`：會在 LTO 階段嘗試跨函式分析資料指向，對 inline decision、alias analysis、function pruning 有影響
-# - `-fprofile-use`：選擇最佳化路徑（hot/cold block 重排序），判斷哪些函數最適合 inline 或 optimize for size
-# 如果有啟用 OpenMP（見下方 find_package），則加入 -fopenmp 支援平行運算
+# 如果有啟用 OpenMP（見 find_package ），則加入 -fopenmp 支援平行運算
 # ==============================================================================
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Using GCC/G++ Compiler - Enabling Optimizations with BMI2")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -mtune=native -mbmi2 -fassociative-math")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops -finline-functions -flto -fipa-pta -fprofile-use")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto -fipa-pta -fprofile-use")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -march=native -mtune=native -mbmi2 -fassociative-math")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops -finline-functions -flto=auto -fipa-pta")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto=auto -fipa-pta")
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Using Clang Compiler - Enabling Optimizations with BMI2")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -mtune=native -mbmi2 -fassociative-math")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops -flto -fipa-pta -fprofile-use")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto -fipa-pta -fprofile-use")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -march=native -mtune=native -mbmi2 -fassociative-math")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops -flto=auto -fipa-pta")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto=auto -fipa-pta")
 
 else()
     message(WARNING "Unsupported compiler. Optimizations may not be fully applied.")
@@ -89,12 +89,6 @@ endif()
 # 注意：-funroll-all-loops 比 -funroll-loops 更激進，容易導致 binary 膨脹
 # -fno-unroll-loops 禁止所有自動 loop unrolling（包含 -O3 、 -funroll-loops 和 -funroll-all-loops）
 # -funroll-loops  VS  -funroll-all-loops  VS  -fno-unroll-loops
-
-# ==============================================================================
-# 關閉 assert 斷言與 Debug 模式，進一步提升效能
-# -DNDEBUG：表示定義「非除錯模式」，`assert()` 巨集會被移除
-# ==============================================================================
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG")
 
 
 # ==============================================================================

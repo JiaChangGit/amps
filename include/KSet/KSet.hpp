@@ -135,6 +135,7 @@ class KSet {
  public:
   KSet(int num1, vector<Rule>& classifier, int usedbits);
   ~KSet();
+  // JIA
   KSet(const KSet& other);                 // 複製建構子
   KSet& operator=(const KSet& other);      // 複製指派
   KSet(KSet&& other) noexcept;             // 移動建構子

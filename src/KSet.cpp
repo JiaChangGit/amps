@@ -33,8 +33,7 @@ KSet::KSet(int num1, vector<Rule> &classifier, int usedbits) {
   total_memory_in_KB = 0;
 }
 
-KSet::~KSet() {  // delete[] nodeKSet;
-}
+KSet::~KSet() { delete[] nodeKSet; /* JIA */ }
 
 // return the used table size
 int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,

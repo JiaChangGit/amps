@@ -1,5 +1,5 @@
-#ifndef HASH_H
-#define HASH_H
+#ifndef _HASH_HPP_
+#define _HASH_HPP_
 
 #include <emmintrin.h>  // for sse2
 #include <immintrin.h>  // for avx2
@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <random>
+#include <stdexcept>
 
 template <typename T>
 inline uint32_t hash(const T& data, uint32_t seed = 0);
@@ -283,13 +284,10 @@ static const uint32_t prime[] = {
 class Hash {
  public:
   static uint32_t BOBHash32(const uint8_t* str, uint32_t len, uint32_t num) {
-    // register ub4 a,b,c,len;
     uint32_t a, b, c;
-    /* Set up the internal state */
-    a = b = 0x9e3779b9; /* the golden ratio; an arbitrary value */
-    c = prime[num];     /* the previous hash value */
+    a = b = 0x9e3779b9;
+    c = prime[num % MAX_PRIME];  // 防止 prime 數組越界
 
-    /*---------------------------------------- handle most of the key */
     while (len >= 12) {
       a += (str[0] + ((uint32_t)str[1] << 8) + ((uint32_t)str[2] << 16) +
             ((uint32_t)str[3] << 24));
@@ -302,17 +300,14 @@ class Hash {
       len -= 12;
     }
 
-    /*------------------------------------- handle the last 11 bytes */
     c += len;
-    switch (len) /* all the case statements fall through */
-    {
+    switch (len) {
       case 11:
         c += ((uint32_t)str[10] << 24);
       case 10:
         c += ((uint32_t)str[9] << 16);
       case 9:
         c += ((uint32_t)str[8] << 8);
-        /* the first byte of c is reserved for the length */
       case 8:
         b += ((uint32_t)str[7] << 24);
       case 7:
@@ -329,10 +324,8 @@ class Hash {
         a += ((uint32_t)str[1] << 8);
       case 1:
         a += str[0];
-        /* case 0: nothing left to add */
     }
     mix(a, b, c);
-    /*-------------------------------------------- report the result */
     return c;
   }
 
@@ -340,10 +333,10 @@ class Hash {
                                 uint32_t seed1, uint32_t seed2, uint32_t seed3,
                                 uint32_t seed4) {
     __m128i a, b, c;
-
     a = _mm_set1_epi32(0x9e3779b9);
     b = _mm_set1_epi32(0x9e3779b9);
-    c = _mm_set_epi32(prime[seed4], prime[seed3], prime[seed2], prime[seed1]);
+    c = _mm_set_epi32(prime[seed4 % MAX_PRIME], prime[seed3 % MAX_PRIME],
+                      prime[seed2 % MAX_PRIME], prime[seed1 % MAX_PRIME]);
 
     while (len >= 12) {
       uint32_t block_a = *(const uint32_t*)(str);
@@ -388,11 +381,12 @@ class Hash {
   }
 
   static uint64_t BOBHash64(const uint8_t* str, uint32_t len, uint32_t num) {
+    if (num >= MAX_PRIME) {
+      throw std::out_of_range("prime 數組索引越界: num=" + std::to_string(num));
+    }
     uint64_t a, b, c;
-    a = b = 0x9e3779b97f4a7c13LL; /* the golden ratio; an arbitrary value */
-    c = prime[num];               /* the previous hash value */
-
-    /*---------------------------------------- handle most of the key */
+    a = b = 0x9e3779b97f4a7c13LL;
+    c = prime[num];
 
     while (len >= 24) {
       a += (str[0] + ((uint64_t)str[1] << 8) + ((uint64_t)str[2] << 16) +
@@ -412,10 +406,8 @@ class Hash {
       len -= 24;
     }
 
-    /*------------------------------------- handle the last 11 bytes */
     c += len;
-    switch (len) /* all the case statements fall through */
-    {
+    switch (len) {
       case 23:
         c += ((uint64_t)str[22] << 56);
       case 22:
@@ -430,7 +422,6 @@ class Hash {
         c += ((uint64_t)str[17] << 16);
       case 17:
         c += ((uint64_t)str[16] << 8);
-        /* the first byte of c is reserved for the length */
       case 16:
         b += ((uint64_t)str[15] << 56);
       case 15:
@@ -463,7 +454,6 @@ class Hash {
         a += ((uint64_t)str[1] << 8);
       case 1:
         a += ((uint64_t)str[0]);
-        /* case 0: nothing left to add */
     }
     mix64(a, b, c);
     return c;
@@ -477,8 +467,9 @@ class Hash {
 
     a = _mm256_set1_epi64x(0x9e3779b97f4a7c13LL);
     b = _mm256_set1_epi64x(0x9e3779b97f4a7c13LL);
-    c = _mm256_set_epi64x((uint64_t)prime[seed4], (uint64_t)prime[seed3],
-                          (uint64_t)prime[seed2], (uint64_t)prime[seed1]);
+    c = _mm256_set_epi64x(
+        (uint64_t)prime[seed4 % MAX_PRIME], (uint64_t)prime[seed3 % MAX_PRIME],
+        (uint64_t)prime[seed2 % MAX_PRIME], (uint64_t)prime[seed1 % MAX_PRIME]);
 
     while (len >= 24) {
       uint64_t block_a = *(const uint64_t*)(str);

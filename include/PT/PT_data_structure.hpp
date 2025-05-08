@@ -69,6 +69,19 @@ typedef struct PT_Packet {
   unsigned char destination_ip[4];
   unsigned short source_port;
   unsigned short destination_port;
+  // 將 source_ip 與 destination_ip 合併成 uint64_t
+  uint64_t toIP64() const {
+    uint64_t result = 0;
+    // 將前4個 byte 塞入高位（source_ip）
+    for (int i = 0; i < 4; ++i) {
+      result |= static_cast<uint64_t>(source_ip[i]) << (56 - i * 8);
+    }
+    // 將後4個 byte 塞入低位（destination_ip）
+    for (int i = 0; i < 4; ++i) {
+      result |= static_cast<uint64_t>(destination_ip[i]) << (24 - i * 8);
+    }
+    return result;
+  }
 } PT_Packet;
 
 struct PT_CacuRule {
