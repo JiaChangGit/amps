@@ -58,10 +58,10 @@ int read_rules(const char* file_name, vector<PT_Rule>& list) {
       r.source_ip[j] = (unsigned char)sIp[--k];
       r.destination_ip[j] = (unsigned char)dIp[k];
     }
-    r.source_port[0] = (unsigned short)sPort[0];
-    r.source_port[1] = (unsigned short)sPort[1];
-    r.destination_port[0] = (unsigned short)dPort[0];
-    r.destination_port[1] = (unsigned short)dPort[1];
+    r.source_port[0] = (/* JIA  unsigned short */ uint16_t)sPort[0];
+    r.source_port[1] = (/* JIA  unsigned short */ uint16_t)sPort[1];
+    r.destination_port[0] = (/* JIA  unsigned short */ uint16_t)dPort[0];
+    r.destination_port[1] = (/* JIA  unsigned short */ uint16_t)dPort[1];
     list.emplace_back(r);
     ++i;
   }

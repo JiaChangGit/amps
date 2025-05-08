@@ -1370,7 +1370,7 @@ bool PTtree::remove(PT_Rule& r) {
 int PTtree::search(const PT_Packet& p) {
   unsigned int pSip, pDip;
   unsigned char pProto;
-  unsigned short pSport, pDport;
+  /* JIA  unsigned short */ uint16_t pSport, pDport;
   pProto = p.protocol;
   memcpy(&pSip, p.source_ip, 4);
   memcpy(&pDip, p.destination_ip, 4);
@@ -1593,7 +1593,7 @@ int PTtree::search(const PT_Packet& p) {
 int PTtree::search_with_log(PT_Packet& p, ACL_LOG& log) {
   unsigned int pSip, pDip;
   unsigned char pProto;
-  unsigned short pSport, pDport;
+  /* JIA  unsigned short */ uint16_t pSport, pDport;
   pProto = p.protocol;
   memcpy(&pSip, p.source_ip, 4);
   memcpy(&pDip, p.destination_ip, 4);

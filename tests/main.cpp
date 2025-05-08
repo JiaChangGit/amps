@@ -1223,54 +1223,49 @@ int main(int argc, char *argv[]) {
       total_model_11_fp = fopen("./INFO/Total_model_11_result.txt", "w");
 #endif
 
-      timer.timeReset();  // 開始計時
-#pragma omp parallel for
-      for (size_t i = 0; i < packetNum; ++i) {
-        float out[4] = {0};
-        extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
-        double x_source_ip_0 = static_cast<double>(out[0]);
-        double x_source_ip_1 = static_cast<double>(out[1]);
+      timer.timeReset();  // 平行處理
+#pragma omp parallel
+      {
+        // 每個 thread 自己的統計變數
+        int local_DBT = 0, local_PT = 0, local_KSet = 0;
 
-        extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
-        double x_destination_ip_0 = static_cast<double>(out[0]);
+#pragma omp for nowait schedule(static)
+        for (size_t i = 0; i < packetNum; ++i) {
+          float out[4] = {0};
 
-        // 特徵標準化
-        double x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
-        double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
-        double x3_norm_3 =
-            toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
+          // 提取 IP 特徵：byte[0], byte[1] -> source；byte[0] -> destination
+          extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
+          double x1 = static_cast<double>(out[0]);
+          double x2 = static_cast<double>(out[1]);
 
-        // 各模型預測
-        double predicted_time_3_pt =
-            predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-        double predicted_time_3_dbt =
-            predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-        double predicted_time_3_kset =
-            predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+          extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
+          double x3 = static_cast<double>(out[0]);
 
-        // 根據最小預測值決定勝出模型
-        int model_id = 0;
-        if (predicted_time_3_dbt <= predicted_time_3_kset) {
-          model_id = (predicted_time_3_dbt <= predicted_time_3_pt) ? 1 : 2;
-        } else {
-          model_id = (predicted_time_3_pt <= predicted_time_3_kset) ? 2 : 3;
+          // 預先標準化處理
+          double x1n = toNormalized(x1, mean_X3[0], std_X3[0]);
+          double x2n = toNormalized(x2, mean_X3[1], std_X3[1]);
+          double x3n = toNormalized(x3, mean_X3[2], std_X3[2]);
+
+          // 三個模型預測時間
+          double t_pt = predict3(PT_model_3, x1n, x2n, x3n);
+          double t_dbt = predict3(DBT_model_3, x1n, x2n, x3n);
+          double t_ks = predict3(KSet_model_3, x1n, x2n, x3n);
+
+          // 比較最小值
+          if (t_dbt <= t_ks) {
+            (t_dbt <= t_pt) ? ++local_DBT : ++local_PT;
+          } else {
+            (t_pt <= t_ks) ? ++local_PT : ++local_KSet;
+          }
         }
 
-        // 使用 atomic 確保更新安全（避免多執行緒競爭）
-        switch (model_id) {
-          case 1:
+        // 匯總每個 thread 的統計值
 #pragma omp atomic
-            ++model_counter_DBT;
-            break;
-          case 2:
+        model_counter_DBT += local_DBT;
 #pragma omp atomic
-            ++model_counter_PT;
-            break;
-          case 3:
+        model_counter_PT += local_PT;
 #pragma omp atomic
-            ++model_counter_KSet;
-            break;
-        }
+        model_counter_KSet += local_KSet;
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
@@ -1373,70 +1368,69 @@ int main(int argc, char *argv[]) {
       Total_search_time = 0;
 
       timer.timeReset();  // 平行處理
-#pragma omp parallel for
-      for (size_t i = 0; i < packetNum; ++i) {
-        float out[4] = {0};
-        extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
-        double x_source_ip_0 = static_cast<double>(out[0]);
-        double x_source_ip_1 = static_cast<double>(out[1]);
-        double x_source_ip_2 = static_cast<double>(out[2]);
-        double x_source_ip_3 = static_cast<double>(out[3]);
+#pragma omp parallel
+      {
+        int local_DBT = 0, local_PT = 0, local_KSet = 0;
 
-        extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
-        double x_destination_ip_0 = static_cast<double>(out[0]);
-        double x_destination_ip_1 = static_cast<double>(out[1]);
-        double x_destination_ip_2 = static_cast<double>(out[2]);
-        double x_destination_ip_3 = static_cast<double>(out[3]);
+#pragma omp for schedule(static)
+        for (size_t i = 0; i < packetNum; ++i) {
+          float out[4];
 
-        double x_source_port = static_cast<double>(PT_packets[i].source_port);
-        double x_destination_port =
-            static_cast<double>(PT_packets[i].destination_port);
-        double x_protocol = static_cast<double>(PT_packets[i].protocol);
+          // Source IP 轉 float 再轉 double
+          extract_ip_bytes_to_float(PT_packets[i].source_ip, out);
+          double x1 = toNormalized(static_cast<double>(out[0]), mean_X11[0],
+                                   std_X11[0]);
+          double x2 = toNormalized(static_cast<double>(out[1]), mean_X11[1],
+                                   std_X11[1]);
+          double x3 = toNormalized(static_cast<double>(out[2]), mean_X11[2],
+                                   std_X11[2]);
+          double x4 = toNormalized(static_cast<double>(out[3]), mean_X11[3],
+                                   std_X11[3]);
 
-        // 特徵標準化（11維）
-        double x1 = toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
-        double x2 = toNormalized(x_source_ip_1, mean_X11[1], std_X11[1]);
-        double x3 = toNormalized(x_source_ip_2, mean_X11[2], std_X11[2]);
-        double x4 = toNormalized(x_source_ip_3, mean_X11[3], std_X11[3]);
-        double x5 = toNormalized(x_destination_ip_0, mean_X11[4], std_X11[4]);
-        double x6 = toNormalized(x_destination_ip_1, mean_X11[5], std_X11[5]);
-        double x7 = toNormalized(x_destination_ip_2, mean_X11[6], std_X11[6]);
-        double x8 = toNormalized(x_destination_ip_3, mean_X11[7], std_X11[7]);
-        double x9 = toNormalized(x_source_port, mean_X11[8], std_X11[8]);
-        double x10 = toNormalized(x_destination_port, mean_X11[9], std_X11[9]);
-        double x11 = toNormalized(x_protocol, mean_X11[10], std_X11[10]);
+          // Destination IP
+          extract_ip_bytes_to_float(PT_packets[i].destination_ip, out);
+          double x5 = toNormalized(static_cast<double>(out[0]), mean_X11[4],
+                                   std_X11[4]);
+          double x6 = toNormalized(static_cast<double>(out[1]), mean_X11[5],
+                                   std_X11[5]);
+          double x7 = toNormalized(static_cast<double>(out[2]), mean_X11[6],
+                                   std_X11[6]);
+          double x8 = toNormalized(static_cast<double>(out[3]), mean_X11[7],
+                                   std_X11[7]);
 
-        // 模型預測
-        double predicted_time_11_pt = predict11(PT_model_11, x1, x2, x3, x4, x5,
-                                                x6, x7, x8, x9, x10, x11);
-        double predicted_time_11_dbt = predict11(DBT_model_11, x1, x2, x3, x4,
-                                                 x5, x6, x7, x8, x9, x10, x11);
-        double predicted_time_11_kset = predict11(KSet_model_11, x1, x2, x3, x4,
-                                                  x5, x6, x7, x8, x9, x10, x11);
+          // Ports & protocol
+          double x9 =
+              toNormalized(static_cast<double>(PT_packets[i].source_port),
+                           mean_X11[8], std_X11[8]);
+          double x10 =
+              toNormalized(static_cast<double>(PT_packets[i].destination_port),
+                           mean_X11[9], std_X11[9]);
+          double x11 = toNormalized(static_cast<double>(PT_packets[i].protocol),
+                                    mean_X11[10], std_X11[10]);
 
-        // 根據最小預測值決定勝出模型
-        int model_id = 0;
-        if (predicted_time_11_dbt <= predicted_time_11_kset) {
-          model_id = (predicted_time_11_dbt <= predicted_time_11_pt) ? 1 : 2;
-        } else {
-          model_id = (predicted_time_11_pt <= predicted_time_11_kset) ? 2 : 3;
+          // 模型預測
+          double t_pt = predict11(PT_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                  x9, x10, x11);
+          double t_dbt = predict11(DBT_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                   x9, x10, x11);
+          double t_kset = predict11(KSet_model_11, x1, x2, x3, x4, x5, x6, x7,
+                                    x8, x9, x10, x11);
+
+          // 比較最小
+          if (t_dbt <= t_kset) {
+            (t_dbt <= t_pt) ? ++local_DBT : ++local_PT;
+          } else {
+            (t_pt <= t_kset) ? ++local_PT : ++local_KSet;
+          }
         }
 
-        // 使用 atomic 確保更新安全（避免多執行緒競爭）
-        switch (model_id) {
-          case 1:
+        // 匯總
 #pragma omp atomic
-            ++model_counter_DBT;
-            break;
-          case 2:
+        model_counter_DBT += local_DBT;
 #pragma omp atomic
-            ++model_counter_PT;
-            break;
-          case 3:
+        model_counter_PT += local_PT;
 #pragma omp atomic
-            ++model_counter_KSet;
-            break;
-        }
+        model_counter_KSet += local_KSet;
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
@@ -1661,18 +1655,26 @@ int main(int argc, char *argv[]) {
       int bloom_counter_DBT = 0;
       int bloom_counter_PT = 0;
       int bloom_counter_KSet = 0;
-      timer.timeReset();  // 平行處理
-// OpenMP 平行 for 迴圈（使用 reduction 累加器）
-#pragma omp parallel for reduction(+ : bloom_counter_DBT, bloom_counter_PT, \
-                                       bloom_counter_KSet)
+      timer.timeReset();
+
+#pragma omp parallel for schedule(static) \
+    reduction(+ : bloom_counter_DBT, bloom_counter_PT, bloom_counter_KSet)
       for (size_t i = 0; i < packetNum; ++i) {
-        if (!bloom_filter_dbt.contains((DBT_packets[i].ip.i_64) ^
-                                       (DBT_packets[i].Port[0]) ^
-                                       (DBT_packets[i].Port[1]))) {
+        // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
+        const uint64_t key_dbt = DBT_packets[i].ip.i_64 ^
+                                 DBT_packets[i].Port[0] ^
+                                 DBT_packets[i].Port[1];
+        const uint64_t key_pt = PT_packets[i].toIP64() ^
+                                PT_packets[i].source_port ^
+                                PT_packets[i].destination_port;
+
+        // Bloom Filter 查詢，優化條件分支結構（避免 else-if 嵌套）
+        const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
+        const bool hit_pt = bloom_filter_pt.contains(key_pt);
+
+        if (!hit_dbt) {
           ++bloom_counter_DBT;
-        } else if (!bloom_filter_pt.contains(
-                       (PT_packets[i].toIP64()) ^ (PT_packets[i].source_port) ^
-                       (PT_packets[i].destination_port))) {
+        } else if (!hit_pt) {
           ++bloom_counter_PT;
         } else {
           ++bloom_counter_KSet;

@@ -59,16 +59,16 @@ typedef struct PT_Rule {
   unsigned char destination_mask;
   unsigned char source_ip[4];
   unsigned char destination_ip[4];
-  unsigned short source_port[2];
-  unsigned short destination_port[2];
+  /* JIA  unsigned short */ uint16_t source_port[2];
+  /* JIA  unsigned short */ uint16_t destination_port[2];
 } PT_Rule;
 
 typedef struct PT_Packet {
   unsigned int protocol;
   unsigned char source_ip[4];
   unsigned char destination_ip[4];
-  unsigned short source_port;
-  unsigned short destination_port;
+  /* JIA  unsigned short */ uint16_t source_port;
+  /* JIA  unsigned short */ uint16_t destination_port;
   // 將 source_ip 與 destination_ip 合併成 uint64_t
   uint64_t toIP64() const {
     uint64_t result = 0;

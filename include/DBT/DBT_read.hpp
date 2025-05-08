@@ -61,10 +61,10 @@ int read_rules(const char* file_name, vector<Rule>& list) {
     r.mask.i_32.smask = maskBit[r.sip_length];
     r.mask.i_32.dmask = maskBit[r.dip_length];
     r.ip.i_64 &= r.mask.i_64;
-    r.Port[0][0] = (unsigned short)sPort[0];
-    r.Port[0][1] = (unsigned short)sPort[1];
-    r.Port[1][0] = (unsigned short)dPort[0];
-    r.Port[1][1] = (unsigned short)dPort[1];
+    r.Port[0][0] = (/* JIA  unsigned short */ uint16_t)sPort[0];
+    r.Port[0][1] = (/* JIA  unsigned short */ uint16_t)sPort[1];
+    r.Port[1][0] = (/* JIA  unsigned short */ uint16_t)dPort[0];
+    r.Port[1][1] = (/* JIA  unsigned short */ uint16_t)dPort[1];
     list.emplace_back(r);
     ++i;
   }
