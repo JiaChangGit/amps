@@ -1,7 +1,7 @@
 #include "KSet.hpp"
 using namespace std;
 
-KSet::KSet(int num1, vector<Rule> &classifier, int usedbits) {
+KSet::KSet(int num1, vector<Rule_KSet> &classifier, int usedbits) {
   num = num1;
   usedbit = usedbits;
   locate_segment = 32 - usedbits;
@@ -36,8 +36,8 @@ KSet::KSet(int num1, vector<Rule> &classifier, int usedbits) {
 KSet::~KSet() { delete[] nodeKSet; /* JIA */ }
 
 // return the used table size
-int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
-                int bits, int t) {
+int simple_part(const vector<Rule_KSet> &rules, BigSegment *b,
+                vector<Rule_KSet> &rmd, int bits, int t) {
   size_t i, j;
   uint32_t v;
   int hash;
@@ -75,7 +75,7 @@ int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
       b[i].ub = log2(b[i].list.size());
       b[i].ht_size = pow(2, b[i].ub);
       r += b[i].ht_size;
-      b[i].ht = new vector<Rule>[b[i].ht_size];
+      b[i].ht = new vector<Rule_KSet>[b[i].ht_size];
 
       for (j = 0; j < b[i].list.size(); ++j) {
         v = b[i].list[j].range[b[i].uf][0];
@@ -91,7 +91,7 @@ int simple_part(const vector<Rule> &rules, BigSegment *b, vector<Rule> &rmd,
   return r;
 }
 
-void KSet::ConstructClassifier(const vector<Rule> &rules) {
+void KSet::ConstructClassifier(const vector<Rule_KSet> &rules) {
   uint32_t value = 0;
   size_t i, j;
 
@@ -172,7 +172,7 @@ void KSet::ConstructClassifier(const vector<Rule> &rules) {
   }
 }
 
-int linear_search(const Packet &packet, const vector<Rule> &rules) {
+int linear_search(const Packet &packet, const vector<Rule_KSet> &rules) {
   int match_id = -1;
 
   for (size_t i = 0; i < rules.size(); ++i) {
@@ -274,8 +274,8 @@ int KSet::ClassifyAPacket(const Packet &packet) {
   return match_id;
 }
 
-void linear_delete(const Rule &delete_rule, vector<Rule> &rules, int *nrules,
-                   int *numrules) {
+void linear_delete(const Rule_KSet &delete_rule, vector<Rule_KSet> &rules,
+                   int *nrules, int *numrules) {
   size_t i, j;
   int del_flag = 1;  // default insert
 
@@ -307,7 +307,7 @@ void linear_delete(const Rule &delete_rule, vector<Rule> &rules, int *nrules,
   }
 }
 
-void KSet::DeleteRule(const Rule &delete_rule) {
+void KSet::DeleteRule(const Rule_KSet &delete_rule) {
   uint32_t value = 0;
   size_t big_bits;
   uint32_t v2;
@@ -409,12 +409,12 @@ void KSet::DeleteRule(const Rule &delete_rule) {
     }
   } else if (nodeKSet[value].flag == -1) {
     cout << "num = " << num << ", the segment is empty, delete failed! rule id="
-         << delete_rule.priority << endl;
+         << delete_rule.priority << "\n";
   }
 }
 
-void linear_insert(const Rule &insert_rule, vector<Rule> &rules, int *nrules,
-                   int *numrules) {
+void linear_insert(const Rule_KSet &insert_rule, vector<Rule_KSet> &rules,
+                   int *nrules, int *numrules) {
   size_t i;
   bool ins_flag = true;  // default insert
 
@@ -443,7 +443,7 @@ void linear_insert(const Rule &insert_rule, vector<Rule> &rules, int *nrules,
   }
 }
 
-void KSet::InsertRule(const Rule &insert_rule) {
+void KSet::InsertRule(const Rule_KSet &insert_rule) {
   uint32_t value = 0;
   size_t big_bits;
   uint32_t v2;

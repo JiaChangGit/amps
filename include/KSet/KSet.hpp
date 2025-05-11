@@ -24,15 +24,15 @@ struct BigSegment {
   int ub = 0;       // hash table used bits
   int ht_size = 0;  // hash table size
 
-  vector<Rule> list;  // smaller than threshold2
-  vector<Rule>* ht;   // need to hash
+  vector<Rule_KSet> list;  // smaller than threshold2
+  vector<Rule_KSet>* ht;   // need to hash
 };
 
 struct SegmentNode {
   int nrules = 0;
   int flag = -1;  // -1 = NULL, 0 = Small, 1 = Big
 
-  vector<Rule> classifier;
+  vector<Rule_KSet> classifier;
 
   // four hash table or list, the number is the search order
   BigSegment b[4];
@@ -40,8 +40,8 @@ struct SegmentNode {
   int r_flag = -1;  // 0: rmd, 1: rmdp
   int r_max_pri = 0;
   int rp_max_pri[3] = {0};
-  vector<Rule> rmd;      // remainder
-  vector<Rule> rmdp[3];  // partition with protocol, tcp, udp, other
+  vector<Rule_KSet> rmd;      // remainder
+  vector<Rule_KSet> rmdp[3];  // partition with protocol, tcp, udp, other
 };
 
 static inline int part_oder(int n) {
@@ -120,20 +120,20 @@ static inline int exactHash(uint32_t v, int ub) {
       res = (res * 0x80008001) >> r_ub;
       break;
     default:
-      cout << "error usedbits: " << ub << endl;
+      cout << "error usedbits: " << ub << "\n";
       res = 0;
   }
 
   return res;
 }
 
-static inline bool cmpp(Rule const& a, Rule const& b) {
+static inline bool cmpp(Rule_KSet const& a, Rule_KSet const& b) {
   return a.priority > b.priority;
 }
 
 class KSet {
  public:
-  KSet(int num1, vector<Rule>& classifier, int usedbits);
+  KSet(int num1, vector<Rule_KSet>& classifier, int usedbits);
   ~KSet();
   // JIA
   KSet(const KSet& other);                 // 複製建構子
@@ -141,10 +141,10 @@ class KSet {
   KSet(KSet&& other) noexcept;             // 移動建構子
   KSet& operator=(KSet&& other) noexcept;  // 移動指派
 
-  virtual void ConstructClassifier(const vector<Rule>& rules);
+  virtual void ConstructClassifier(const vector<Rule_KSet>& rules);
   virtual int ClassifyAPacket(const Packet& packet);
-  virtual void DeleteRule(const Rule& delete_rule);
-  virtual void InsertRule(const Rule& insert_rule);
+  virtual void DeleteRule(const Rule_KSet& delete_rule);
+  virtual void InsertRule(const Rule_KSet& insert_rule);
 
   void prints() {
     total_tablesize_memory_in_KB = (double)(tablesize * (PTR_SIZE)) / 1024;
@@ -174,12 +174,12 @@ class KSet {
 
     cout << "\trules in set: " << numrules
          << ", rules in small node: " << Total_Rules_in_Linear_Node
-         << ", rules in big node: " << Total_Rules_in_Big_Node << endl;
+         << ", rules in big node: " << Total_Rules_in_Big_Node << "\n";
 
     cout << "\ttablesize: " << tablesize
          << ", NULL_Node_Count = " << NULL_Node_Count
          << ", Small_Node_Count = " << Small_Node_Count
-         << ", Big_Node_Count = " << Big_Node_Count << endl;
+         << ", Big_Node_Count = " << Big_Node_Count << "\n";
 
     // 設置小數點後顯示 3 位數
     cout << fixed << setprecision(3);
@@ -188,11 +188,11 @@ class KSet {
          << "Total_Rules_memory(Small): " << total_linear_memory_in_KB
          << "(KB), "
          << "Total_Rules_memory(Big): " << total_big_memory_in_KB << "(KB)"
-         << endl;
+         << "\n";
 
     cout << "\tTotal memory: " << total_memory_in_KB << "(KB), "
          << "Byte/rule: " << (double(total_memory_in_KB * 1024) / numrules)
-         << endl;
+         << "\n";
   }
 
  private:

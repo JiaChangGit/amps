@@ -1,5 +1,5 @@
-#ifndef _HASH_HPP_
-#define _HASH_HPP_
+#ifndef _BOBHASH_HPP_
+#define _BOBHASH_HPP_
 
 #include <emmintrin.h>  // for sse2
 #include <immintrin.h>  // for avx2

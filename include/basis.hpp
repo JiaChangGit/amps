@@ -103,7 +103,7 @@ class CommandLineParser {
  public:
   void parseArguments(int argc, char* argv[]) {
     int option;
-    while ((option = getopt_long(argc, argv, "r:p:beckftsuh", long_options,
+    while ((option = getopt_long(argc, argv, "r:p:beckftsudh", long_options,
                                  nullptr)) != -1) {
       switch (option) {
         case 'r':
@@ -153,6 +153,9 @@ class CommandLineParser {
         case 'u':  // update simulation
           updateFlag = true;
           break;
+        case 'd':  // prefix dim for DT MT
+          prefix_dims_num = atoi(optarg);
+          break;
         case 'h':
           show_help = true;
           break;
@@ -172,6 +175,7 @@ class CommandLineParser {
   bool shouldShowHelp() const { return show_help; }
   std::vector<uint8_t> getField() const { return set_field; }
   int getPort() const { return set_port; }
+  int getPrefixDim() const { return prefix_dims_num; }
 
   static void printHelp(const std::string& program_name) {
     std::cout << "****************************\n";
@@ -204,6 +208,9 @@ class CommandLineParser {
   int C_BOUND = 32;
   int BINTH = 4;
   //// DBT ////
+  //// DT MT ////
+  int prefix_dims_num = 2;
+  //// DT MT ////
 };
 
 inline double ip_to_uint32_be(const unsigned char ip[4]) {

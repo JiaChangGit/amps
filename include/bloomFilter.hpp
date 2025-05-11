@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "hash.hpp"
+#include "bobHash.hpp"
 
 namespace xai {
 

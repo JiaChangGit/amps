@@ -24,13 +24,13 @@
 
 class InputFile_test {
  public:
-  void loadRule_test(const std::vector<Rule>&, const char*);
+  void loadRule_test(const std::vector<Rule_KSet>&, const char*);
   void loadPacket_test(const std::vector<Packet>&, const char*);
 };
 
 // ------------------- 實作區 -------------------
 
-void InputFile_test::loadRule_test(const std::vector<Rule>& ruleV,
+void InputFile_test::loadRule_test(const std::vector<Rule_KSet>& ruleV,
                                    const char* fileName) {
   std::ofstream outFile(fileName);
   if (!outFile.is_open()) {

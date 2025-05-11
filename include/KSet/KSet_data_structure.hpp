@@ -3,18 +3,18 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cstdint>
 #define LowDim 0
 #define HighDim 1
 #define MAXDIMENSIONS 5
 
 using Packet = std::array<uint32_t, 6>;
 
-struct Rule {
-  Rule(unsigned int dim = 5)
+struct Rule_KSet {
+  Rule_KSet(unsigned int dim = 5)
       : dim(dim),
         pri(0),
         priority(0),

@@ -182,7 +182,7 @@ double CacuInfo::cacu_cost(vector<uint8_t>& _fields) {
       break;
     }
     default:
-      cout << "layers setting is error, should be 3 or 4." << endl;
+      cout << "layers setting is error, should be 3 or 4." << "\n";
       exit(0);
       break;
   }
@@ -1892,25 +1892,23 @@ bool PTtree::update(vector<PT_Rule>& rules, int num, Timer& timer) {
 }
 
 void PTtree::print_node_info(const size_t rules) {
-  std::cout << "|- Total nodes num:          " << this->totalNodes << std::endl;
+  std::cout << "|- Total nodes num:          " << this->totalNodes << "\n";
   std::cout << "|- Total inner nodes num:    "
-            << this->ipNodeList.size() + this->portNodeList.size() + 1
-            << std::endl;
+            << this->ipNodeList.size() + this->portNodeList.size() + 1 << "\n";
   std::cout << "|- Total leaf nodes num:     "
-            << this->pLeafNodeList.size() + this->aLeafNodeList.size()
-            << std::endl;
+            << this->pLeafNodeList.size() + this->aLeafNodeList.size() << "\n";
   std::cout << "|- IpNode num:               " << this->ipNodeList.size()
-            << std::endl;
+            << "\n";
   std::cout << "|- pTree leaf nodes num:     " << this->pLeafNodeList.size()
-            << std::endl;
+            << "\n";
   std::cout << "|- ProtoNode num:            " << this->portNodeList.size()
-            << std::endl;
+            << "\n";
   std::cout << "|- aTree leaf nodes num:     " << this->aLeafNodeList.size()
-            << std::endl;
+            << "\n";
   std::cout << "|- Average leaf node size:   "
             << (double)rules / (double)(this->pLeafNodeList.size() +
                                         this->aLeafNodeList.size())
-            << std::endl;
+            << "\n";
   double equ_1 = 0;
   double rang_1to100 = 0;
   double lager_100 = 0;
@@ -1924,10 +1922,10 @@ void PTtree::print_node_info(const size_t rules) {
     else
       ++lager_100;
   }
-  std::cout << "|- Leaf node size->1:        " << equ_1 << std::endl;
-  std::cout << "|- Leaf node size->(1, 100]: " << rang_1to100 << std::endl;
-  std::cout << "|- Leaf node size->(100, +]: " << lager_100 << std::endl;
-  std::cout << "|- Max leaf node size:       " << max_leaf << std::endl;
+  std::cout << "|- Leaf node size->1:        " << equ_1 << "\n";
+  std::cout << "|- Leaf node size->(1, 100]: " << rang_1to100 << "\n";
+  std::cout << "|- Leaf node size->(100, +]: " << lager_100 << "\n";
+  std::cout << "|- Max leaf node size:       " << max_leaf << "\n";
 
   FILE* fp = nullptr;
   std::cout

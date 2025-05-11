@@ -18,20 +18,20 @@
 #ifndef __IO_INPUT_HPP__
 #define __IO_INPUT_HPP__
 
-#include <cstdio>
+// #include <cstdio>  // JIA remove printf
 #include <cstdlib>
 
 #include "KSet_data_structure.hpp"
 
 class InputFile {
  public:
-  void loadRule(std::vector<Rule> &, const char *);
+  void loadRule(std::vector<Rule_KSet> &, const char *);
   void loadPacket(std::vector<Packet> &, const char *);
 };
 
 // ------------------- 實作區 -------------------
 
-void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
+void InputFile::loadRule(std::vector<Rule_KSet> &rule, const char *fileName) {
   FILE *fp = nullptr;
   fp = fopen(fileName, "r");
   if (fp == nullptr) {
@@ -49,7 +49,7 @@ void InputFile::loadRule(std::vector<Rule> &rule, const char *fileName) {
   size_t number_rule = 0;  // number of rules
   size_t max_pri = 0;
   while (1) {
-    Rule r;
+    Rule_KSet r;
     std::array<uint32_t, 2> points;
 
     if (fscanf(fp,

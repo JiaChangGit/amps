@@ -39,10 +39,10 @@ vector<TupleRange> DynamicTupleRanges(vector<Rule*>& rules, double& dt_time,
 
 void PrintTupleRanges(const vector<TupleRange>& tuple_ranges) {
   const size_t tuple_ranges_num = tuple_ranges.size();
-  std::cout << tuple_ranges_num << std::endl;
+  std::cout << tuple_ranges_num << "\n";
   for (int i = 0; i < tuple_ranges_num; ++i)
     std::cout << tuple_ranges[i].x1 << " " << tuple_ranges[i].y1 << " "
-              << tuple_ranges[i].x2 << " " << tuple_ranges[i].y2 << std::endl;
+              << tuple_ranges[i].x2 << " " << tuple_ranges[i].y2 << "\n";
 }
 /// ====== ///
 
@@ -341,7 +341,7 @@ void DtInfo::TupleInfoSum(TupleInfo& tuple_info_sum, int x1, int y1, int x2,
               << " check_rule_num " << check_rule_num << "  ";
 
     std::cout << "ip_num " << ip_num << " tuple_cost_num " << tuple_cost_num
-              << std::endl;
+              << "\n";
   }
 #endif
 }
@@ -369,18 +369,14 @@ vector<TupleRange> DtInfo::GetTupleRanges(int x1, int y1, int x2, int y2) {
   AddTupleRanges(tuple_ranges, tuple_info_sum, x1, y1, x2, y2);
 #ifdef TUPLEINFO
   if (dt_print_info) {
-    std::cout << "check_tuple_sum " << tuple_info_sum.check_tuple_num
-              << std::endl;
+    std::cout << "check_tuple_sum " << tuple_info_sum.check_tuple_num << "\n";
     std::cout << "contain_group_sum " << tuple_info_sum.contain_group_num
-              << std::endl;
-    std::cout << "match_group_sum " << tuple_info_sum.match_group_num
-              << std::endl;
+              << "\n";
+    std::cout << "match_group_sum " << tuple_info_sum.match_group_num << "\n";
     std::cout << "collide_group_sum " << tuple_info_sum.collide_group_num
-              << std::endl;
-    std::cout << "check_rule_sum " << tuple_info_sum.check_rule_num
-              << std::endl;
-    std::cout << "tuple_cost_sum " << tuple_cost[0][0][32][32].cost
-              << std::endl;
+              << "\n";
+    std::cout << "check_rule_sum " << tuple_info_sum.check_rule_num << "\n";
+    std::cout << "tuple_cost_sum " << tuple_cost[0][0][32][32].cost << "\n";
   }
 #endif
   return tuple_ranges;
@@ -470,7 +466,7 @@ void CacuInfo::CacuIpMask(MASK& mask) {
       else
         return a.rank < b.rank;
     });
-    // cout << bRank[0].id << endl;
+    // cout << bRank[0].id << "\n";
     int old_target_bucket_num = target_bucket_num;
     int old_max_bucket_size = max_bucket_size;
     int old_bucket_num = bucket_num;
@@ -656,7 +652,7 @@ uint16_t CacuInfo::CacuPortMask(int type) {
   // print_bucket(_rules);
   // sort(fetched_bit_id.begin(), fetched_bit_id.end());
   // for (auto x : fetched_bit_id)cout << x << " ";
-  // cout << endl << endl;
+  // cout << "\n" << "\n";
 
   for (auto& _r : _rules) delete _r;
 
@@ -778,28 +774,28 @@ void CacuInfo::print_bucket(vector<CacuRule*>& _rules) {
   }
   fclose(fp);
 
-  std::cout << "buckets        : " << bucket_num << std::endl;
-  std::cout << "max bucket size: " << max_bucket_size << std::endl;
+  std::cout << "buckets        : " << bucket_num << "\n";
+  std::cout << "max bucket size: " << max_bucket_size << "\n";
 
   std::cout << "target buckets : " << target_bucket_num << " " << std::fixed
             << std::setprecision(2)
             << (static_cast<double>(target_bucket_num) / bucket_num * 100)
-            << "%" << std::endl;
+            << "%" << "\n";
 
   std::cout << "(10,50]        : " << small_bucket << " " << std::fixed
             << std::setprecision(2)
             << (static_cast<double>(small_bucket) / bucket_num * 100) << "%"
-            << std::endl;
+            << "\n";
 
   std::cout << "(50,100]       : " << mid_bucket << " " << std::fixed
             << std::setprecision(2)
             << (static_cast<double>(mid_bucket) / bucket_num * 100) << "%"
-            << std::endl;
+            << "\n";
 
   std::cout << "big cell       : " << big_bucket << " " << std::fixed
             << std::setprecision(2)
             << (static_cast<double>(big_bucket) / bucket_num * 100) << "%"
-            << std::endl;
+            << "\n";
 }
 ///// ===== /////
 
@@ -856,7 +852,7 @@ void DBTable::construct() {
   bitset<64> bits;
   bits = subsets.mask.i_64;
   // std::cout << "DBTable.cpp bits: " << bits
-  //           << std::endl;  // 印出整個 64 位元序列
+  //           << "\n";  // 印出整個 64 位元序列
   bucket_num = (1 << bits.count()) + 1;
   subsets.size = bucket_num;
   subsets.ipNodes = new ip_node[bucket_num]();
@@ -878,7 +874,7 @@ void DBTable::insert_to_ipNode(Rule* _r) {
                      : (subsets.size - 1);
   if (subsets.ipNodes[idx].pri > _r->pri) subsets.ipNodes[idx].pri = _r->pri;
   subsets.ipNodes[idx].rules.emplace_back(*_r);
-  // std::cout << subsets.ipNodes[idx].rules[0].protocol << std::endl;
+  // std::cout << subsets.ipNodes[idx].rules[0].protocol << "\n";
 }
 
 void DBTable::adjust_ipNode(ip_node* _node) {
@@ -1306,13 +1302,13 @@ void DBTable::search_with_log(const vector<Packet>& _packet) {
   }
   const size_t packetNum = _packet.size();
   std::cout << "\navg_acc_bucket: " << (double)acc_bucket / (double)packetNum
-            << " max: " << max_bucket << std::endl;
+            << " max: " << max_bucket << "\n";
 
   std::cout << "avg_acc_tuple: " << (double)acc_tuple / (double)packetNum
-            << " max: " << max_tuple << std::endl;
+            << " max: " << max_tuple << "\n";
 
   std::cout << "avg_acc_rule: " << (double)acc_rule / (double)packetNum
-            << " max: " << max_rule << std::endl;
+            << " max: " << max_rule << "\n";
 }
 
 void DBTable::insert(Rule& _r) {
@@ -1708,45 +1704,44 @@ void DBTable::print_nodes() {
       }
     }
   }
-  std::cout << "rule_num " << rule_num << " " << ruleset.size() << std::endl;
+  std::cout << "rule_num " << rule_num << " " << ruleset.size() << "\n";
 
   std::cout << "in_bucket " << rule_num_in_bucket << " "
-            << (double)rule_num_in_bucket / ruleset.size() << std::endl;
+            << (double)rule_num_in_bucket / ruleset.size() << "\n";
 
   std::cout << "in_tuple " << (rule_num - rule_num_in_bucket) << " "
-            << (double)(rule_num - rule_num_in_bucket) / ruleset.size()
-            << std::endl;
+            << (double)(rule_num - rule_num_in_bucket) / ruleset.size() << "\n";
 
-  std::cout << "total buckets  : " << total_bucket_num << std::endl;
+  std::cout << "total buckets  : " << total_bucket_num << "\n";
 
   std::cout << "used buckets   : " << used_bucket_num << " "
             << (double)used_bucket_num / (double)total_bucket_num * 100 << "%"
-            << std::endl;
+            << "\n";
 
-  std::cout << "max bucket size: " << max_bucket_size << std::endl;
+  std::cout << "max bucket size: " << max_bucket_size << "\n";
 
   std::cout << "target buckets : " << target_bucket_num << " "
             << (double)target_bucket_num / (double)used_bucket_num * 100 << "%"
-            << std::endl;
+            << "\n";
 
   std::cout << "(10,50]        : " << small_bucket << " "
             << (double)small_bucket / (double)used_bucket_num * 100 << "%"
-            << std::endl;
+            << "\n";
 
   std::cout << "(50,100]       : " << mid_bucket << " "
             << (double)mid_bucket / (double)used_bucket_num * 100 << "%"
-            << std::endl;
+            << "\n";
 
   std::cout << "big cell       : " << big_bucket << " "
             << (double)big_bucket / (double)used_bucket_num * 100 << "%"
-            << std::endl;
+            << "\n";
 
-  std::cout << "tuple spaces   : " << used_tuple_space << std::endl;
+  std::cout << "tuple spaces   : " << used_tuple_space << "\n";
 
   std::cout << "avg tuples     : "
-            << (double)used_tuple / (double)used_tuple_space << std::endl;
+            << (double)used_tuple / (double)used_tuple_space << "\n";
 
-  std::cout << "max tuples     : " << max_tuples << "\n" << std::endl;
+  std::cout << "max tuples     : " << max_tuples << "\n" << "\n";
   fclose(fp);
 }
 
@@ -1763,7 +1758,7 @@ void DBTable::mem() {
     }
     if (subsets.ipNodes[i].prefix_down != nullptr) mem += (2178 * sizeof(char));
   }
-  std::cout << "\nTotal memory " << (mem / 1048676.0) << " MB" << std::endl;
+  std::cout << "\nTotal memory " << (mem / 1048676.0) << " MB" << "\n";
 }
 
 size_t DBTable::tuple_mem(Tuple& _tuple) {

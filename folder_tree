@@ -1,0 +1,66 @@
+.
+├── ./CMakeLists.txt
+├── ./include
+│   ├── ./include/DBT
+│   │   ├── ./include/DBT/DBT_core.hpp
+│   │   ├── ./include/DBT/DBT_data_structure.hpp
+│   │   ├── ./include/DBT/DBT_read.hpp
+│   │   └── ./include/DBT/DBT_tss.hpp
+│   ├── ./include/DT
+│   │   ├── ./include/DT/dynamictuple-dims.h
+│   │   ├── ./include/DT/dynamictuple-ranges.h
+│   │   ├── ./include/DT/dynamictuple.h
+│   │   ├── ./include/DT/hash.h
+│   │   ├── ./include/DT/hashnode.h
+│   │   ├── ./include/DT/hashtable.h
+│   │   └── ./include/DT/tuple.h
+│   ├── ./include/DTandMT_main.h
+│   ├── ./include/KSet
+│   │   ├── ./include/KSet/KSet.hpp
+│   │   ├── ./include/KSet/KSet_data_structure.hpp
+│   │   ├── ./include/KSet/input.hpp
+│   │   └── ./include/KSet/inputFile_test.hpp
+│   ├── ./include/LinearRegressionModel.hpp
+│   ├── ./include/MT
+│   │   ├── ./include/MT/mhash.h
+│   │   ├── ./include/MT/mhashnode.h
+│   │   ├── ./include/MT/mhashtable.h
+│   │   ├── ./include/MT/mtuple.h
+│   │   └── ./include/MT/multilayertuple.h
+│   ├── ./include/PT
+│   │   ├── ./include/PT/L3.txt
+│   │   ├── ./include/PT/PT_data_structure.hpp
+│   │   ├── ./include/PT/PT_read.hpp
+│   │   └── ./include/PT/PT_tree.hpp
+│   ├── ./include/basis.hpp
+│   ├── ./include/bloomFilter.hpp
+│   ├── ./include/bobHash.hpp
+│   ├── ./include/elementary_DT_MT.h
+│   ├── ./include/io_DT_MT.h
+│   ├── ./include/linearSearch_test.hpp
+│   ├── ./include/part_0
+│   └── ./include/trie_DT_MT.h
+├── ./src
+│   ├── ./src/CMakeLists.txt
+│   ├── ./src/DBTable.cpp
+│   ├── ./src/DTsrc
+│   │   ├── ./src/DTsrc/dynamictuple-dims.cpp
+│   │   ├── ./src/DTsrc/dynamictuple-ranges.cpp
+│   │   ├── ./src/DTsrc/dynamictuple.cpp
+│   │   ├── ./src/DTsrc/hash.cpp
+│   │   ├── ./src/DTsrc/hashnode.cpp
+│   │   ├── ./src/DTsrc/hashtable.cpp
+│   │   ├── ./src/DTsrc/tuple.cpp
+│   ├── ./src/KSet.cpp
+│   ├── ./src/MTsrc
+│   │   ├── ./src/MTsrc/mhashnode.cpp
+│   │   ├── ./src/MTsrc/mhashtable.cpp
+│   │   ├── ./src/MTsrc/mtuple.cpp
+│   │   ├── ./src/MTsrc/multilayertuple.cpp
+│   ├── ./src/PT_tree.cpp
+│   └── ./src/elementary_DT_MT.cpp
+└── ./tests
+    ├── ./tests/CMakeLists.txt
+    └── ./tests/main.cpp
+
+12 directories, 92 files

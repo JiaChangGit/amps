@@ -177,7 +177,9 @@ a(3)*/);            /* + a(3) JIA bias */
 inline double predict5(const Eigen::VectorXd &a, double x1, double x2,
                        double x3, double x4, double x5) {
   assert(a.size() == 5);
-  return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5);
+  return std::
+      abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 /*+
+a(5)*/); /* + a(5) JIA bias */
 }
 
 inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
@@ -267,7 +269,7 @@ inline double computeStdDev(const Eigen::VectorXd &v, double mean) {
 // 代表：mean, median, p25, p75, p95, p99
 // -----------------------------------------------------------------------------
 inline std::tuple<double, double, double, double, double, double>
-printStatistics(const string &label, const Eigen::VectorXd &data) {
+printStatistics(const std::string &label, const Eigen::VectorXd &data) {
   const double mean = data.mean();
   const double median = computePercentile(data, 0.5);
   const double p25 = computePercentile(data, 0.25);
@@ -277,13 +279,14 @@ printStatistics(const string &label, const Eigen::VectorXd &data) {
   const double stddev = computeStdDev(data, mean);
 
   // 統一輸出格式
-  // std::cout << "|--- " << label << " Mean: " << mean << endl;
-  std::cout << "|--- " << label << " 25th Percentile: " << p25 << endl;
-  std::cout << "|--- " << label << " median Percentile: " << median << endl;
-  std::cout << "|--- " << label << " 75th Percentile: " << p75 << endl;
-  std::cout << "|--- " << label << " 95th Percentile: " << p95 << endl;
-  std::cout << "|--- " << label << " 99th Percentile: " << p99 << endl;
-  cout << "|--- " << label << " StdDev: " << stddev << " (dispersity)" << endl;
+  // std::cout << "|--- " << label << " Mean: " << mean << "\n";
+  std::cout << "|--- " << label << " 25th Percentile: " << p25 << "\n";
+  std::cout << "|--- " << label << " median Percentile: " << median << "\n";
+  std::cout << "|--- " << label << " 75th Percentile: " << p75 << "\n";
+  std::cout << "|--- " << label << " 95th Percentile: " << p95 << "\n";
+  std::cout << "|--- " << label << " 99th Percentile: " << p99 << "\n";
+  std::cout << "|--- " << label << " StdDev: " << stddev << " (dispersity)"
+            << "\n";
 
   // 回傳統計結果
   return {mean, median, p25, p75, p95, p99};
@@ -304,7 +307,9 @@ printStatistics(const Eigen::VectorXd &data) {
 
 inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,
                                                 double predicted_time_dbt,
-                                                double predicted_time_kset) {
+                                                double predicted_time_kset,
+                                                double predicted_time_dt,
+                                                double predicted_time_mt) {
   double min_val = predicted_time_pt;
   int min_id_predict = 0;
 
@@ -315,6 +320,14 @@ inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,
   if (predicted_time_kset < min_val) {
     min_val = predicted_time_kset;
     min_id_predict = 2;
+  }
+  if (predicted_time_dt < min_val) {
+    min_val = predicted_time_dt;
+    min_id_predict = 3;
+  }
+  if (predicted_time_mt < min_val) {
+    min_val = predicted_time_mt;
+    min_id_predict = 4;
   }
   return {min_val, min_id_predict};
 }
