@@ -152,8 +152,8 @@ multiple_parallel_PC                     //
    ├─ CMakeLists.txt                     //
    └─ main.cpp                           //
 
-../classbench_set/ipv4-ruleset/acl1_100k //
-../classbench_set/ipv4-trace/acl1_100k   //
+../classbench_set/ipv4-ruleset/acl1_100k     //
+../classbench_set/ipv4-trace/acl1_100k_trace //
 ......
 
 ```
