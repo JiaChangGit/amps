@@ -8,10 +8,10 @@ A High-Performance, Multi-Algorithm Packet Classification Framework
 ## Overview / 專案概觀
 
 **English**
-`multiple_parallel_PC` is a high-performance multi-algorithm packet classification framework written in C++17. It dynamically determines whether each packet should be processed by one of the KSet, PT-Tree, DBTable, DynamicTuple, or MultilayerTuple algorithms through a linear regression model or a Bloom Filter. This mechanism balances the query latency and memory usage, and facilitates an in-depth comparison of the performance trade-offs among the algorithms.
+`multiple_parallel_PC` is a high-performance multi-algorithm packet classification framework written in C++17. It dynamically determines whether each packet should be processed by one of the KSet, PT-Tree, DBTable, DynamicTuple, or MultilayerTuple algorithms by using a linear regression model or a Bloom Filter. This mechanism balances the query latency and facilitates in-depth comparison of the performance trade-offs among algorithms.
 
 **中文**
-`multiple_parallel_PC` 是一套以 C++17 撰寫的高效能多演算法封包分類框架。它透過線性回歸模型或 Bloom Filter 快速檢測，動態判斷每一筆封包應交由 KSet、PT-Tree、DBTable、DynamicTuple 或 MultilayerTuple 其中一種演算法處理。此機制可平衡查詢延遲與記憶體使用量，便於深入比較各演算法的效能取捨。
+`multiple_parallel_PC` 是一套以 C++17 撰寫的高效能多演算法封包分類框架。它透過線性回歸模型或 Bloom Filter 快速檢測，動態判斷每一筆封包應交由 KSet、PT-Tree、DBTable、DynamicTuple 或 MultilayerTuple 其中一種演算法處理。此機制可平衡查詢延遲，便於深入比較各演算法的效能取捨。
 
 ---
 
@@ -19,11 +19,11 @@ A High-Performance, Multi-Algorithm Packet Classification Framework
 
 | Feature / 特色             | Description / 說明                                                                                      |
 |----------------------------|--------------------------------------------------------------------------------------------------------|
-| **Adaptive Dispatch**      | Linear regression or Bloom filter predicts the most efficient classifier for each packet in ~8 ns.      |
+| **Adaptive Dispatch**      | Linear regression or Bloom filter predicts the most efficient classifier for each packet in ~10 ns.    |
 | **Multi-Classifier Core**  | Built-in support for KSet, PT-Tree, DBTable, DynamicTuple, MultilayerTuple.                            |
-| **SIMD / PEXT Optimization** | AVX2/SSE2 intrinsics, BMI2 PEXT, and cache-aligned data structures for maximum throughput.             |
-| **Transparent Metrics**    | Construction time, throughput (pps), and memory footprint are measured automatically.                   |
-| **Scripted Benchmarking**  | `scripts/run.sh` builds, runs, and reports on synthetic or trace-driven workloads.                      |
+| **SIMD / PEXT Optimization** | AVX2/SSE2 intrinsics, BMI2 PEXT, and cache-aligned data structures for maximum throughput.           |
+| **Transparent Metrics**    | Construction time, throughput (pps), and memory footprint are measured automatically.                  |
+| **Scripted Benchmarking**  | `scripts/run.sh` builds, runs, and reports on synthetic or trace-driven workloads.                     |
 
 ---
 
@@ -189,7 +189,6 @@ This script auto-detects CPU instruction sets, enables `-march=native -O3 -flto`
 | **Construction Time**    | Time to build classifier (ms) / 建構分類器所需時間 (ms) |
 | **Lookup Throughput**    | Query rate (Mpps) / 查詢吞吐量 (Mpps)    |
 | **Memory Usage**         | Memory footprint (MB) / 記憶體占用 (MB)  |
-| **Update Latency**       | Avg. insert/delete latency (µs) / 插入與刪除規則之平均延遲 (µs) |  -> not yet
 
 Benchmark results are exported as txt reports for further analysis.
 測試結果將以 txt 輸出，方便後續分析。
