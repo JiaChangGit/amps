@@ -92,18 +92,9 @@ struct option CommandLineParser::long_options[] = {
     {0, 0, 0, 0}  // 結束標記
 };
 
-// for KSet
-constexpr int pre_K = 16;
-int SetBits[3] = {8, 8, 8};
-
-// JIA
-int max_pri_set[5] = {-1, -1, -1, -1, -1};
-int &kset_match_pri = max_pri_set[4];
-// int max_pri_set[4] = {-1, -1, -1, -1};
-// int kset_match_pri = -1;
-
+// JIA  int max_pri_set[4]
 void anaK(const size_t number_rule, const vector<Rule_KSet> &rule,
-          int *usedbits, vector<Rule_KSet> set[4], int k) {
+          int *usedbits, vector<Rule_KSet> set[4], int k, int max_pri_set[4]) {
   uint32_t tmpKey;
   int hash;
 
@@ -555,9 +546,9 @@ inline void warmup_DBT(DBT::DBTable &dbt,
   }
 }
 inline void warmup_KSet(vector<KSet> &set, const vector<Packet> &packets,
-                        const int num_set[]) {
-  if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+                        const int num_set[], const int max_pri_set[4]) {
   for (size_t i = 0; i < 2; ++i) {
+    int kset_match_pri = -1;
     if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
     if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
       kset_match_pri = max(kset_match_pri, set[1].ClassifyAPacket(packets[i]));
@@ -568,15 +559,15 @@ inline void warmup_KSet(vector<KSet> &set, const vector<Packet> &packets,
   }
 }
 inline void warmup_DT(DynamicTuple &dynamictuple,
-                      const vector<Trace *> &traces_PT_MT) {
+                      const vector<Trace *> &traces_DT_MT) {
   for (size_t i = 0; i < 2; ++i) {
-    (dynamictuple.Lookup(traces_PT_MT[i], 0));
+    (dynamictuple.Lookup(traces_DT_MT[i], 0));
   }
 }
 inline void warmup_MT(MultilayerTuple &multilayertuple,
-                      const vector<Trace *> &traces_PT_MT) {
+                      const vector<Trace *> &traces_DT_MT) {
   for (size_t i = 0; i < 2; ++i) {
-    (multilayertuple.Lookup(traces_PT_MT[i], 0));
+    (multilayertuple.Lookup(traces_DT_MT[i], 0));
   }
 }
 /////////////////
@@ -685,8 +676,14 @@ int main(int argc, char *argv[]) {
   //// DBT ////
 
   //// KSet ////
+  // JIA for KSet
+  constexpr int pre_K = 16;
+  int SetBits[3] = {8, 8, 8};
+  int max_pri_set[4] = {-1, -1, -1, -1};
+  int kset_match_pri = -1;
+
   vector<Rule_KSet> set_4[4];
-  anaK(number_rule, rule, SetBits, set_4, pre_K);
+  anaK(number_rule, rule, SetBits, set_4, pre_K, max_pri_set);
 
   int num_set[4] = {0};
   for (size_t i = 0; i < 4; ++i) {
@@ -737,7 +734,7 @@ int main(int argc, char *argv[]) {
 
   //// DT MT ////
   auto rules_PT_MT = convertRules_KSetToDTMT(rule);
-  auto traces_PT_MT = convertPackets_KSet2DTMT(packets);
+  auto traces_DT_MT = convertPackets_KSet2DTMT(packets);
   // if (command.prefix_dims_num == 5) rules_PT_MT =
   // RulesPortPrefix(rules_PT_MT, true);
   cout << ("**************** Construction(DT) ****************\n");
@@ -753,7 +750,7 @@ int main(int argc, char *argv[]) {
   auto DT_index_memory_size = dynamictuple.MemorySize() / 1024.0 / 1024.0;
   cout << "DT_data_memory_size: " << DT_data_memory_size
        << ", DT_index_memory_size: " << DT_index_memory_size << "\n"
-       << "Total: " << DT_data_memory_size + DT_index_memory_size << "\n";
+       << "Total(MB): " << DT_data_memory_size + DT_index_memory_size << "\n";
   cout << "DT tuples_num: " << dynamictuple.tuples_num << "\n";
 
   cout << ("**************** Construction(MT) ****************\n");
@@ -774,7 +771,7 @@ int main(int argc, char *argv[]) {
   auto MT_index_memory_size = multilayertuple.MemorySize() / 1024.0 / 1024.0;
   cout << "MT_data_memory_size: " << MT_data_memory_size
        << ", MT_index_memory_size: " << MT_index_memory_size << "\n"
-       << "Total: " << MT_data_memory_size + MT_index_memory_size << "\n";
+       << "Total(MB): " << MT_data_memory_size + MT_index_memory_size << "\n";
   cout << "MT tuples_num: " << multilayertuple.tuples_num << "\n";
   //// DT MT ////
   ///////// Construct /////////
@@ -856,8 +853,10 @@ int main(int argc, char *argv[]) {
 // 搜尋時間量測 (KSet)
 #ifdef CACHE
           kset_match_pri = -1;
-          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+          if (__builtin_expect(num_set[0] > 0, 1))
+            kset_match_pri = set0.ClassifyAPacket(packets[i]);
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -870,8 +869,10 @@ int main(int argc, char *argv[]) {
 
           timer.timeReset();
           kset_match_pri = -1;
-          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+          if (__builtin_expect(num_set[0] > 0, 1))
+            kset_match_pri = set0.ClassifyAPacket(packets[i]);
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -888,10 +889,10 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < packetNum; ++i) {
 // 搜尋時間量測 (DT)
 #ifdef CACHE
-          (dynamictuple.Lookup(traces_PT_MT[i], 0));
+          (dynamictuple.Lookup(traces_DT_MT[i], 0));
 #endif
           timer.timeReset();
-          (dynamictuple.Lookup(traces_PT_MT[i], 0));
+          (dynamictuple.Lookup(traces_DT_MT[i], 0));
           _DT_search_time = timer.elapsed_ns();
           DT_y(i) = static_cast<double>(_DT_search_time);
         }
@@ -900,10 +901,10 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < packetNum; ++i) {
 // 搜尋時間量測 (MT)
 #ifdef CACHE
-          (multilayertuple.Lookup(traces_PT_MT[i], 0));
+          (multilayertuple.Lookup(traces_DT_MT[i], 0));
 #endif
           timer.timeReset();
-          (multilayertuple.Lookup(traces_PT_MT[i], 0));
+          (multilayertuple.Lookup(traces_DT_MT[i], 0));
           _MT_search_time = timer.elapsed_ns();
           MT_y(i) = static_cast<double>(_MT_search_time);
         }
@@ -1720,9 +1721,9 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      // warmup_KSet(set, packets, packetNum, num_set);
-      // warmup_MT
-      // warmup_DT
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
       warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
@@ -1776,9 +1777,10 @@ int main(int argc, char *argv[]) {
               tree.search(PT_packets[i]);
               break;
             case 2:
-              if (num_set[0] > 0)
+              if (__builtin_expect(num_set[0] > 0, 1))
                 kset_match_pri = set0.ClassifyAPacket(packets[i]);
-              if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
               if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -1789,10 +1791,10 @@ int main(int argc, char *argv[]) {
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
             case 3:
-              (dynamictuple.Lookup(traces_PT_MT[i], 0));
+              (dynamictuple.Lookup(traces_DT_MT[i], 0));
               break;
             case 4:
-              (multilayertuple.Lookup(traces_PT_MT[i], 0));
+              (multilayertuple.Lookup(traces_DT_MT[i], 0));
               break;
           }
           _Total_search_time = timer.elapsed_ns();
@@ -1886,7 +1888,9 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      // warmup_KSet(set, packets, packetNum, num_set);
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
       warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
@@ -1950,9 +1954,10 @@ int main(int argc, char *argv[]) {
               tree.search(PT_packets[i]);
               break;
             case 2:
-              if (num_set[0] > 0)
+              if (__builtin_expect(num_set[0] > 0, 1))
                 kset_match_pri = set0.ClassifyAPacket(packets[i]);
-              if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
               if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -1963,10 +1968,10 @@ int main(int argc, char *argv[]) {
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
             case 3:
-              (dynamictuple.Lookup(traces_PT_MT[i], 0));
+              (dynamictuple.Lookup(traces_DT_MT[i], 0));
               break;
             case 4:
-              (multilayertuple.Lookup(traces_PT_MT[i], 0));
+              (multilayertuple.Lookup(traces_DT_MT[i], 0));
               break;
           }
           _Total_search_time = timer.elapsed_ns();
@@ -2076,7 +2081,9 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      // warmup_KSet(set, packets, packetNum, num_set);
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
       warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
@@ -2167,9 +2174,10 @@ int main(int argc, char *argv[]) {
               tree.search(PT_packets[i]);
               break;
             case 2:
-              if (num_set[0] > 0)
+              if (__builtin_expect(num_set[0] > 0, 1))
                 kset_match_pri = set0.ClassifyAPacket(packets[i]);
-              if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
               if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -2180,10 +2188,10 @@ int main(int argc, char *argv[]) {
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
             case 3:
-              (dynamictuple.Lookup(traces_PT_MT[i], 0));
+              (dynamictuple.Lookup(traces_DT_MT[i], 0));
               break;
             case 4:
-              (multilayertuple.Lookup(traces_PT_MT[i], 0));
+              (multilayertuple.Lookup(traces_DT_MT[i], 0));
               break;
           }
           _Total_search_time = timer.elapsed_ns();
@@ -2260,8 +2268,10 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
           kset_match_pri = -1;
-          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+          if (__builtin_expect(num_set[0] > 0, 1))
+            kset_match_pri = set0.ClassifyAPacket(packets[i]);
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -2273,8 +2283,10 @@ int main(int argc, char *argv[]) {
 #endif
           timer.timeReset();
           kset_match_pri = -1;
-          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+          if (__builtin_expect(num_set[0] > 0, 1))
+            kset_match_pri = set0.ClassifyAPacket(packets[i]);
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -2291,10 +2303,10 @@ int main(int argc, char *argv[]) {
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
-          (dynamictuple.Lookup(traces_PT_MT[i], 0));
+          (dynamictuple.Lookup(traces_DT_MT[i], 0));
 #endif
           timer.timeReset();
-          (dynamictuple.Lookup(traces_PT_MT[i], 0));
+          (dynamictuple.Lookup(traces_DT_MT[i], 0));
           _DT_search_time = timer.elapsed_ns();
           DT_y(i) = static_cast<double>(_DT_search_time);
         }
@@ -2303,10 +2315,10 @@ int main(int argc, char *argv[]) {
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
-          (multilayertuple.Lookup(traces_PT_MT[i], 0));
+          (multilayertuple.Lookup(traces_DT_MT[i], 0));
 #endif
           timer.timeReset();
-          (multilayertuple.Lookup(traces_PT_MT[i], 0));
+          (multilayertuple.Lookup(traces_DT_MT[i], 0));
           _MT_search_time = timer.elapsed_ns();
           MT_y(i) = static_cast<double>(_MT_search_time);
         }
@@ -2332,14 +2344,14 @@ int main(int argc, char *argv[]) {
                                   (DBT_packets[i].Port[1]));
         }
         if (DT_y(i) >= per99_DT) {
-          bloom_filter_dt.insert((traces_PT_MT[i]->dst_src_ip) ^
-                                 (traces_PT_MT[i]->key[2]) ^
-                                 (traces_PT_MT[i]->key[3]));
+          bloom_filter_dt.insert((traces_DT_MT[i]->dst_src_ip) ^
+                                 (traces_DT_MT[i]->key[2]) ^
+                                 (traces_DT_MT[i]->key[3]));
         }
         if (MT_y(i) >= per99_MT) {
-          bloom_filter_mt.insert((traces_PT_MT[i]->dst_src_ip) ^
-                                 (traces_PT_MT[i]->key[2]) ^
-                                 (traces_PT_MT[i]->key[3]));
+          bloom_filter_mt.insert((traces_DT_MT[i]->dst_src_ip) ^
+                                 (traces_DT_MT[i]->key[2]) ^
+                                 (traces_DT_MT[i]->key[3]));
         }
       }
 ///////// BloomFilter Construct /////////
@@ -2372,9 +2384,9 @@ int main(int argc, char *argv[]) {
         const uint64_t key_pt = PT_packets[i].toIP64() ^
                                 PT_packets[i].source_port ^
                                 PT_packets[i].destination_port;
-        const uint64_t key_dt_mt = (traces_PT_MT[i]->dst_src_ip) ^
-                                   (traces_PT_MT[i]->key[2]) ^
-                                   (traces_PT_MT[i]->key[3]);
+        const uint64_t key_dt_mt = (traces_DT_MT[i]->dst_src_ip) ^
+                                   (traces_DT_MT[i]->key[2]) ^
+                                   (traces_DT_MT[i]->key[3]);
         // Bloom Filter 查詢，優化條件分支結構（避免 else-if 嵌套）
         const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
         const bool hit_pt = bloom_filter_pt.contains(key_pt);
@@ -2395,8 +2407,10 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      // warmup_KSet(set, packets, packetNum, num_set);
-      // warmup_PT(tree, PT_packets);
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
+      warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
@@ -2407,9 +2421,9 @@ int main(int argc, char *argv[]) {
           const uint64_t key_pt = PT_packets[i].toIP64() ^
                                   PT_packets[i].source_port ^
                                   PT_packets[i].destination_port;
-          const uint64_t key_dt_mt = (traces_PT_MT[i]->dst_src_ip) ^
-                                     (traces_PT_MT[i]->key[2]) ^
-                                     (traces_PT_MT[i]->key[3]);
+          const uint64_t key_dt_mt = (traces_DT_MT[i]->dst_src_ip) ^
+                                     (traces_DT_MT[i]->key[2]) ^
+                                     (traces_DT_MT[i]->key[3]);
           // Bloom Filter 查詢，優化條件分支結構（避免 else-if 嵌套）
           const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
           const bool hit_pt = bloom_filter_pt.contains(key_pt);
@@ -2421,14 +2435,15 @@ int main(int argc, char *argv[]) {
           } else if (!hit_pt) {
             tree.search(PT_packets[i]);
           } else if (!hit_dt) {
-            (dynamictuple.Lookup(traces_PT_MT[i], 0));
+            (dynamictuple.Lookup(traces_DT_MT[i], 0));
           } else if (!hit_mt) {
-            (multilayertuple.Lookup(traces_PT_MT[i], 0));
+            (multilayertuple.Lookup(traces_DT_MT[i], 0));
           } else {
             kset_match_pri = -1;
-            if (num_set[0] > 0)
+            if (__builtin_expect(num_set[0] > 0, 1))
               kset_match_pri = set0.ClassifyAPacket(packets[i]);
-            if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
+            if (__builtin_expect(
+                    kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
               kset_match_pri =
                   max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
             if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
@@ -2571,21 +2586,21 @@ int main(int argc, char *argv[]) {
       KSet_res_fp = fopen("./INFO/KSet_IndivResults.txt", "w");
 #endif
 
-      warmup_KSet(set, packets, num_set);
+      warmup_KSet(set, packets, num_set, max_pri_set);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
+          const auto &ptk = packets[i];
           kset_match_pri = -1;
           timer.timeReset();
-          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
-            kset_match_pri =
-                max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+          if (__builtin_expect(num_set[0] > 0, 1))
+            kset_match_pri = set0.ClassifyAPacket(ptk);
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+            kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(ptk));
           if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
-            kset_match_pri =
-                max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+            kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(ptk));
           if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
-            kset_match_pri =
-                max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+            kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(ptk));
           _KSet_search_time = timer.elapsed_ns();
           KSet_search_time += _KSet_search_time;
 
@@ -2613,11 +2628,11 @@ int main(int argc, char *argv[]) {
       FILE *DT_res_fp = nullptr;
       DT_res_fp = fopen("./INFO/DT_IndivResults.txt", "w");
 #endif
-      warmup_DT(dynamictuple, traces_PT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
-          auto resID = (dynamictuple.Lookup(traces_PT_MT[i], 0));
+          auto resID = (dynamictuple.Lookup(traces_DT_MT[i], 0));
           _DT_search_time = timer.elapsed_ns();
           DT_search_time += _DT_search_time;
 #ifdef PERLOOKUPTIME_INDIVIDUAL
@@ -2646,11 +2661,11 @@ int main(int argc, char *argv[]) {
       FILE *MT_res_fp = nullptr;
       MT_res_fp = fopen("./INFO/MT_IndivResults.txt", "w");
 #endif
-      warmup_MT(multilayertuple, traces_PT_MT);
+      warmup_MT(multilayertuple, traces_DT_MT);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
-          auto resID = (multilayertuple.Lookup(traces_PT_MT[i], 0));
+          auto resID = (multilayertuple.Lookup(traces_DT_MT[i], 0));
           _MT_search_time = timer.elapsed_ns();
           MT_search_time += _MT_search_time;
 #ifdef PERLOOKUPTIME_INDIVIDUAL

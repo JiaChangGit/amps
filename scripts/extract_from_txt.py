@@ -11,7 +11,7 @@ from collections import Counter
 from typing import Dict, Iterable, Set, Any
 
 import pandas as pd
-
+parameter_mul = 2
 # ------------------------------------------------------------
 # 讀檔設定
 # ------------------------------------------------------------
@@ -24,7 +24,7 @@ TXT_FILES = [
 ]
 
 PATTERN = re.compile(r"Packet (\d+)\s+RealTime\(ns\) ([\d.]+)")
-OUTPUT_XLSX = "AVG_D_Results_BySheet.xlsx"
+OUTPUT_XLSX = "AVG_Results_BySheet.xlsx"
 
 # ------------------------------------------------------------
 # 小工具：找出至少出現在 N 個集合的元素
@@ -64,9 +64,9 @@ with pd.ExcelWriter(OUTPUT_XLSX) as writer:
         ]
         df = pd.DataFrame(records, columns=["packet_ID", "TimeR (ns)"])
 
-        # 依 AVG 設門檻（2×AVG）
+        # 依 AVG 設門檻（parameter_mul×AVG）
         avg_time = df["TimeR (ns)"].mean()
-        threshold = 2 * avg_time
+        threshold = parameter_mul * avg_time
         print(f"[{txt_path}] AVG = {avg_time:.2f} ns, Threshold = {threshold:.2f} ns")
 
         # 篩 tail
@@ -86,11 +86,11 @@ with pd.ExcelWriter(OUTPUT_XLSX) as writer:
         tail_dict[base_name] = df_tail
 
     # --------------------------------------------------------
-    # 找出「至少落在 2 個 tail」的 packet_ID
+    # 找出「至少落在 parameter_mul 個 tail」的 packet_ID
     # --------------------------------------------------------
     common_ids = find_common_ids(tail_dict, min_occurrence=2)
 
-    print(f"✅ 至少出現在 2 個 tail 的 packet_ID 數量：{len(common_ids)}")
+    print(f"✅ 至少出現在 parameter_mul 個 tail 的 packet_ID 數量：{len(common_ids)}")
     if common_ids:
         preview = sorted(common_ids)[:20]
         print("前 20 個 packet_ID：", preview)

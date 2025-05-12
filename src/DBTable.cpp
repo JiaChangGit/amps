@@ -1704,7 +1704,7 @@ void DBTable::print_nodes() {
       }
     }
   }
-  std::cout << "rule_num " << rule_num << " " << ruleset.size() << "\n";
+  // std::cout << "rule_num " << rule_num << " " << ruleset.size() << "\n";
 
   std::cout << "in_bucket " << rule_num_in_bucket << " "
             << (double)rule_num_in_bucket / ruleset.size() << "\n";

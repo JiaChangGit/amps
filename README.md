@@ -204,13 +204,13 @@ main_acl2.txt:
 The number of rules = 89229
 The number of packets = 892290
 
-PT search config time: 2.41164 s
+PT search config time: 2.59496 s
 0 4 2
 **************** Construction(PT) ****************
 
 Start build for single thread...
 |- Using fields:     0,4,2,1
-|- Construct time:   5330170ns
+|- Construct time:   6257149ns
 |- tree.totalNodes: 23734
 |- Memory footprint: 10.8329MB
 binth=4 th_b=0.8 K=4 th_c=32
@@ -226,7 +226,6 @@ big cell       : 30 0.12%
 DBS bitsNum: 17
 
 
-rule_num 89229 89229
 in_bucket 28861 0.32
 in_tuple 60368 0.68
 total buckets  : 189199
@@ -240,7 +239,7 @@ tuple spaces   : 131
 avg tuples     : 3.48
 max tuples     : 17
 
-Construction Time: 2366973734 ns
+Construction Time: 2558320236 ns
 
 Total memory 12.14 MB
 
@@ -254,8 +253,8 @@ Set 0: 66377, Set 1: 14771, Set 2: 7339, Set 3: 742
 max_pri[0]: 89228, max_pri[1]: 68568, max_pri[2]: 67749, max_pri[3]: 8467
 non-empty_seg[0] = 0, non-empty_seg[1] = 0, non-empty_seg[2] = 0
 AVG[0]: inf, AVG[1]: inf, AVG[2]: inf
-MAX[0]: 32623, MAX[1]: 32623, MAX[2]: 32623
-	Construction time: 49750096 ns
+MAX[0]: 392377520, MAX[1]: 392377504, MAX[2]: 392377504
+	Construction time: 49218660 ns
 
 	***Set 0:***
 	rules in set: 66377, rules in small node: 13470, rules in big node: 52907
@@ -281,14 +280,14 @@ MAX[0]: 32623, MAX[1]: 32623, MAX[2]: 32623
 	Table_memory: 0.004(KB), Total_Rules_memory(Small): 0.000(KB), Total_Rules_memory(Big): 22.551(KB)
 	Total memory: 22.555(KB), Byte/rule: 31.127
 **************** Construction(DT) ****************
-	Construction time: 3448138055 ns
+	Construction time: 3717725307 ns
 DT_data_memory_size: 4.425, DT_index_memory_size: 7.906
-Total: 12.331
+Total(MB): 12.331
 DT tuples_num: 18
 **************** Construction(MT) ****************
-	Construction time: 20314181 ns
+	Construction time: 14715985 ns
 MT_data_memory_size: 4.425, MT_index_memory_size: 8.557
-Total: 12.982
+Total(MB): 12.982
 MT tuples_num: 9
 
 **************** Build(Model 3-D and 11-D) ****************
@@ -298,154 +297,154 @@ MT tuples_num: 9
 ========= Model parameters =========
 
 [PT 3-feature model] (x1, x2, x3):
- 0.054 -0.090  0.006
+-0.014  0.154 -0.127
 
 [PT 5-feature model] (x1~x5):
- 0.063 -0.100 -0.048  0.108  0.054
+-0.030  0.170 -0.044 -0.154 -0.113
 
 [PT 11-feature model] (x1~x11):
- 0.069 -0.103  0.005 -0.028 -0.043  0.105  0.053 -0.004  0.069 -0.045 -0.021
+-0.043  0.162  0.026  0.149 -0.055 -0.155 -0.126  0.095 -0.051  0.028 -0.072
 
 [DBT 3-feature model] (x1, x2, x3):
--0.016  0.028 -0.024
+ 0.064 -0.094 -0.003
 
 [DBT 5-feature model] (x1~x5):
--0.021  0.033  0.001 -0.035 -0.055
+ 0.053 -0.085  0.042 -0.067 -0.096
 
 [DBT 11-feature model] (x1~x11):
--0.015  0.049 -0.008 -0.015  0.007 -0.035 -0.040 -0.022  0.068 -0.073  0.213
+ 0.054 -0.091  0.053 -0.146  0.059 -0.065 -0.090 -0.014  0.044 -0.130  0.092
 
 [KSet 3-feature model] (x1, x2, x3):
--3.647 -1.683  2.931
+-3.612 -1.559  3.313
 
 [KSet 5-feature model] (x1~x5):
--3.642 -1.794  2.182  2.750 -1.719
+-3.639 -1.661  2.577  3.003 -2.292
 
 [KSet 11-feature model] (x1~x11):
--2.852 -0.397 -0.289  1.487  1.119  3.003 -1.935  2.669  3.341 14.474  8.921
+-2.765 -0.156 -0.722  1.585  1.513  3.239 -2.417  2.182  3.708 14.509  9.426
 
 [DT 3-feature model] (x1, x2, x3):
- 0.067  0.016 -0.109
+ 0.133 -0.042  0.038
 
 [DT 5-feature model] (x1~x5):
- 0.080  0.005 -0.160  0.063  0.132
+ 0.136 -0.047  0.009  0.079 -0.006
 
 [DT 11-feature model] (x1~x11):
- 0.075  0.012 -0.049  0.092 -0.161  0.058  0.132  0.042 -0.008 -0.062  0.014
+ 0.136 -0.052 -0.024  0.106  0.008  0.076  0.009 -0.115 -0.022 -0.075 -0.058
 
 [MT 3-feature model] (x1, x2, x3):
--0.005 -1.292  1.095
+-0.205 -1.251  0.929
 
 [MT 5-feature model] (x1~x5):
--0.083 -1.292  0.965  1.244 -1.831
+-0.283 -1.245  0.836  1.116 -1.763
 
 [MT 11-feature model] (x1~x11):
- 0.472  0.030 -1.358 -0.841  0.556  1.344 -1.787  2.445  3.153  6.831  9.996
+ 0.234  0.043 -0.969 -0.682  0.400  1.244 -1.721  2.555  2.940  7.020 10.241
 
 **************** Model(Acc and Fail) ****************
-    model_acc 3 (%): 24.286
-    model_fail 3 (%): 1.235
-    model_oth 3 (%): 74.479
-    model_acc 5 (%): 24.962
-    model_fail 5 (%): 1.500
-    model_oth 5 (%): 73.538
-    model_acc 11 (%): 38.518
-    model_fail 11 (%): 1.045
-    model_oth 11 (%): 60.437
+    model_acc 3 (%): 32.105
+    model_fail 3 (%): 1.708
+    model_oth 3 (%): 66.187
+    model_acc 5 (%): 29.003
+    model_fail 5 (%): 1.691
+    model_oth 5 (%): 69.306
+    model_acc 11 (%): 28.624
+    model_fail 11 (%): 1.032
+    model_oth 11 (%): 70.344
 
 **************** Classification(Model) ****************
 
-|=== AVG predict time(Model-3): 10ns
-|=== AVG search with predict time(Model-3): 32ns
-|=== PT, DBT, KSET, DT, MT (%): 12.553, 77.442, 0.275, 9.393, 0.337
+|=== AVG predict time(Model-3): 7ns
+|=== AVG search with predict time(Model-3): 29ns
+|=== PT, DBT, KSET, DT, MT (%): 24.512, 56.960, 0.582, 17.140, 0.805
 |--- Total_y 25th Percentile: 20.000
-|--- Total_y median Percentile: 20.000
+|--- Total_y median Percentile: 21.000
 |--- Total_y 75th Percentile: 21.000
-|--- Total_y 95th Percentile: 30.000
+|--- Total_y 95th Percentile: 31.000
 |--- Total_y 99th Percentile: 31.000
-|--- Total_y StdDev: 58.456 (dispersity)
+|--- Total_y StdDev: 58.979 (dispersity)
 
 |=== AVG predict time(Model-5): 6ns
 |=== AVG search with predict time(Model-5): 28ns
-|=== PT, DBT, KSET, DT, MT (%): 16.092, 63.700, 0.360, 18.535, 1.314
+|=== PT, DBT, KSET, DT, MT (%): 21.313, 42.027, 0.577, 34.678, 1.405
 |--- Total_y 25th Percentile: 20.000
-|--- Total_y median Percentile: 20.000
+|--- Total_y median Percentile: 21.000
 |--- Total_y 75th Percentile: 21.000
-|--- Total_y 95th Percentile: 30.000
+|--- Total_y 95th Percentile: 31.000
 |--- Total_y 99th Percentile: 31.000
-|--- Total_y StdDev: 66.287 (dispersity)
+|--- Total_y StdDev: 66.925 (dispersity)
 
-|=== AVG predict time(Model-11): 5ns
-|=== AVG search with predict time(Model-11): 27ns
-|=== PT, DBT, KSET, DT, MT (%): 41.532, 27.937, 0.102, 30.138, 0.292
+|=== AVG predict time(Model-11): 6ns
+|=== AVG search with predict time(Model-11): 28ns
+|=== PT, DBT, KSET, DT, MT (%): 22.679, 31.922, 0.128, 44.905, 0.365
 |--- Total_y 25th Percentile: 20.000
-|--- Total_y median Percentile: 20.000
+|--- Total_y median Percentile: 21.000
 |--- Total_y 75th Percentile: 21.000
-|--- Total_y 95th Percentile: 30.000
+|--- Total_y 95th Percentile: 31.000
 |--- Total_y 99th Percentile: 31.000
-|--- Total_y StdDev: 38.630 (dispersity)
+|--- Total_y StdDev: 55.204 (dispersity)
 
 **************** Classification(BLOOM) ****************
 
-|=== AVG predict time(BloomFilter): 15ns
-|=== AVG search time with predict(BloomFilter): 50ns
-|=== PT, DBT, KSET, DT, MT (%): 6.721, 58.247, 6.165, 1.952, 26.666
+|=== AVG predict time(BloomFilter): 21ns
+|=== AVG search time with predict(BloomFilter): 100ns
+|=== PT, DBT, KSET, DT, MT (%): 13.831, 42.106, 6.752, 5.473, 31.541
 |--- BloomFilter_y 25th Percentile: 20.000
-|--- BloomFilter_y median Percentile: 20.000
-|--- BloomFilter_y 75th Percentile: 31.000
-|--- BloomFilter_y 95th Percentile: 61.000
-|--- BloomFilter_y 99th Percentile: 160.000
-|--- BloomFilter_y StdDev: 107.909 (dispersity)
+|--- BloomFilter_y median Percentile: 30.000
+|--- BloomFilter_y 75th Percentile: 41.000
+|--- BloomFilter_y 95th Percentile: 153.000
+|--- BloomFilter_y 99th Percentile: 1668.000
+|--- BloomFilter_y StdDev: 403.321 (dispersity)
 
 ************** Classification(Individual) **************
 **************** Classification(PT) ****************
-|--- T_PT_y 25th Percentile: 50.000
-|--- T_PT_y median Percentile: 110.000
-|--- T_PT_y 75th Percentile: 201.000
-|--- T_PT_y 95th Percentile: 382.000
-|--- T_PT_y 99th Percentile: 613.000
-|--- T_PT_y StdDev: 193.805 (dispersity)
-|- Average search time: 157ns
+|--- T_PT_y 25th Percentile: 51.000
+|--- T_PT_y median Percentile: 122.000
+|--- T_PT_y 75th Percentile: 236.000
+|--- T_PT_y 95th Percentile: 481.000
+|--- T_PT_y 99th Percentile: 798.000
+|--- T_PT_y StdDev: 291.551 (dispersity)
+|- Average search time: 164ns
 
 **************** Classification(DBT) ****************
-|--- T_DBT_y 25th Percentile: 41.000
-|--- T_DBT_y median Percentile: 90.000
-|--- T_DBT_y 75th Percentile: 201.000
-|--- T_DBT_y 95th Percentile: 332.000
-|--- T_DBT_y 99th Percentile: 472.000
-|--- T_DBT_y StdDev: 227.118 (dispersity)
-|- Average search time: 139ns
+|--- T_DBT_y 25th Percentile: 51.000
+|--- T_DBT_y median Percentile: 123.000
+|--- T_DBT_y 75th Percentile: 296.000
+|--- T_DBT_y 95th Percentile: 552.000
+|--- T_DBT_y 99th Percentile: 809.000
+|--- T_DBT_y StdDev: 322.368 (dispersity)
+|- Average search time: 190ns
 
 avg_acc_bucket: 1.563 max: 2
 avg_acc_tuple: 5.047 max: 22
 avg_acc_rule: 7.181 max: 70
 
 **************** Classification(KSet) ****************
-|--- T_KSet_y 25th Percentile: 60.000
-|--- T_KSet_y median Percentile: 201.000
-|--- T_KSet_y 75th Percentile: 633.000
-|--- T_KSet_y 95th Percentile: 1096.000
-|--- T_KSet_y 99th Percentile: 1487.000
-|--- T_KSet_y StdDev: 548.138 (dispersity)
-	Average search time: 372 ns
+|--- T_KSet_y 25th Percentile: 61.000
+|--- T_KSet_y median Percentile: 235.000
+|--- T_KSet_y 75th Percentile: 696.000
+|--- T_KSet_y 95th Percentile: 1259.000
+|--- T_KSet_y 99th Percentile: 1801.000
+|--- T_KSet_y StdDev: 653.357 (dispersity)
+	Average search time: 404 ns
 
 **************** Classification(DT) ****************
-|--- T_DT_y 25th Percentile: 40.000
-|--- T_DT_y median Percentile: 81.000
-|--- T_DT_y 75th Percentile: 201.000
-|--- T_DT_y 95th Percentile: 392.000
-|--- T_DT_y 99th Percentile: 603.000
-|--- T_DT_y StdDev: 222.486 (dispersity)
-	Average search time: 140 ns
+|--- T_DT_y 25th Percentile: 41.000
+|--- T_DT_y median Percentile: 92.000
+|--- T_DT_y 75th Percentile: 205.000
+|--- T_DT_y 95th Percentile: 410.000
+|--- T_DT_y 99th Percentile: 634.000
+|--- T_DT_y StdDev: 229.508 (dispersity)
+	Average search time: 148 ns
 
 **************** Classification(MT) ****************
-|--- T_MT_y 25th Percentile: 49.000
-|--- T_MT_y median Percentile: 99.000
-|--- T_MT_y 75th Percentile: 307.000
-|--- T_MT_y 95th Percentile: 585.000
-|--- T_MT_y 99th Percentile: 972.000
-|--- T_MT_y StdDev: 299.510 (dispersity)
-	Average search time: 200 ns
+|--- T_MT_y 25th Percentile: 51.000
+|--- T_MT_y median Percentile: 112.000
+|--- T_MT_y 75th Percentile: 327.000
+|--- T_MT_y 95th Percentile: 634.000
+|--- T_MT_y 99th Percentile: 1034.000
+|--- T_MT_y StdDev: 314.916 (dispersity)
+	Average search time: 272 ns
 
 ```
 

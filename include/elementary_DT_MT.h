@@ -41,8 +41,6 @@ struct CommandStruct {
   void Init();
 };
 
-CommandStruct ParseCommandLine(int argc, char *argv[]);
-
 struct AccessNum {
   int sum;
   int minn;
