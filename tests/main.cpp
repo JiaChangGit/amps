@@ -54,7 +54,7 @@ using namespace std;
 #endif
 
 // #define SHUFFLE
-#define VALID
+// #define VALID
 #define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
 #define EIGEN_UNROLL_LOOP_LIMIT 256
@@ -233,7 +233,7 @@ void anaK(const size_t number_rule, const vector<Rule_KSet> &rule,
        << ", non-empty_seg[1] = " << Set[1].non_empty_seg
        << ", non-empty_seg[2] = " << Set[2].non_empty_seg << "\n";
 
-  cout << fixed << setprecision(3)  // 設定浮點數輸出精度為 3 位小數
+  cout << fixed << setprecision(3)
        << "AVG[0]: " << (float)set[0].size() / Set[0].non_empty_seg
        << ", AVG[1]: " << (float)set[1].size() / Set[1].non_empty_seg
        << ", AVG[2]: " << (float)set[2].size() / Set[2].non_empty_seg << "\n";
@@ -565,6 +565,18 @@ inline void warmup_KSet(vector<KSet> &set, const vector<Packet> &packets,
       kset_match_pri = max(kset_match_pri, set[2].ClassifyAPacket(packets[i]));
     if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
       kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
+  }
+}
+inline void warmup_DT(DynamicTuple &dynamictuple,
+                      const vector<Trace *> &traces_PT_MT) {
+  for (size_t i = 0; i < 2; ++i) {
+    (dynamictuple.Lookup(traces_PT_MT[i], 0));
+  }
+}
+inline void warmup_MT(MultilayerTuple &multilayertuple,
+                      const vector<Trace *> &traces_PT_MT) {
+  for (size_t i = 0; i < 2; ++i) {
+    (multilayertuple.Lookup(traces_PT_MT[i], 0));
   }
 }
 /////////////////
@@ -958,7 +970,7 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd mean_X11, std_X11;
 
       /* JIA normalizeFeatures */ normalizeFeatures(X3, mean_X3, std_X3);
-      /* JIA normalizeFeatures */ normalizeFeatures(X3, mean_X5, std_X5);
+      /* JIA normalizeFeatures */ normalizeFeatures(X5, mean_X5, std_X5);
       /* JIA normalizeFeatures */ normalizeFeatures(X11, mean_X11, std_X11);
 
       // 模型擬合
@@ -1708,9 +1720,10 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       // warmup_KSet(set, packets, packetNum, num_set);
-      // warmup_PT(tree, PT_packets);
+      // warmup_MT
+      // warmup_DT
+      warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
         double x1_norm_3 = 0, x2_norm_3 = 0, x3_norm_3 = 0;  // JIA normalize
@@ -1730,13 +1743,13 @@ int main(int argc, char *argv[]) {
           x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
           x3_norm_3 = toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
 
-          //// PT
-          arr[1] = predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-          //// PT
-
           //// DBT
           arr[0] = predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
           //// DBT
+
+          //// PT
+          arr[1] = predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
+          //// PT
 
           //// KSet
           arr[2] = predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
@@ -1873,9 +1886,8 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       // warmup_KSet(set, packets, packetNum, num_set);
-      // warmup_PT(tree, PT_packets);
+      warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
         double x1_norm_5 = 0, x2_norm_5 = 0, x5_norm_5 = 0, x6_norm_5 = 0,
@@ -1900,15 +1912,15 @@ int main(int argc, char *argv[]) {
           x6_norm_5 = toNormalized(x_destination_ip_1, mean_X5[3], std_X5[3]);
           x10_norm_5 = toNormalized(x_destination_ip_2, mean_X5[4], std_X5[4]);
 
-          //// PT
-          arr[1] = predict5(PT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
-                            x6_norm_5, x10_norm_5);
-          //// PT
-
           //// DBT
           arr[0] = predict5(DBT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
                             x6_norm_5, x10_norm_5);
           //// DBT
+
+          //// PT
+          arr[1] = predict5(PT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
+                            x6_norm_5, x10_norm_5);
+          //// PT
 
           //// KSet
           arr[2] = predict5(KSet_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
@@ -2064,9 +2076,8 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       // warmup_KSet(set, packets, packetNum, num_set);
-      // warmup_PT(tree, PT_packets);
+      warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
         double x1_norm_11 = 0, x2_norm_11 = 0, x3_norm_11 = 0, x4_norm_11 = 0,
@@ -2113,17 +2124,17 @@ int main(int argc, char *argv[]) {
               toNormalized(x_destination_port, mean_X11[9], std_X11[9]);
           x11_norm_11 = toNormalized(x_protocol, mean_X11[10], std_X11[10]);
 
-          //// PT
-          arr[1] = predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
-                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          //// PT
-
           //// DBT
           arr[0] = predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                              x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                              x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
           //// DBT
+
+          //// PT
+          arr[1] = predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
+                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
+                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
+          //// PT
 
           //// KSet
           arr[2] = predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
@@ -2244,7 +2255,7 @@ int main(int argc, char *argv[]) {
           DBT_y(i) = static_cast<double>(_DBT_search_time);
         }
       }
-      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
@@ -2260,8 +2271,8 @@ int main(int argc, char *argv[]) {
             kset_match_pri =
                 max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
 #endif
-          kset_match_pri = -1;
           timer.timeReset();
+          kset_match_pri = -1;
           if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(packets[i]);
           if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
             kset_match_pri =
@@ -2276,6 +2287,7 @@ int main(int argc, char *argv[]) {
           KSet_y(i) = static_cast<double>(_KSet_search_time);
         }
       }
+
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
@@ -2287,6 +2299,7 @@ int main(int argc, char *argv[]) {
           DT_y(i) = static_cast<double>(_DT_search_time);
         }
       }
+
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
 #ifdef CACHE
@@ -2382,7 +2395,6 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       // warmup_KSet(set, packets, packetNum, num_set);
       // warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
@@ -2438,7 +2450,7 @@ int main(int argc, char *argv[]) {
       cout << "|=== AVG search time with predict(BloomFilter): "
            << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
            << "ns\n";
-      cout << "|=== PT, DBT, KSET (%): "
+      cout << "|=== PT, DBT, KSET, DT, MT (%): "
            << 100 * (bloom_counter_PT) / (packetNum * 1.0) << ", "
            << 100 * (bloom_counter_DBT) / (packetNum * 1.0) << ", "
            << 100 * (bloom_counter_KSet) / (packetNum * 1.0) << ", "
@@ -2560,7 +2572,6 @@ int main(int argc, char *argv[]) {
 #endif
 
       warmup_KSet(set, packets, num_set);
-      if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           kset_match_pri = -1;
@@ -2593,8 +2604,7 @@ int main(int argc, char *argv[]) {
       printStatistics("T_KSet_y", KSet_y);
 #endif
 
-      cout << fixed << setprecision(3)  // 設定小數點後 3 位
-           << "\tAverage search time: "
+      cout << fixed << setprecision(3) << "\tAverage search time: "
            << (KSet_search_time / (trials * packetNum)) << " ns\n";
 
       //// DT ////
@@ -2603,6 +2613,7 @@ int main(int argc, char *argv[]) {
       FILE *DT_res_fp = nullptr;
       DT_res_fp = fopen("./INFO/DT_IndivResults.txt", "w");
 #endif
+      warmup_DT(dynamictuple, traces_PT_MT);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
@@ -2624,8 +2635,7 @@ int main(int argc, char *argv[]) {
       printStatistics("T_DT_y", DT_y);
 #endif
 
-      cout << fixed << setprecision(3)  // 設定小數點後 3 位
-           << "\tAverage search time: "
+      cout << fixed << setprecision(3) << "\tAverage search time: "
            << (DT_search_time / (trials * packetNum)) << " ns\n";
 
       //// DT ////
@@ -2636,6 +2646,7 @@ int main(int argc, char *argv[]) {
       FILE *MT_res_fp = nullptr;
       MT_res_fp = fopen("./INFO/MT_IndivResults.txt", "w");
 #endif
+      warmup_MT(multilayertuple, traces_PT_MT);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
@@ -2657,8 +2668,7 @@ int main(int argc, char *argv[]) {
       printStatistics("T_MT_y", MT_y);
 #endif
 
-      cout << fixed << setprecision(3)  // 設定小數點後 3 位
-           << "\tAverage search time: "
+      cout << fixed << setprecision(3) << "\tAverage search time: "
            << (MT_search_time / (trials * packetNum)) << " ns\n";
 
       //// MT ////

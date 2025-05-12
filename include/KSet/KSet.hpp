@@ -141,10 +141,10 @@ class KSet {
   KSet(KSet&& other) noexcept;             // 移動建構子
   KSet& operator=(KSet&& other) noexcept;  // 移動指派
 
-  virtual void ConstructClassifier(const vector<Rule_KSet>& rules);
-  virtual int ClassifyAPacket(const Packet& packet);
-  virtual void DeleteRule(const Rule_KSet& delete_rule);
-  virtual void InsertRule(const Rule_KSet& insert_rule);
+  /* JIA virtual*/ void ConstructClassifier(const vector<Rule_KSet>& rules);
+  /* JIA virtual*/ int ClassifyAPacket(const Packet& packet);
+  /* JIA virtual*/ void DeleteRule(const Rule_KSet& delete_rule);
+  /* JIA virtual*/ void InsertRule(const Rule_KSet& insert_rule);
 
   void prints() {
     total_tablesize_memory_in_KB = (double)(tablesize * (PTR_SIZE)) / 1024;
