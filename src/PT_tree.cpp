@@ -1,4 +1,5 @@
 #include "PT_tree.hpp"
+
 namespace PT {
 uint8_t maskHash[33][4];
 uint32_t maskBit[33] = {

@@ -1,5 +1,6 @@
 #include "dynamictuple-ranges.h"
 
+#include <cmath>
 using namespace std;
 
 uint64_t check_hash_cost = 5;

@@ -3,12 +3,12 @@
 
 #include <emmintrin.h>  // for sse2
 #include <immintrin.h>  // for avx2
-#include <limits.h>
-#include <stdint.h>
+// #include <limits.h>
+//  #include <stdint.h>
 
-#include <iostream>
+// #include <iostream>
 #include <random>
-#include <stdexcept>
+// #include <stdexcept>
 
 template <typename T>
 inline uint32_t hash(const T& data, uint32_t seed = 0);

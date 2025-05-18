@@ -1,5 +1,6 @@
 #include "dynamictuple-dims.h"
 
+#include <cmath>
 using namespace std;
 
 uint64_t dim_check_tuple_cost = 5;  // us

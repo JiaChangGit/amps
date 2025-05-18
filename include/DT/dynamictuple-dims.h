@@ -1,10 +1,7 @@
 #ifndef DYNAMICTUPLEDIMS_H
 #define DYNAMICTUPLEDIMS_H
 
-#include <cmath>
-
 #include "elementary_DT_MT.h"
-#include "io_DT_MT.h"
 
 struct DimRange {
   int x1, x2;

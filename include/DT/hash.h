@@ -1,5 +1,5 @@
-#ifndef HASH_H
-#define HASH_H
+#ifndef HASH_DT_H
+#define HASH_DT_H
 
 #include "elementary_DT_MT.h"
 

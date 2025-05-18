@@ -1,7 +1,7 @@
 #include <omp.h>
 // #include <stdio.h>  // JIA remove printf
-#include <stdlib.h>
-#include <unistd.h>
+// #include <stdlib.h>
+// #include <unistd.h>
 
 #include "LinearRegressionModel.hpp"
 
@@ -15,8 +15,7 @@
 
 //// DT MT ////
 #include "dynamictuple.h"
-#include "elementary_DT_MT.h"
-// #include "io_DT_MT.h"
+// #include "elementary_DT_MT.h"
 #include "multilayertuple.h"
 //// DT MT ////
 
@@ -552,7 +551,7 @@ inline void warmup_KSet(vector<KSet> &set, const vector<Packet> &packets,
     if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
     if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
       kset_match_pri = max(kset_match_pri, set[1].ClassifyAPacket(packets[i]));
-    if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+    if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
       kset_match_pri = max(kset_match_pri, set[2].ClassifyAPacket(packets[i]));
     if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
       kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
@@ -859,7 +858,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -875,7 +875,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -1033,15 +1034,15 @@ int main(int argc, char *argv[]) {
       // evaluateModel(X11 * DBT_model_11, DBT_y, "DBT-11-feature");
       // evaluateModel(X3 * KSet_model_3, KSet_y, "KSet-3-feature");
       // evaluateModel(X11 * KSet_model_11, KSet_y, "KSet-11-feature");
-      auto [mean_PT, median_PT, per25_PT, per75_PT, per95_PT, per99_PT] =
+      auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
           printStatistics(PT_y);
-      auto [mean_DBT, median_DBT, per25_DBT, per75_DBT, per95_DBT, per99_DBT] =
+      auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
           printStatistics(DBT_y);
-      auto [mean_KSet, median_KSet, per25_KSet, per75_KSet, per95_KSet,
-            per99_KSet] = printStatistics(KSet_y);
-      auto [mean_DT, median_DT, per25_DT, per75_DT, per95_DT, per99_DT] =
+      auto [mean_KSet, median_KSet, per75_KSet, per95_KSet, per99_KSet] =
+          printStatistics(KSet_y);
+      auto [mean_DT, median_DT, per75_DT, per95_DT, per99_DT] =
           printStatistics(DT_y);
-      auto [mean_MT, median_MT, per25_MT, per75_MT, per95_MT, per99_MT] =
+      auto [mean_MT, median_MT, per75_MT, per95_MT, per99_MT] =
           printStatistics(MT_y);
       /////// benchmark ///////
 
@@ -1206,12 +1207,11 @@ int main(int argc, char *argv[]) {
                                         MT_y(i)};
 
         // 找出實際最小值與最大值的模型索引
-        int real_min_label =
-            min_element(real_values.begin(), real_values.end()) -
-            real_values.begin();
-        int real_max_label =
-            max_element(real_values.begin(), real_values.end()) -
-            real_values.begin();
+        // 找所有最小與最大值的 index
+        auto real_min_labels = find_all_min_indices(real_values);
+        auto real_max_labels = find_all_max_indices(real_values);
+        int real_min_label = real_min_labels[0];
+        int real_max_label = real_max_labels[0];
 
         // 實際的最小與最大值
         double real_min_val = real_values[real_min_label];
@@ -1225,13 +1225,15 @@ int main(int argc, char *argv[]) {
                 PT_y(i), DBT_y(i), KSet_y(i), DT_y(i), MT_y(i), real_min_val,
                 real_min_label, min_id_predict, real_max_val, real_max_label);
 
-        // 預測準確與錯誤統計
-        if (min_id_predict == real_min_label)
-          ++model_acc;
-        else if (min_id_predict == real_max_label)
-          ++model_fail;
-        else {
-          ++model_oth;
+        // 判斷預測結果屬於哪一類
+        if (std::find(real_min_labels.begin(), real_min_labels.end(),
+                      min_id_predict) != real_min_labels.end()) {
+          ++model_acc;  // 預測成功（在所有實際最小值中）
+        } else if (std::find(real_max_labels.begin(), real_max_labels.end(),
+                             min_id_predict) != real_max_labels.end()) {
+          ++model_fail;  // 預測錯誤（選到實際最大值）
+        } else {
+          ++model_oth;  // 其他情況
         }
         //// acc
       }
@@ -1251,66 +1253,11 @@ int main(int argc, char *argv[]) {
       //// 3-D
 
       //// 5-D
-      FILE *pt_prediction_5_out =
-          fopen("./INFO/PT_prediction_5_result.txt", "w");
-      if (!pt_prediction_5_out) {
-        cerr << "Cannot open PT_prediction_5_result.txt: " << strerror(errno)
-             << '\n';
-        return EXIT_FAILURE;
-      }
-
-      FILE *dbt_prediction_5_out =
-          fopen("./INFO/DBT_prediction_5_result.txt", "w");
-      if (!dbt_prediction_5_out) {
-        cerr << "Cannot open DBT_prediction_5_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_5_out);
-        return EXIT_FAILURE;
-      }
-
-      FILE *kset_prediction_5_out =
-          fopen("./INFO/KSet_prediction_5_result.txt", "w");
-      if (!kset_prediction_5_out) {
-        cerr << "Cannot open KSet_prediction_5_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_5_out);
-        fclose(dbt_prediction_5_out);
-        return EXIT_FAILURE;
-      }
-
-      FILE *dt_prediction_5_out =
-          fopen("./INFO/DT_prediction_5_result.txt", "w");
-      if (!dt_prediction_5_out) {
-        cerr << "Cannot open DT_prediction_5_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_5_out);
-        fclose(dbt_prediction_5_out);
-        fclose(kset_prediction_5_out);
-        return EXIT_FAILURE;
-      }
-
-      FILE *mt_prediction_5_out =
-          fopen("./INFO/MT_prediction_5_result.txt", "w");
-      if (!mt_prediction_5_out) {
-        cerr << "Cannot open MT_prediction_5_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_5_out);
-        fclose(dbt_prediction_5_out);
-        fclose(kset_prediction_5_out);
-        fclose(dt_prediction_5_out);
-        return EXIT_FAILURE;
-      }
-
       FILE *total_prediction_5_out =
           fopen("./INFO/Total_prediction_5_result.txt", "w");
       if (!total_prediction_5_out) {
         cerr << "Cannot open Total_prediction_5_result.txt: " << strerror(errno)
              << '\n';
-        fclose(pt_prediction_5_out);
-        fclose(dbt_prediction_5_out);
-        fclose(kset_prediction_5_out);
-        fclose(dt_prediction_5_out);
-        fclose(mt_prediction_5_out);
         return EXIT_FAILURE;
       }
 
@@ -1340,47 +1287,27 @@ int main(int argc, char *argv[]) {
         //// PT
         double predicted_time_5_pt = predict5(PT_model_5, x1_norm_5, x2_norm_5,
                                               x3_norm_5, x4_norm_5, x5_norm_5);
-
-        double actual_time = PT_y(i);
-        fprintf(pt_prediction_5_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// PT
 
         //// DBT
         double predicted_time_5_dbt = predict5(
             DBT_model_5, x1_norm_5, x2_norm_5, x3_norm_5, x4_norm_5, x5_norm_5);
-
-        actual_time = DBT_y(i);
-        fprintf(dbt_prediction_5_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// DBT
 
         //// KSet
         double predicted_time_5_kset =
             predict5(KSet_model_5, x1_norm_5, x2_norm_5, x3_norm_5, x4_norm_5,
                      x5_norm_5);
-
-        actual_time = KSet_y(i);
-        fprintf(kset_prediction_5_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// KSet
 
         //// DT
         double predicted_time_5_dt = predict5(DT_model_5, x1_norm_5, x2_norm_5,
                                               x3_norm_5, x4_norm_5, x5_norm_5);
-
-        actual_time = DT_y(i);
-        fprintf(dt_prediction_5_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// DT
 
         //// MT
         double predicted_time_5_mt = predict5(MT_model_5, x1_norm_5, x2_norm_5,
                                               x3_norm_5, x4_norm_5, x5_norm_5);
-
-        actual_time = MT_y(i);
-        fprintf(mt_prediction_5_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// MT
 
         //// acc
@@ -1393,12 +1320,11 @@ int main(int argc, char *argv[]) {
                                         MT_y(i)};
 
         // 找出實際最小值與最大值的模型索引
-        int real_min_label =
-            min_element(real_values.begin(), real_values.end()) -
-            real_values.begin();
-        int real_max_label =
-            max_element(real_values.begin(), real_values.end()) -
-            real_values.begin();
+        // 找所有最小與最大值的 index
+        auto real_min_labels = find_all_min_indices(real_values);
+        auto real_max_labels = find_all_max_indices(real_values);
+        int real_min_label = real_min_labels[0];
+        int real_max_label = real_max_labels[0];
 
         // 實際的最小與最大值
         double real_min_val = real_values[real_min_label];
@@ -1411,21 +1337,19 @@ int main(int argc, char *argv[]) {
                 "min_id_predict %d\tMAX %.4f\treal_max_id %d\n",
                 PT_y(i), DBT_y(i), KSet_y(i), DT_y(i), MT_y(i), real_min_val,
                 real_min_label, min_id_predict, real_max_val, real_max_label);
-        // 預測準確與錯誤統計
-        if (min_id_predict == real_min_label)
-          ++model_acc;
-        else if (min_id_predict == real_max_label)
-          ++model_fail;
-        else {
-          ++model_oth;
+
+        // 判斷預測結果屬於哪一類
+        if (std::find(real_min_labels.begin(), real_min_labels.end(),
+                      min_id_predict) != real_min_labels.end()) {
+          ++model_acc;  // 預測成功（在所有實際最小值中）
+        } else if (std::find(real_max_labels.begin(), real_max_labels.end(),
+                             min_id_predict) != real_max_labels.end()) {
+          ++model_fail;  // 預測錯誤（選到實際最大值）
+        } else {
+          ++model_oth;  // 其他情況
         }
         //// acc
       }
-      fclose(pt_prediction_5_out);
-      fclose(dbt_prediction_5_out);
-      fclose(kset_prediction_5_out);
-      fclose(dt_prediction_5_out);
-      fclose(mt_prediction_5_out);
       fclose(total_prediction_5_out);
       cout << "    model_acc 5 (%): " << 100 * model_acc / (packetNum * 1.0)
            << "\n";
@@ -1436,66 +1360,11 @@ int main(int argc, char *argv[]) {
       //// 5-D
 
       //// 11-D
-      FILE *pt_prediction_11_out =
-          fopen("./INFO/PT_prediction_11_result.txt", "w");
-      if (!pt_prediction_11_out) {
-        cerr << "Cannot open PT_prediction_11_result.txt: " << strerror(errno)
-             << '\n';
-        return EXIT_FAILURE;
-      }
-
-      FILE *dbt_prediction_11_out =
-          fopen("./INFO/DBT_prediction_11_result.txt", "w");
-      if (!dbt_prediction_11_out) {
-        cerr << "Cannot open DBT_prediction_11_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_11_out);
-        return EXIT_FAILURE;
-      }
-
-      FILE *kset_prediction_11_out =
-          fopen("./INFO/KSet_prediction_11_result.txt", "w");
-      if (!kset_prediction_11_out) {
-        cerr << "Cannot open KSet_prediction_11_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_11_out);
-        fclose(dbt_prediction_11_out);
-        return EXIT_FAILURE;
-      }
-
-      FILE *dt_prediction_11_out =
-          fopen("./INFO/DT_prediction_11_result.txt", "w");
-      if (!dt_prediction_11_out) {
-        cerr << "Cannot open DT_prediction_11_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_11_out);
-        fclose(dbt_prediction_11_out);
-        fclose(kset_prediction_11_out);
-        return EXIT_FAILURE;
-      }
-
-      FILE *mt_prediction_11_out =
-          fopen("./INFO/MT_prediction_11_result.txt", "w");
-      if (!mt_prediction_11_out) {
-        cerr << "Cannot open MT_prediction_11_result.txt: " << strerror(errno)
-             << '\n';
-        fclose(pt_prediction_11_out);
-        fclose(dbt_prediction_11_out);
-        fclose(kset_prediction_11_out);
-        fclose(dt_prediction_11_out);
-        return EXIT_FAILURE;
-      }
-
       FILE *total_prediction_11_out =
           fopen("./INFO/Total_prediction_11_result.txt", "w");
       if (!total_prediction_11_out) {
         cerr << "Cannot open Total_prediction_11_result.txt: "
              << strerror(errno) << '\n';
-        fclose(pt_prediction_11_out);
-        fclose(dbt_prediction_11_out);
-        fclose(kset_prediction_11_out);
-        fclose(dt_prediction_11_out);
-        fclose(mt_prediction_11_out);
         return EXIT_FAILURE;
       }
 
@@ -1550,10 +1419,6 @@ int main(int argc, char *argv[]) {
             predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-
-        double actual_time = PT_y(i);
-        fprintf(pt_prediction_11_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// PT
 
         //// DBT
@@ -1561,10 +1426,6 @@ int main(int argc, char *argv[]) {
             predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-
-        actual_time = DBT_y(i);
-        fprintf(dbt_prediction_11_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// DBT
 
         //// KSet
@@ -1572,10 +1433,6 @@ int main(int argc, char *argv[]) {
             predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-
-        actual_time = KSet_y(i);
-        fprintf(kset_prediction_11_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// KSet
 
         //// DT
@@ -1583,10 +1440,6 @@ int main(int argc, char *argv[]) {
             predict11(DT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-
-        actual_time = DT_y(i);
-        fprintf(dt_prediction_11_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// DT
 
         //// MT
@@ -1594,10 +1447,6 @@ int main(int argc, char *argv[]) {
             predict11(MT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-
-        actual_time = MT_y(i);
-        fprintf(mt_prediction_11_out, "Packet %ld\tRealTime(ns) %llu\n", i,
-                static_cast<unsigned long long>(actual_time));
         //// MT
 
         //// acc
@@ -1610,12 +1459,11 @@ int main(int argc, char *argv[]) {
                                         MT_y(i)};
 
         // 找出實際最小值與最大值的模型索引
-        int real_min_label =
-            min_element(real_values.begin(), real_values.end()) -
-            real_values.begin();
-        int real_max_label =
-            max_element(real_values.begin(), real_values.end()) -
-            real_values.begin();
+        // 找所有最小與最大值的 index
+        auto real_min_labels = find_all_min_indices(real_values);
+        auto real_max_labels = find_all_max_indices(real_values);
+        int real_min_label = real_min_labels[0];
+        int real_max_label = real_max_labels[0];
 
         // 實際的最小與最大值
         double real_min_val = real_values[real_min_label];
@@ -1628,21 +1476,19 @@ int main(int argc, char *argv[]) {
                 "min_id_predict %d\tMAX %.4f\treal_max_id %d\n",
                 PT_y(i), DBT_y(i), KSet_y(i), DT_y(i), MT_y(i), real_min_val,
                 real_min_label, min_id_predict, real_max_val, real_max_label);
-        // 預測準確與錯誤統計
-        if (min_id_predict == real_min_label)
-          ++model_acc;
-        else if (min_id_predict == real_max_label)
-          ++model_fail;
-        else {
-          ++model_oth;
+
+        // 判斷預測結果屬於哪一類
+        if (std::find(real_min_labels.begin(), real_min_labels.end(),
+                      min_id_predict) != real_min_labels.end()) {
+          ++model_acc;  // 預測成功（在所有實際最小值中）
+        } else if (std::find(real_max_labels.begin(), real_max_labels.end(),
+                             min_id_predict) != real_max_labels.end()) {
+          ++model_fail;  // 預測錯誤（選到實際最大值）
+        } else {
+          ++model_oth;  // 其他情況
         }
         //// acc
       }
-      fclose(pt_prediction_11_out);
-      fclose(dbt_prediction_11_out);
-      fclose(kset_prediction_11_out);
-      fclose(dt_prediction_11_out);
-      fclose(mt_prediction_11_out);
       fclose(total_prediction_11_out);
       cout << "    model_acc 11 (%): " << 100 * model_acc / (packetNum * 1.0)
            << "\n";
@@ -1720,13 +1566,8 @@ int main(int argc, char *argv[]) {
         }
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
-
-      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
-      // warmup_MT(multilayertuple, traces_DT_MT);
-      warmup_DT(dynamictuple, traces_DT_MT);
-      warmup_PT(tree, PT_packets);
-      warmup_DBT(dbt, DBT_packets);
-      for (size_t t = 0; t < trials; ++t) {
+      vector<int> predict_choose(packetNum);
+      {
         double x1_norm_3 = 0, x2_norm_3 = 0, x3_norm_3 = 0;  // JIA normalize
         int arr[5] = {0};
         for (size_t i = 0; i < packetNum; ++i) {
@@ -1766,10 +1607,22 @@ int main(int argc, char *argv[]) {
           /* JIA normalizeFeatures */
           int min_idx = 0;
           for (int i = 1; i < 5; ++i) {
-            if (arr[i] < arr[min_idx]) min_idx = i;
+            if (arr[i] < arr[min_idx]) {
+              min_idx = i;
+            }
           }
+          predict_choose[i] = min_idx;
+        }
+      }
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
+      warmup_PT(tree, PT_packets);
+      warmup_DBT(dbt, DBT_packets);
+      for (size_t t = 0; t < trials; ++t) {
+        for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
-          switch (min_idx) {
+          switch (predict_choose[i]) {
             case 0:
               dbt.search(DBT_packets[i]);
               break;
@@ -1783,7 +1636,8 @@ int main(int argc, char *argv[]) {
                       kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-              if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
               if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -1800,7 +1654,7 @@ int main(int argc, char *argv[]) {
           _Total_search_time = timer.elapsed_ns();
           Total_search_time += _Total_search_time;
 #ifdef PERLOOKUPTIME_MODEL
-          Total_y(i) = (_Total_search_time);
+          Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
         }
       }
@@ -1817,11 +1671,11 @@ int main(int argc, char *argv[]) {
            << 100 * (model_counter_MT) / (packetNum * 1.0) << "\n";
 #ifdef PERLOOKUPTIME_MODEL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(total_model_3_fp, "Packet %ld \t Time(ns) %f\n", i,
-                Total_y(i) / 1.0);
+        fprintf(total_model_3_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
       }
       fclose(total_model_3_fp);
-      printStatistics("Total_y", Total_y);
+      printStatistics("Model-3_y", Total_y);
+      Total_y = Eigen::VectorXd::Zero(packetNum);
 #endif
       //// 3-D
 
@@ -1887,13 +1741,7 @@ int main(int argc, char *argv[]) {
         }
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
-
-      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
-      // warmup_MT(multilayertuple, traces_DT_MT);
-      warmup_DT(dynamictuple, traces_DT_MT);
-      warmup_PT(tree, PT_packets);
-      warmup_DBT(dbt, DBT_packets);
-      for (size_t t = 0; t < trials; ++t) {
+      {
         double x1_norm_5 = 0, x2_norm_5 = 0, x5_norm_5 = 0, x6_norm_5 = 0,
                x10_norm_5 = 0;  // JIA normalize
         int arr[5] = {0};
@@ -1945,8 +1793,18 @@ int main(int argc, char *argv[]) {
           for (int i = 1; i < 5; ++i) {
             if (arr[i] < arr[min_idx]) min_idx = i;
           }
+          predict_choose[i] = min_idx;
+        }
+      }
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
+      warmup_PT(tree, PT_packets);
+      warmup_DBT(dbt, DBT_packets);
+      for (size_t t = 0; t < trials; ++t) {
+        for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
-          switch (min_idx) {
+          switch (predict_choose[i]) {
             case 0:
               dbt.search(DBT_packets[i]);
               break;
@@ -1960,7 +1818,8 @@ int main(int argc, char *argv[]) {
                       kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-              if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
               if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -1977,7 +1836,7 @@ int main(int argc, char *argv[]) {
           _Total_search_time = timer.elapsed_ns();
           Total_search_time += _Total_search_time;
 #ifdef PERLOOKUPTIME_MODEL
-          Total_y(i) = (_Total_search_time);
+          Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
         }
       }
@@ -1994,11 +1853,11 @@ int main(int argc, char *argv[]) {
            << 100 * (model_counter_MT) / (packetNum * 1.0) << "\n";
 #ifdef PERLOOKUPTIME_MODEL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(total_model_5_fp, "Packet %ld \t Time(ns) %f\n", i,
-                Total_y(i) / 1.0);
+        fprintf(total_model_5_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
       }
       fclose(total_model_5_fp);
-      printStatistics("Total_y", Total_y);
+      printStatistics("Model-5_y", Total_y);
+      Total_y = Eigen::VectorXd::Zero(packetNum);
 #endif
       //// 5-D
 
@@ -2081,12 +1940,7 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
-      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
-      // warmup_MT(multilayertuple, traces_DT_MT);
-      warmup_DT(dynamictuple, traces_DT_MT);
-      warmup_PT(tree, PT_packets);
-      warmup_DBT(dbt, DBT_packets);
-      for (size_t t = 0; t < trials; ++t) {
+      {
         double x1_norm_11 = 0, x2_norm_11 = 0, x3_norm_11 = 0, x4_norm_11 = 0,
                x5_norm_11 = 0, x6_norm_11 = 0, x7_norm_11 = 0, x8_norm_11 = 0,
                x9_norm_11 = 0, x10_norm_11 = 0,
@@ -2165,8 +2019,18 @@ int main(int argc, char *argv[]) {
           for (int i = 1; i < 5; ++i) {
             if (arr[i] < arr[min_idx]) min_idx = i;
           }
+          predict_choose[i] = min_idx;
+        }
+      }
+      // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
+      // warmup_MT(multilayertuple, traces_DT_MT);
+      warmup_DT(dynamictuple, traces_DT_MT);
+      warmup_PT(tree, PT_packets);
+      warmup_DBT(dbt, DBT_packets);
+      for (size_t t = 0; t < trials; ++t) {
+        for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
-          switch (min_idx) {
+          switch (predict_choose[i]) {
             case 0:
               dbt.search(DBT_packets[i]);
               break;
@@ -2180,7 +2044,8 @@ int main(int argc, char *argv[]) {
                       kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-              if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
               if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -2197,7 +2062,7 @@ int main(int argc, char *argv[]) {
           _Total_search_time = timer.elapsed_ns();
           Total_search_time += _Total_search_time;
 #ifdef PERLOOKUPTIME_MODEL
-          Total_y(i) = (_Total_search_time);
+          Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
         }
       }
@@ -2215,10 +2080,11 @@ int main(int argc, char *argv[]) {
 #ifdef PERLOOKUPTIME_MODEL
       for (size_t i = 0; i < packetNum; ++i) {
         fprintf(total_model_11_fp, "Packet %ld \t Time(ns) %f\n", i,
-                Total_y(i) / 1.0);
+                Total_y(i));
       }
       fclose(total_model_11_fp);
-      printStatistics("Total_y", Total_y);
+      printStatistics("Model-11_y", Total_y);
+      Total_y = Eigen::VectorXd::Zero(packetNum);
 #endif
       //// 11-D
     }
@@ -2236,10 +2102,10 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd DT_y(packetNum);
       Eigen::VectorXd MT_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      xai::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.1, 0.01);
-      xai::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.1, 0.01);
-      xai::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.1, 0.01);
-      xai::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.1, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.01, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.01, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.01, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.01, 0.01);
 
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
@@ -2274,7 +2140,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -2289,7 +2156,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
           if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -2323,35 +2191,43 @@ int main(int argc, char *argv[]) {
           MT_y(i) = static_cast<double>(_MT_search_time);
         }
       }
-      auto [mean_PT, median_PT, per25_PT, per75_PT, per95_PT, per99_PT] =
+      auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
           printStatistics(PT_y);
-      auto [mean_DBT, median_DBT, per25_DBT, per75_DBT, per95_DBT, per99_DBT] =
+      auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
           printStatistics(DBT_y);
-      auto [mean_DT, median_DT, per25_DT, per75_DT, per95_DT, per99_DT] =
+      auto [mean_DT, median_DT, per75_DT, per95_DT, per99_DT] =
           printStatistics(DT_y);
-      auto [mean_MT, median_MT, per25_MT, per75_MT, per95_MT, per99_MT] =
+      auto [mean_MT, median_MT, per75_MT, per95_MT, per99_MT] =
           printStatistics(MT_y);
 
       for (size_t i = 0; i < packetNum; ++i) {
         if (PT_y(i) >= per99_PT) {
-          bloom_filter_pt.insert((PT_packets[i].toIP64()) ^
-                                 (PT_packets[i].source_port) ^
-                                 (PT_packets[i].destination_port));
+          bloom_filter_pt.insert(
+              (PT_packets[i].toIP64()) ^
+              (((static_cast<uint64_t>(PT_packets[i].source_port) << 16) |
+                static_cast<uint64_t>(PT_packets[i].destination_port))
+               << 17));
         }
         if (DBT_y(i) >= per99_DBT) {
-          bloom_filter_dbt.insert((DBT_packets[i].ip.i_64) ^
-                                  (DBT_packets[i].Port[0]) ^
-                                  (DBT_packets[i].Port[1]));
+          bloom_filter_dbt.insert(
+              (DBT_packets[i].ip.i_64) ^
+              (((static_cast<uint64_t>(DBT_packets[i].Port[0]) << 16) |
+                static_cast<uint64_t>(DBT_packets[i].Port[1]))
+               << 17));
         }
         if (DT_y(i) >= per99_DT) {
-          bloom_filter_dt.insert((traces_DT_MT[i]->dst_src_ip) ^
-                                 (traces_DT_MT[i]->key[2]) ^
-                                 (traces_DT_MT[i]->key[3]));
+          bloom_filter_dt.insert(
+              (traces_DT_MT[i]->dst_src_ip) ^
+              (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
+                static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
+               << 17));
         }
         if (MT_y(i) >= per99_MT) {
-          bloom_filter_mt.insert((traces_DT_MT[i]->dst_src_ip) ^
-                                 (traces_DT_MT[i]->key[2]) ^
-                                 (traces_DT_MT[i]->key[3]));
+          bloom_filter_mt.insert(
+              (traces_DT_MT[i]->dst_src_ip) ^
+              (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
+                static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
+               << 17));
         }
       }
 ///////// BloomFilter Construct /////////
@@ -2378,15 +2254,21 @@ int main(int argc, char *argv[]) {
     reduction(+ : bloom_counter_DBT, bloom_counter_PT, bloom_counter_KSet)
       for (size_t i = 0; i < packetNum; ++i) {
         // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
-        const uint64_t key_dbt = DBT_packets[i].ip.i_64 ^
-                                 DBT_packets[i].Port[0] ^
-                                 DBT_packets[i].Port[1];
-        const uint64_t key_pt = PT_packets[i].toIP64() ^
-                                PT_packets[i].source_port ^
-                                PT_packets[i].destination_port;
-        const uint64_t key_dt_mt = (traces_DT_MT[i]->dst_src_ip) ^
-                                   (traces_DT_MT[i]->key[2]) ^
-                                   (traces_DT_MT[i]->key[3]);
+        const uint64_t key_dbt =
+            (DBT_packets[i].ip.i_64) ^
+            (((static_cast<uint64_t>(DBT_packets[i].Port[0]) << 16) |
+              static_cast<uint64_t>(DBT_packets[i].Port[1]))
+             << 17);
+        const uint64_t key_pt =
+            (PT_packets[i].toIP64()) ^
+            (((static_cast<uint64_t>(PT_packets[i].source_port) << 16) |
+              static_cast<uint64_t>(PT_packets[i].destination_port))
+             << 17);
+        const uint64_t key_dt_mt =
+            (traces_DT_MT[i]->dst_src_ip) ^
+            (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
+              static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
+             << 17);
         // Bloom Filter 查詢，優化條件分支結構（避免 else-if 嵌套）
         const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
         const bool hit_pt = bloom_filter_pt.contains(key_pt);
@@ -2415,22 +2297,28 @@ int main(int argc, char *argv[]) {
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
-          const uint64_t key_dbt = DBT_packets[i].ip.i_64 ^
-                                   DBT_packets[i].Port[0] ^
-                                   DBT_packets[i].Port[1];
-          const uint64_t key_pt = PT_packets[i].toIP64() ^
-                                  PT_packets[i].source_port ^
-                                  PT_packets[i].destination_port;
-          const uint64_t key_dt_mt = (traces_DT_MT[i]->dst_src_ip) ^
-                                     (traces_DT_MT[i]->key[2]) ^
-                                     (traces_DT_MT[i]->key[3]);
+          const uint64_t key_dbt =
+              (DBT_packets[i].ip.i_64) ^
+              (((static_cast<uint64_t>(DBT_packets[i].Port[0]) << 16) |
+                static_cast<uint64_t>(DBT_packets[i].Port[1]))
+               << 17);
+          const uint64_t key_pt =
+              (PT_packets[i].toIP64()) ^
+              (((static_cast<uint64_t>(PT_packets[i].source_port) << 16) |
+                static_cast<uint64_t>(PT_packets[i].destination_port))
+               << 17);
+          const uint64_t key_dt_mt =
+              (traces_DT_MT[i]->dst_src_ip) ^
+              (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
+                static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
+               << 17);
           // Bloom Filter 查詢，優化條件分支結構（避免 else-if 嵌套）
           const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
           const bool hit_pt = bloom_filter_pt.contains(key_pt);
           const bool hit_dt = bloom_filter_dt.contains(key_dt_mt);
           const bool hit_mt = bloom_filter_mt.contains(key_dt_mt);
           timer.timeReset();
-          if (!hit_dbt) {
+          if (__builtin_expect(!hit_dbt, 1)) {
             dbt.search(DBT_packets[i]);
           } else if (!hit_pt) {
             tree.search(PT_packets[i]);
@@ -2446,7 +2334,8 @@ int main(int argc, char *argv[]) {
                     kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
               kset_match_pri =
                   max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-            if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+            if (__builtin_expect(
+                    kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
               kset_match_pri =
                   max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
             if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
@@ -2456,7 +2345,7 @@ int main(int argc, char *argv[]) {
           _Total_search_time = timer.elapsed_ns();
           Total_search_time += _Total_search_time;
 #ifdef PERLOOKUPTIME_BLOOM
-          BloomFilter_y(i) = _Total_search_time;
+          BloomFilter_y(i) = (static_cast<double>(_Total_search_time));
 #endif
         }
       }
@@ -2477,11 +2366,6 @@ int main(int argc, char *argv[]) {
         fprintf(Bloom_res, "Packet %ld \t Time(ns) %f\n", i, BloomFilter_y(i));
       }
       fclose(Bloom_res);
-      // 輸出 bit array 狀態
-      bloom_filter_pt.print_statistics();
-      bloom_filter_dbt.print_statistics();
-      bloom_filter_dt.print_statistics();
-      bloom_filter_mt.print_statistics();
       printStatistics("BloomFilter_y", BloomFilter_y);
 #endif
 
@@ -2525,7 +2409,7 @@ int main(int argc, char *argv[]) {
           PT_search_time += _PT_search_time;
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
-          PT_y(i) = static_cast<double>(_PT_search_time);
+          PT_y(i) = (static_cast<double>(_PT_search_time));
           PT_match_id_arr[i] = PT_match_id;
 #endif
         }
@@ -2533,10 +2417,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(PT_res_fp, "Packet %ld \t Time(ns) %f\n", i, PT_y(i) / 1.0);
+        fprintf(PT_res_fp, "Packet %ld \t Time(ns) %f\n", i, PT_y(i));
       }
       fclose(PT_res_fp);
-      printStatistics("T_PT_y", PT_y);
+      printStatistics("indiv_PT_y", PT_y);
 #endif
 
       cout << "|- Average search time: "
@@ -2559,7 +2443,7 @@ int main(int argc, char *argv[]) {
           DBT_search_time += _DBT_search_time;
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
-          DBT_y(i) = static_cast<double>(_DBT_search_time);
+          DBT_y(i) = (static_cast<double>(_DBT_search_time));
           DBT_match_id_arr[i] = DBT_match_id;
 #endif
         }
@@ -2567,10 +2451,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(DBT_res_fp, "Packet %ld \t Time(ns) %f\n", i, DBT_y(i) / 1.0);
+        fprintf(DBT_res_fp, "Packet %ld \t Time(ns) %f\n", i, DBT_y(i));
       }
       fclose(DBT_res_fp);
-      printStatistics("T_DBT_y", DBT_y);
+      printStatistics("indiv_DBT_y", DBT_y);
 #endif
 
       cout << "|- Average search time: "
@@ -2597,7 +2481,8 @@ int main(int argc, char *argv[]) {
           if (__builtin_expect(
                   kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
             kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(ptk));
-          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(ptk));
           if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
             kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(ptk));
@@ -2605,7 +2490,7 @@ int main(int argc, char *argv[]) {
           KSet_search_time += _KSet_search_time;
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
-          KSet_y(i) = static_cast<double>(_KSet_search_time);
+          KSet_y(i) = (static_cast<double>(_KSet_search_time));
           KSet_match_pri_arr[i] = (number_rule - 1) - kset_match_pri;
 #endif
         }
@@ -2613,10 +2498,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(KSet_res_fp, "Packet %ld \t Time(ns) %f\n", i, KSet_y(i) / 1.0);
+        fprintf(KSet_res_fp, "Packet %ld \t Time(ns) %f\n", i, KSet_y(i));
       }
       fclose(KSet_res_fp);
-      printStatistics("T_KSet_y", KSet_y);
+      printStatistics("indiv_KSet_y", KSet_y);
 #endif
 
       cout << fixed << setprecision(3) << "\tAverage search time: "
@@ -2636,7 +2521,7 @@ int main(int argc, char *argv[]) {
           _DT_search_time = timer.elapsed_ns();
           DT_search_time += _DT_search_time;
 #ifdef PERLOOKUPTIME_INDIVIDUAL
-          DT_y(i) = _DT_search_time;
+          DT_y(i) = (static_cast<double>(_DT_search_time));
           DT_match_id_arr[i] = (number_rule - 1) - resID;
 #endif
         }
@@ -2644,10 +2529,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(DT_res_fp, "Packet %ld \t Time(ns) %f\n", i, DT_y(i) / 1.0);
+        fprintf(DT_res_fp, "Packet %ld \t Time(ns) %f\n", i, DT_y(i));
       }
       fclose(DT_res_fp);
-      printStatistics("T_DT_y", DT_y);
+      printStatistics("indiv_DT_y", DT_y);
 #endif
 
       cout << fixed << setprecision(3) << "\tAverage search time: "
@@ -2669,7 +2554,7 @@ int main(int argc, char *argv[]) {
           _MT_search_time = timer.elapsed_ns();
           MT_search_time += _MT_search_time;
 #ifdef PERLOOKUPTIME_INDIVIDUAL
-          MT_y(i) = _MT_search_time;
+          MT_y(i) = (static_cast<double>(_MT_search_time));
           MT_match_id_arr[i] = (number_rule - 1) - resID;
 #endif
         }
@@ -2677,10 +2562,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef PERLOOKUPTIME_INDIVIDUAL
       for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(MT_res_fp, "Packet %ld \t Time(ns) %f\n", i, MT_y(i) / 1.0);
+        fprintf(MT_res_fp, "Packet %ld \t Time(ns) %f\n", i, MT_y(i));
       }
       fclose(MT_res_fp);
-      printStatistics("T_MT_y", MT_y);
+      printStatistics("indiv_MT_y", MT_y);
 #endif
 
       cout << fixed << setprecision(3) << "\tAverage search time: "

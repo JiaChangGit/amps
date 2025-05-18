@@ -3,10 +3,10 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <fstream>
-#include <iomanip>
+// #include <cassert>
+// #include <cmath>
+// #include <fstream>
+// #include <iomanip>
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -81,12 +81,11 @@ inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
 /**
  * @brief 將單一特徵值轉換為標準化後的值。
  * 使用公式：normalized_value = (value - mean) / stddev
- * 若 stddev 太小則視為常數特徵，直接回傳 0
+ * 若 stddev 太小則視為常數特徵，直接回傳 (value - mean)
  */
 inline double toNormalized(double value, double mean, double stddev) {
-  return (stddev < 1e-8) ? 0.0 : (value - mean) / stddev;
+  return (stddev < 1e-8) ? (value - mean) : (value - mean) / stddev;
 }
-
 /**
  * @brief 計算線性回歸模型係數
  * 利用最小平方法 Least Squares 解以下問題：
@@ -95,7 +94,7 @@ inline double toNormalized(double value, double mean, double stddev) {
  */
 inline Eigen::VectorXd linearRegressionFit(const Eigen::MatrixXd &X,
                                            const Eigen::VectorXd &y) {
-  assert(X.rows() == y.size());
+  // assert(X.rows() == y.size());
   return X.householderQr().solve(y);
 }
 
@@ -112,10 +111,10 @@ inline void evaluateModel(const Eigen::VectorXd &y_pred,
                           const std::string &label,
                           std::ostream &os = std::cout) {
   const int n = y_true.size();
-  if (n == 0 || y_pred.size() != n) {
-    std::cerr << "Error: input size mismatch or empty vectors.\n";
-    return;
-  }
+  // if (n == 0 || y_pred.size() != n) {
+  //   std::cerr << "Error: input size mismatch or empty vectors.\n";
+  //   return;
+  // }
 
   double mae = 0.0, mse = 0.0, maxae = 0.0;
   const double y_mean = y_true.mean();
@@ -167,16 +166,17 @@ inline void evaluateModel(const Eigen::VectorXd &y_pred,
 
 inline double predict3(const Eigen::VectorXd &a, double x1, double x2,
                        double x3) {
-  assert(a.size() == 3);
+  // assert(a.size() == 3);
   return std::
       abs(a(0) * x1 + a(1) * x2 +
-          a(2) * x3 /*+
-a(3)*/);            /* + a(3) JIA bias */
+          a(2) *
+              x3 /*+
+a(3)*/);         /* + a(3) JIA bias */
 }
 
 inline double predict5(const Eigen::VectorXd &a, double x1, double x2,
                        double x3, double x4, double x5) {
-  assert(a.size() == 5);
+  // assert(a.size() == 5);
   return std::
       abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 /*+
 a(5)*/); /* + a(5) JIA bias */
@@ -185,7 +185,7 @@ a(5)*/); /* + a(5) JIA bias */
 inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
                         double x3, double x4, double x5, double x6, double x7,
                         double x8, double x9, double x10, double x11) {
-  assert(a.size() == 11);
+  // assert(a.size() == 11);
   return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
                   a(5) * x6 + a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 +
                   a(10) * x11 /*+ a(11)*/); /* + a(12) JIA bias */
@@ -193,7 +193,7 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
 
 // inline double predict3_poly2(const Eigen::VectorXd &a, double x1, double x2,
 //                              double x3) {
-//   assert(a.size() == 3);
+//   // assert(a.size() == 3);
 //   return  std::abs(a(0) * (x1 + x1 * x1) + a(1) * (x2 + x2 * x2) + a(2) * (x3
 //   + x3 * x3));
 // }
@@ -202,7 +202,7 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
 
 // inline double computeMedian(Eigen::VectorXd v) {
 //   const int n = v.size();
-//   assert(n > 0);
+//   // assert(n > 0);
 
 //   std::vector<double> data(v.data(), v.data() + n);
 //   std::nth_element(data.begin(), data.begin() + n / 2, data.end());
@@ -224,8 +224,8 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
 // -----------------------------------------------------------------------------
 inline double computePercentile(const Eigen::VectorXd &v, double p) {
   const int n = v.size();
-  assert(n > 0 && "向量不能為空");
-  assert(p >= 0.0 && p <= 1.0 && "百分位數 p 必須介於 0.0 與 1.0 之間");
+  // assert(n > 0 && "向量不能為空");
+  // assert(p >= 0.0 && p <= 1.0 && "百分位數 p 必須介於 0.0 與 1.0 之間");
 
   // 將 Eigen 向量轉為 std::vector 以便排序
   std::vector<double> data(v.data(), v.data() + n);
@@ -262,25 +262,32 @@ inline double computeStdDev(const Eigen::VectorXd &v, double mean) {
 
   // 採用母體標準差（分母為 n，而非 n-1）
   return std::sqrt(sum_sq / n);
+
+  // // 採用樣本標準差
+  // return std::sqrt(sum_sq / (n - 1));
 }
 
 // -----------------------------------------------------------------------------
-// 輸出統計摘要，並回傳 tuple<double, double, double, double, double, double>
-// 代表：mean, median, p25, p75, p95, p99
+// 輸出統計摘要，並回傳 tuple<double, double, double, double, double>
+// 代表：mean, median, p75, p95, p99
 // -----------------------------------------------------------------------------
-inline std::tuple<double, double, double, double, double, double>
-printStatistics(const std::string &label, const Eigen::VectorXd &data) {
+inline std::tuple<double, double, double, double, double> printStatistics(
+    const std::string &label, const Eigen::VectorXd &data) {
+  if (data.size() == 0) {
+    std::cout << "|--- " << label << " No data available\n";
+    return {0.0, 0.0, 0.0, 0.0, 0.0};
+  }
   const double mean = data.mean();
+  const double stddev = computeStdDev(data, mean);
   const double median = computePercentile(data, 0.5);
-  const double p25 = computePercentile(data, 0.25);
+  // const double p25 = computePercentile(data, 0.25);
   const double p75 = computePercentile(data, 0.75);
   const double p95 = computePercentile(data, 0.95);
   const double p99 = computePercentile(data, 0.99);
-  const double stddev = computeStdDev(data, mean);
 
   // 統一輸出格式
   // std::cout << "|--- " << label << " Mean: " << mean << "\n";
-  std::cout << "|--- " << label << " 25th Percentile: " << p25 << "\n";
+  // std::cout << "|--- " << label << " 25th Percentile: " << p25 << "\n";
   std::cout << "|--- " << label << " median Percentile: " << median << "\n";
   std::cout << "|--- " << label << " 75th Percentile: " << p75 << "\n";
   std::cout << "|--- " << label << " 95th Percentile: " << p95 << "\n";
@@ -289,20 +296,43 @@ printStatistics(const std::string &label, const Eigen::VectorXd &data) {
             << "\n";
 
   // 回傳統計結果
-  return {mean, median, p25, p75, p95, p99};
+  return {mean, median, p75, p95, p99};
 }
 
-inline std::tuple<double, double, double, double, double, double>
-printStatistics(const Eigen::VectorXd &data) {
+inline std::tuple<double, double, double, double, double> printStatistics(
+    const Eigen::VectorXd &data) {
+  if (data.size() == 0) {
+    return {0.0, 0.0, 0.0, 0.0, 0.0};
+  }
   const double mean = data.mean();
   const double median = computePercentile(data, 0.5);
-  const double p25 = computePercentile(data, 0.25);
+  // const double p25 = computePercentile(data, 0.25);
   const double p75 = computePercentile(data, 0.75);
   const double p95 = computePercentile(data, 0.95);
   const double p99 = computePercentile(data, 0.99);
 
   // 回傳統計結果
-  return {mean, median, p25, p75, p95, p99};
+  return {mean, median, p75, p95, p99};
+}
+
+// 傳回所有最小值的 index
+std::vector<int> find_all_min_indices(const std::array<double, 5> &values) {
+  std::vector<int> indices;
+  double min_val = *std::min_element(values.begin(), values.end());
+  for (int i = 0; i < 5; ++i) {
+    if (values[i] == min_val) indices.push_back(i);
+  }
+  return indices;
+}
+
+// 傳回所有最大值的 index
+std::vector<int> find_all_max_indices(const std::array<double, 5> &values) {
+  std::vector<int> indices;
+  double max_val = *std::max_element(values.begin(), values.end());
+  for (int i = 0; i < 5; ++i) {
+    if (values[i] == max_val) indices.push_back(i);
+  }
+  return indices;
 }
 
 inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,

@@ -1,5 +1,5 @@
 #ifndef __DBT_TSS_HPP__
-#define __DBT_SS_HPP__
+#define __DBT_TSS_HPP__
 
 #include <iostream>
 

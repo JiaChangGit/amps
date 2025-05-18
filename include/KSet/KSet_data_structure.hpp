@@ -1,11 +1,10 @@
 #ifndef __DATA_STRUCTURE_HPP__
 #define __DATA_STRUCTURE_HPP__
 
+// #include <cstdint>
 #include <algorithm>
 #include <array>
-#include <cstdint>
 #include <iostream>
-#include <string>
 #include <vector>
 #define LowDim 0
 #define HighDim 1

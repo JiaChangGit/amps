@@ -19,7 +19,6 @@
 #define __IO_INPUT_HPP__
 
 // #include <cstdio>  // JIA remove printf
-#include <cstdlib>
 
 #include "KSet_data_structure.hpp"
 

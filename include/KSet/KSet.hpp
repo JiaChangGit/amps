@@ -2,7 +2,7 @@
 #define __KSET_HPP__
 
 #include <cmath>
-#include <iomanip>  // 用於設置小數點位數
+#include <iomanip>
 
 #include "KSet_data_structure.hpp"
 using namespace std;
@@ -181,7 +181,6 @@ class KSet {
          << ", Small_Node_Count = " << Small_Node_Count
          << ", Big_Node_Count = " << Big_Node_Count << "\n";
 
-    // 設置小數點後顯示 3 位數
     cout << fixed << setprecision(3);
 
     cout << "\tTable_memory: " << total_tablesize_memory_in_KB << "(KB), "

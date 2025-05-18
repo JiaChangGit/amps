@@ -1,10 +1,7 @@
 #ifndef DYNAMICTUPLERANGES_H
 #define DYNAMICTUPLERANGES_H
 
-#include <cmath>
-
 #include "elementary_DT_MT.h"
-#include "io_DT_MT.h"
 
 #define SPLIT_SELF 1
 #define SPLIT_SRC 2

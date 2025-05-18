@@ -6,6 +6,6 @@
 #include "mhashnode.h"
 #include "mhashtable.h"
 
-using namespace std;
+// using namespace std;
 
 #endif

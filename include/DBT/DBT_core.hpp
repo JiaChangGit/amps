@@ -26,17 +26,14 @@
 #define __DBT_CORE_HPP__
 #include <immintrin.h>  // 包含 BMI2 指令集
 
-#include <algorithm>
+// #include <algorithm>
+// #include <fstream>
+// #include <iostream>
 #include <bitset>
-#include <fstream>
 #include <iomanip>
-#include <iostream>
-
+// #include "basis.hpp"
 #include "DBT_tss.hpp"
-#include "basis.hpp"
-#ifndef TIMER_METHOD
-#define TIMER_METHOD TIMER_RDTSCP
-#endif
+
 using namespace std;
 
 namespace DBT {
