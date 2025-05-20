@@ -11,7 +11,32 @@
 #include <string>
 #include <tuple>
 #include <vector>
+// #define BIAS
+//     JIA bias
+#ifdef BIAS
+inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
+                              Eigen::VectorXd &std_out) {
+  int rows = X.rows();
+  int cols = X.cols();
 
+  mean_out.resize(cols - 1);
+  std_out.resize(cols - 1);
+
+  for (int j = 0; j < cols - 1; ++j) {
+    auto col = X.col(j).array();
+    double mean = col.mean();
+    double sq_sum = (col - mean).square().sum();
+    double stddev = std::sqrt(sq_sum / rows);
+
+    if (stddev < 1e-8) stddev = 1.0;
+
+    mean_out[j] = mean;
+    std_out[j] = stddev;
+
+    X.col(j) = (col - mean) / stddev;
+  }
+}
+#else
 /**
  * @brief 對資料矩陣進行欄位（特徵）標準化，使每一欄資料轉為 mean = 0, std = 1。
  *
@@ -53,30 +78,7 @@ inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
     X.col(j) = centered / stddev;
   }
 }
-
-// JIA bias
-// inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
-//                               Eigen::VectorXd &std_out) {
-//   int rows = X.rows();
-//   int cols = X.cols();
-
-//   mean_out.resize(cols - 1);
-//   std_out.resize(cols - 1);
-
-//   for (int j = 0; j < cols - 1; ++j) {
-//     auto col = X.col(j).array();
-//     double mean = col.mean();
-//     double sq_sum = (col - mean).square().sum();
-//     double stddev = std::sqrt(sq_sum / rows);
-
-//     if (stddev < 1e-8) stddev = 1.0;
-
-//     mean_out[j] = mean;
-//     std_out[j] = stddev;
-
-//     X.col(j) = (col - mean) / stddev;
-//   }
-// }
+#endif
 
 /**
  * @brief 將單一特徵值轉換為標準化後的值。
@@ -166,29 +168,38 @@ inline void evaluateModel(const Eigen::VectorXd &y_pred,
 
 inline double predict3(const Eigen::VectorXd &a, double x1, double x2,
                        double x3) {
-  // assert(a.size() == 3);
-  return std::
-      abs(a(0) * x1 + a(1) * x2 +
-          a(2) *
-              x3 /*+
-a(3)*/);         /* + a(3) JIA bias */
+// assert(a.size() == 3);
+#ifdef BIAS
+  return (a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3)); /* + a(3) JIA bias */
+#else
+  return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3);
+#endif
 }
 
 inline double predict5(const Eigen::VectorXd &a, double x1, double x2,
                        double x3, double x4, double x5) {
-  // assert(a.size() == 5);
-  return std::
-      abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 /*+
-a(5)*/); /* + a(5) JIA bias */
+// assert(a.size() == 5);
+#ifdef BIAS
+  return (a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
+          a(5)); /* + a(5) JIA bias */
+#else
+  return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5);
+#endif
 }
 
 inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
                         double x3, double x4, double x5, double x6, double x7,
                         double x8, double x9, double x10, double x11) {
-  // assert(a.size() == 11);
+// assert(a.size() == 11);
+#ifdef BIAS
+  return (a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
+          a(5) * x6 + a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 +
+          a(10) * x11 + a(11)); /* + a(12) JIA bias */
+#else
   return std::abs(a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
                   a(5) * x6 + a(6) * x7 + a(7) * x8 + a(8) * x9 + a(9) * x10 +
-                  a(10) * x11 /*+ a(11)*/); /* + a(12) JIA bias */
+                  a(10) * x11);
+#endif
 }
 
 // inline double predict3_poly2(const Eigen::VectorXd &a, double x1, double x2,

@@ -54,9 +54,11 @@ using namespace std;
 
 // #define SHUFFLE
 // #define VALID
+// #define BIAS
+#define NORM
 #define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
-#define EIGEN_UNROLL_LOOP_LIMIT 256
+#define EIGEN_UNROLL_LOOP_LIMIT 1024
 #define PERLOOKUPTIME_MODEL
 #define PERLOOKUPTIME_INDIVIDUAL
 ///////// Shuffle /////////
@@ -790,9 +792,31 @@ int main(int argc, char *argv[]) {
       cout << "\tTotal packets run " << trials
            << " times circularly: " << packetNum * trials << "\n";
 
-      ///////// train ////////
+///////// train ////////
+#ifdef BIAS
+      Eigen::MatrixXd X3(packetNum, 4); /* JIA 3 bias */
+      Eigen::VectorXd PT_model_3(4);
+      Eigen::VectorXd DBT_model_3(4);
+      Eigen::VectorXd KSet_model_3(4);
+      Eigen::VectorXd DT_model_3(4);
+      Eigen::VectorXd MT_model_3(4);
+
+      Eigen::MatrixXd X5(packetNum, 6); /* JIA 5 bias */
+      Eigen::VectorXd PT_model_5(6);
+      Eigen::VectorXd DBT_model_5(6);
+      Eigen::VectorXd KSet_model_5(6);
+      Eigen::VectorXd DT_model_5(6);
+      Eigen::VectorXd MT_model_5(6);
+
+      Eigen::MatrixXd X11(packetNum, 12); /* JIA 11 bias */
+      Eigen::VectorXd PT_model_11(12);
+      Eigen::VectorXd DBT_model_11(12);
+      Eigen::VectorXd KSet_model_11(12);
+      Eigen::VectorXd DT_model_11(12);
+      Eigen::VectorXd MT_model_11(12);
+#else
       // 3維模型
-      Eigen::MatrixXd X3(packetNum, 3);  // 3 features /* JIA 3 bias */
+      Eigen::MatrixXd X3(packetNum, 3);  // 3 features
       Eigen::VectorXd PT_model_3(3);
       Eigen::VectorXd DBT_model_3(3);
       Eigen::VectorXd KSet_model_3(3);
@@ -800,7 +824,7 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd MT_model_3(3);
 
       // 5維模型
-      Eigen::MatrixXd X5(packetNum, 5);  // 5 features /* JIA 5 bias */
+      Eigen::MatrixXd X5(packetNum, 5);  // 5 features
       Eigen::VectorXd PT_model_5(5);
       Eigen::VectorXd DBT_model_5(5);
       Eigen::VectorXd KSet_model_5(5);
@@ -808,13 +832,13 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd MT_model_5(5);
 
       // 11維模型
-      Eigen::MatrixXd X11(packetNum, 11);  // 11 features /* JIA 11 bias */
+      Eigen::MatrixXd X11(packetNum, 11);  // 11 features
       Eigen::VectorXd PT_model_11(11);
       Eigen::VectorXd DBT_model_11(11);
       Eigen::VectorXd KSet_model_11(11);
       Eigen::VectorXd DT_model_11(11);
       Eigen::VectorXd MT_model_11(11);
-
+#endif
       // y 向量共用 (3, 5, 11)
       Eigen::VectorXd PT_y(packetNum);
       Eigen::VectorXd DBT_y(packetNum);
@@ -942,16 +966,18 @@ int main(int argc, char *argv[]) {
         X3(i, 0) = x_source_ip_0;
         X3(i, 1) = x_source_ip_1;
         X3(i, 2) = x_destination_ip_0;
-        // X3(i, 3) = 1.0;  // bias
-
+#ifdef BIAS
+        X3(i, 3) = 1.0;  // bias
+#endif
         // 填入5維特徵
         X5(i, 0) = x_source_ip_0;
         X5(i, 1) = x_source_ip_1;
         X5(i, 2) = x_destination_ip_0;
         X5(i, 3) = x_destination_ip_1;
         X5(i, 4) = x_destination_ip_2;
-        // X5(i, 5) = 1.0;  // bias
-
+#ifdef BIAS
+        X5(i, 5) = 1.0;  // bias
+#endif
         // 填入11維特徵
         X11(i, 0) = x_source_ip_0;
         X11(i, 1) = x_source_ip_1;
@@ -964,17 +990,18 @@ int main(int argc, char *argv[]) {
         X11(i, 8) = x_source_port;
         X11(i, 9) = x_destination_port;
         X11(i, 10) = x_protocol;
-        // X11(i, 11) = 1.0;  // bias
+#ifdef BIAS
+        X11(i, 11) = 1.0;  // bias
+#endif
       }
-
+#ifdef NORM
       Eigen::VectorXd mean_X3, std_X3;
       Eigen::VectorXd mean_X5, std_X5;
       Eigen::VectorXd mean_X11, std_X11;
-
       /* JIA normalizeFeatures */ normalizeFeatures(X3, mean_X3, std_X3);
       /* JIA normalizeFeatures */ normalizeFeatures(X5, mean_X5, std_X5);
       /* JIA normalizeFeatures */ normalizeFeatures(X11, mean_X11, std_X11);
-
+#endif
       // 模型擬合
       PT_model_3 = linearRegressionFit(X3, PT_y);
       PT_model_5 = linearRegressionFit(X5, PT_y);
@@ -1031,9 +1058,17 @@ int main(int argc, char *argv[]) {
       // evaluateModel(X5 * PT_model_5, PT_y, "PT-5-feature");
       // evaluateModel(X11 * PT_model_11, PT_y, "PT-11-feature");
       // evaluateModel(X3 * DBT_model_3, DBT_y, "DBT-3-feature");
+      // evaluateModel(X5 * DBT_model_5, DBT_y, "DBT-5-feature");
       // evaluateModel(X11 * DBT_model_11, DBT_y, "DBT-11-feature");
       // evaluateModel(X3 * KSet_model_3, KSet_y, "KSet-3-feature");
+      // evaluateModel(X5 * KSet_model_5, KSet_y, "KSet-5-feature");
       // evaluateModel(X11 * KSet_model_11, KSet_y, "KSet-11-feature");
+      // evaluateModel(X3 * DT_model_3, DT_y, "DT-3-feature");
+      // evaluateModel(X5 * DT_model_5, DT_y, "DT-5-feature");
+      // evaluateModel(X11 * DT_model_11, DT_y, "DT-11-feature");
+      // evaluateModel(X3 * MT_model_3, MT_y, "MT-3-feature");
+      // evaluateModel(X5 * MT_model_5, MT_y, "MT-5-feature");
+      // evaluateModel(X11 * MT_model_11, MT_y, "MT-11-feature");
       auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
           printStatistics(PT_y);
       auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
@@ -1124,7 +1159,7 @@ int main(int argc, char *argv[]) {
 
         extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
         x_destination_ip_0 = static_cast<double>(ip_bytes[0]);
-
+#ifdef NORM
         /* JIA normalizeFeatures */
         double x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
         double x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
@@ -1134,64 +1169,67 @@ int main(int argc, char *argv[]) {
         //// PT
         double predicted_time_3_pt =
             predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-
+#else
         /* JIA non-normalizeFeatures */
-        // double predicted_time_3_pt = predict3(
-        //     PT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
-
+        double predicted_time_3_pt = predict3(
+            PT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+#endif
         double actual_time = PT_y(i);
         fprintf(pt_prediction_3_out, "Packet %ld\tRealTime(ns) %llu\n", i,
                 static_cast<unsigned long long>(actual_time));
         //// PT
 
+#ifdef NORM
         //// DBT
         double predicted_time_3_dbt =
             predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-
+#else
         /* JIA non-normalizeFeatures */
-        // double predicted_time_3_dbt = predict3(
-        //     DBT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
-
+        double predicted_time_3_dbt = predict3(
+            DBT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+#endif
         actual_time = DBT_y(i);
         fprintf(dbt_prediction_3_out, "Packet %ld\tRealTime(ns) %llu\n", i,
                 static_cast<unsigned long long>(actual_time));
         //// DBT
 
+#ifdef NORM
         //// KSet
         double predicted_time_3_kset =
             predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-
+#else
         /* JIA non-normalizeFeatures */
-        // double predicted_time_3_kset = predict3(
-        //     KSet_model_3, x_source_ip_0, x_source_ip_1,
-        //     x_destination_ip_0);
-
+        double predicted_time_3_kset = predict3(
+            KSet_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+#endif
         actual_time = KSet_y(i);
         fprintf(kset_prediction_3_out, "Packet %ld\tRealTime(ns) %llu\n", i,
                 static_cast<unsigned long long>(actual_time));
         //// KSet
 
+#ifdef NORM
         //// DT
         double predicted_time_3_dt =
             predict3(DT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-
+#else
         /* JIA non-normalizeFeatures */
-        // double predicted_time_3_dt = predict3(
-        //     DT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
-
+        double predicted_time_3_dt = predict3(
+            DT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+#endif
         actual_time = DT_y(i);
         fprintf(dt_prediction_3_out, "Packet %ld\tRealTime(ns) %llu\n", i,
                 static_cast<unsigned long long>(actual_time));
         //// DT
 
+#ifdef NORM
         //// MT
         double predicted_time_3_mt =
             predict3(MT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-
+#else
         /* JIA non-normalizeFeatures */
-        // double predicted_time_3_pt = predict3(
-        //     PT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
-
+        double predicted_time_3_mt = predict3(
+            MT_model_3, x_source_ip_0, x_source_ip_1, x_destination_ip_0);
+#endif
         actual_time = MT_y(i);
         fprintf(mt_prediction_3_out, "Packet %ld\tRealTime(ns) %llu\n", i,
                 static_cast<unsigned long long>(actual_time));
@@ -1210,20 +1248,18 @@ int main(int argc, char *argv[]) {
         // 找所有最小與最大值的 index
         auto real_min_labels = find_all_min_indices(real_values);
         auto real_max_labels = find_all_max_indices(real_values);
-        int real_min_label = real_min_labels[0];
-        int real_max_label = real_max_labels[0];
 
         // 實際的最小與最大值
-        double real_min_val = real_values[real_min_label];
-        double real_max_val = real_values[real_max_label];
+        double real_min_val = real_values[real_min_labels[0]];
+        double real_max_val = real_values[real_max_labels[0]];
 
         // 輸出 log 訊息
         fprintf(total_prediction_3_out,
                 "PT %.4f\tDBT %.4f\tKSet %.4f\tDT %.4f\tMT %.4f\tmin "
-                "%.4f\treal_min_id %d\t"
-                "min_id_predict %d\tMAX %.4f\treal_max_id %d\n",
+                "%.4f\t"
+                "min_id_predict %d\tMAX %.4f\n",
                 PT_y(i), DBT_y(i), KSet_y(i), DT_y(i), MT_y(i), real_min_val,
-                real_min_label, min_id_predict, real_max_val, real_max_label);
+                min_id_predict, real_max_val);
 
         // 判斷預測結果屬於哪一類
         if (std::find(real_min_labels.begin(), real_min_labels.end(),
@@ -1274,6 +1310,7 @@ int main(int argc, char *argv[]) {
         x_destination_ip_1 = static_cast<double>(ip_bytes[1]);
         x_destination_ip_2 = static_cast<double>(ip_bytes[2]);
 
+#ifdef NORM
         /* JIA normalizeFeatures */
         double x1_norm_5 = toNormalized(x_source_ip_0, mean_X5[0], std_X5[0]);
         double x2_norm_5 = toNormalized(x_source_ip_1, mean_X5[1], std_X5[1]);
@@ -1309,7 +1346,33 @@ int main(int argc, char *argv[]) {
         double predicted_time_5_mt = predict5(MT_model_5, x1_norm_5, x2_norm_5,
                                               x3_norm_5, x4_norm_5, x5_norm_5);
         //// MT
-
+#else
+        //// PT
+        double predicted_time_5_pt = predict5(
+            PT_model_5, x_source_ip_0, x_source_ip_1, x_destination_ip_0,
+            x_destination_ip_1, x_destination_ip_2);
+        //// PT
+        //// DBT
+        double predicted_time_5_dbt = predict5(
+            DBT_model_5, x_source_ip_0, x_source_ip_1, x_destination_ip_0,
+            x_destination_ip_1, x_destination_ip_2);
+        //// DBT
+        //// KSet
+        double predicted_time_5_kset = predict5(
+            KSet_model_5, x_source_ip_0, x_source_ip_1, x_destination_ip_0,
+            x_destination_ip_1, x_destination_ip_2);
+        //// KSet
+        //// DT
+        double predicted_time_5_dt = predict5(
+            DT_model_5, x_source_ip_0, x_source_ip_1, x_destination_ip_0,
+            x_destination_ip_1, x_destination_ip_2);
+        //// DT
+        //// MT
+        double predicted_time_5_mt = predict5(
+            MT_model_5, x_source_ip_0, x_source_ip_1, x_destination_ip_0,
+            x_destination_ip_1, x_destination_ip_2);
+        //// MT
+#endif
         //// acc
         auto [min_val, min_id_predict] = get_min_max_time(
             predicted_time_5_pt, predicted_time_5_dbt, predicted_time_5_kset,
@@ -1323,20 +1386,18 @@ int main(int argc, char *argv[]) {
         // 找所有最小與最大值的 index
         auto real_min_labels = find_all_min_indices(real_values);
         auto real_max_labels = find_all_max_indices(real_values);
-        int real_min_label = real_min_labels[0];
-        int real_max_label = real_max_labels[0];
 
         // 實際的最小與最大值
-        double real_min_val = real_values[real_min_label];
-        double real_max_val = real_values[real_max_label];
+        double real_min_val = real_values[real_min_labels[0]];
+        double real_max_val = real_values[real_max_labels[0]];
 
         // 輸出 log 訊息
         fprintf(total_prediction_5_out,
                 "PT %.4f\tDBT %.4f\tKSet %.4f\tDT %.4f\tMT %.4f\tmin "
-                "%.4f\treal_min_id %d\t"
-                "min_id_predict %d\tMAX %.4f\treal_max_id %d\n",
+                "%.4f\t"
+                "min_id_predict %d\tMAX %.4f\n",
                 PT_y(i), DBT_y(i), KSet_y(i), DT_y(i), MT_y(i), real_min_val,
-                real_min_label, min_id_predict, real_max_val, real_max_label);
+                min_id_predict, real_max_val);
 
         // 判斷預測結果屬於哪一類
         if (std::find(real_min_labels.begin(), real_min_labels.end(),
@@ -1390,6 +1451,7 @@ int main(int argc, char *argv[]) {
             static_cast<double>(PT_packets[i].destination_port);
         x_protocol = static_cast<double>(PT_packets[i].protocol);
 
+#ifdef NORM
         /* JIA normalizeFeatures */
         double x1_norm_11 =
             toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
@@ -1448,7 +1510,43 @@ int main(int argc, char *argv[]) {
                       x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                       x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
         //// MT
-
+#else
+        //// PT
+        double predicted_time_11_pt =
+            predict11(PT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                      x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                      x_destination_ip_2, x_destination_ip_3, x_source_port,
+                      x_destination_port, x_protocol);
+        //// PT
+        //// DBT
+        double predicted_time_11_dbt =
+            predict11(DBT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                      x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                      x_destination_ip_2, x_destination_ip_3, x_source_port,
+                      x_destination_port, x_protocol);
+        //// DBT
+        //// KSet
+        double predicted_time_11_kset = predict11(
+            KSet_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+            x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+            x_destination_ip_2, x_destination_ip_3, x_source_port,
+            x_destination_port, x_protocol);
+        //// KSet
+        //// DT
+        double predicted_time_11_dt =
+            predict11(DT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                      x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                      x_destination_ip_2, x_destination_ip_3, x_source_port,
+                      x_destination_port, x_protocol);
+        //// DT
+        //// MT
+        double predicted_time_11_mt =
+            predict11(MT_model_11, x_source_ip_0, x_source_ip_1, x_source_ip_2,
+                      x_source_ip_3, x_destination_ip_0, x_destination_ip_1,
+                      x_destination_ip_2, x_destination_ip_3, x_source_port,
+                      x_destination_port, x_protocol);
+        //// MT
+#endif
         //// acc
         auto [min_val, min_id_predict] = get_min_max_time(
             predicted_time_11_pt, predicted_time_11_dbt, predicted_time_11_kset,
@@ -1462,20 +1560,18 @@ int main(int argc, char *argv[]) {
         // 找所有最小與最大值的 index
         auto real_min_labels = find_all_min_indices(real_values);
         auto real_max_labels = find_all_max_indices(real_values);
-        int real_min_label = real_min_labels[0];
-        int real_max_label = real_max_labels[0];
 
         // 實際的最小與最大值
-        double real_min_val = real_values[real_min_label];
-        double real_max_val = real_values[real_max_label];
+        double real_min_val = real_values[real_min_labels[0]];
+        double real_max_val = real_values[real_max_labels[0]];
 
         // 輸出 log 訊息
         fprintf(total_prediction_11_out,
                 "PT %.4f\tDBT %.4f\tKSet %.4f\tDT %.4f\tMT %.4f\tmin "
-                "%.4f\treal_min_id %d\t"
-                "min_id_predict %d\tMAX %.4f\treal_max_id %d\n",
+                "%.4f\t"
+                "min_id_predict %d\tMAX %.4f\n",
                 PT_y(i), DBT_y(i), KSet_y(i), DT_y(i), MT_y(i), real_min_val,
-                real_min_label, min_id_predict, real_max_val, real_max_label);
+                min_id_predict, real_max_val);
 
         // 判斷預測結果屬於哪一類
         if (std::find(real_min_labels.begin(), real_min_labels.end(),
@@ -1528,6 +1624,7 @@ int main(int argc, char *argv[]) {
         extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
         double x3 = static_cast<double>(ip_bytes[0]);
 
+#ifdef NORM
         // 標準化
         double x1n = toNormalized(x1, mean_X3[0], std_X3[0]);
         double x2n = toNormalized(x2, mean_X3[1], std_X3[1]);
@@ -1539,7 +1636,12 @@ int main(int argc, char *argv[]) {
                        predict3(KSet_model_3, x1n, x2n, x3n),
                        predict3(DT_model_3, x1n, x2n, x3n),
                        predict3(MT_model_3, x1n, x2n, x3n)};
-
+#else
+        double t[5] = {
+            predict3(PT_model_3, x1, x2, x3), predict3(DBT_model_3, x1, x2, x3),
+            predict3(KSet_model_3, x1, x2, x3),
+            predict3(DT_model_3, x1, x2, x3), predict3(MT_model_3, x1, x2, x3)};
+#endif
         // 找最小值索引
         int min_idx = 0;
         for (int j = 1; j < 5; ++j) {
@@ -1568,11 +1670,11 @@ int main(int argc, char *argv[]) {
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
       vector<int> predict_choose(packetNum);
       {
+#ifdef NORM
         double x1_norm_3 = 0, x2_norm_3 = 0, x3_norm_3 = 0;  // JIA normalize
+#endif
         int arr[5] = {0};
         for (size_t i = 0; i < packetNum; ++i) {
-          kset_match_pri = -1;
-
           extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
           x_source_ip_0 = static_cast<double>(ip_bytes[0]);
           x_source_ip_1 = static_cast<double>(ip_bytes[1]);
@@ -1580,6 +1682,7 @@ int main(int argc, char *argv[]) {
           extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
           x_destination_ip_0 = static_cast<double>(ip_bytes[0]);
 
+#ifdef NORM
           /* JIA normalizeFeatures */
           x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
           x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
@@ -1604,6 +1707,28 @@ int main(int argc, char *argv[]) {
           //// MT
           arr[4] = predict3(MT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
           //// MT
+#else
+          //// DBT
+          arr[0] = predict3(DBT_model_3, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0);
+          //// DBT
+          //// PT
+          arr[1] = predict3(PT_model_3, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0);
+          //// PT
+          //// KSet
+          arr[2] = predict3(KSet_model_3, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0);
+          //// KSet
+          //// DT
+          arr[3] = predict3(DT_model_3, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0);
+          //// DT
+          //// MT
+          arr[4] = predict3(MT_model_3, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0);
+//// MT
+#endif
           /* JIA normalizeFeatures */
           int min_idx = 0;
           for (int i = 1; i < 5; ++i) {
@@ -1702,6 +1827,7 @@ int main(int argc, char *argv[]) {
         double x6 = static_cast<double>(ip_bytes[1]);
         double x10 = static_cast<double>(ip_bytes[2]);
 
+#ifdef NORM
         // 標準化
         double x1n = toNormalized(x1, mean_X5[0], std_X5[0]);
         double x2n = toNormalized(x2, mean_X5[1], std_X5[1]);
@@ -1714,7 +1840,13 @@ int main(int argc, char *argv[]) {
                        predict5(KSet_model_5, x1n, x2n, x5n, x6n, x10n),
                        predict5(DT_model_5, x1n, x2n, x5n, x6n, x10n),
                        predict5(MT_model_5, x1n, x2n, x5n, x6n, x10n)};
-
+#else
+        double t[5] = {predict5(PT_model_5, x1, x2, x5, x6, x10),
+                       predict5(DBT_model_5, x1, x2, x5, x6, x10),
+                       predict5(KSet_model_5, x1, x2, x5, x6, x10),
+                       predict5(DT_model_5, x1, x2, x5, x6, x10),
+                       predict5(MT_model_5, x1, x2, x5, x6, x10)};
+#endif
         // 找最小值索引
         int min_idx = 0;
         for (int j = 1; j < 5; ++j) {
@@ -1742,12 +1874,12 @@ int main(int argc, char *argv[]) {
       }
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
       {
+#ifdef NORM
         double x1_norm_5 = 0, x2_norm_5 = 0, x5_norm_5 = 0, x6_norm_5 = 0,
                x10_norm_5 = 0;  // JIA normalize
+#endif
         int arr[5] = {0};
         for (size_t i = 0; i < packetNum; ++i) {
-          kset_match_pri = -1;
-
           extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
           x_source_ip_0 = static_cast<double>(ip_bytes[0]);
           x_source_ip_1 = static_cast<double>(ip_bytes[1]);
@@ -1757,6 +1889,7 @@ int main(int argc, char *argv[]) {
           x_destination_ip_1 = static_cast<double>(ip_bytes[1]);
           x_destination_ip_2 = static_cast<double>(ip_bytes[2]);
 
+#ifdef NORM
           /* JIA normalizeFeatures */
           x1_norm_5 = toNormalized(x_source_ip_0, mean_X5[0], std_X5[0]);
           x2_norm_5 = toNormalized(x_source_ip_1, mean_X5[1], std_X5[1]);
@@ -1788,7 +1921,33 @@ int main(int argc, char *argv[]) {
           arr[4] = predict5(MT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
                             x6_norm_5, x10_norm_5);
           //// MT
-
+#else
+          //// DBT
+          arr[0] = predict5(DBT_model_5, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0, x_destination_ip_1,
+                            x_destination_ip_2);
+          //// DBT
+          //// PT
+          arr[1] = predict5(PT_model_5, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0, x_destination_ip_1,
+                            x_destination_ip_2);
+          //// PT
+          //// KSet
+          arr[2] = predict5(KSet_model_5, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0, x_destination_ip_1,
+                            x_destination_ip_2);
+          //// KSet
+          //// DT
+          arr[3] = predict5(DT_model_5, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0, x_destination_ip_1,
+                            x_destination_ip_2);
+          //// DT
+          //// MT
+          arr[4] = predict5(MT_model_5, x_source_ip_0, x_source_ip_1,
+                            x_destination_ip_0, x_destination_ip_1,
+                            x_destination_ip_2);
+          //// MT
+#endif
           int min_idx = 0;
           for (int i = 1; i < 5; ++i) {
             if (arr[i] < arr[min_idx]) min_idx = i;
@@ -1889,6 +2048,8 @@ int main(int argc, char *argv[]) {
         double x9 = static_cast<double>(PT_packets[i].source_port);
         double x10 = static_cast<double>(PT_packets[i].destination_port);
         double x11 = static_cast<double>(PT_packets[i].protocol);
+
+#ifdef NORM
         // 標準化
         double x1n = toNormalized(x1, mean_X11[0], std_X11[0]);
         double x2n = toNormalized(x2, mean_X11[1], std_X11[1]);
@@ -1912,6 +2073,18 @@ int main(int argc, char *argv[]) {
                                  x8n, x9n, x10n, x11n),
                        predict11(MT_model_11, x1n, x2n, x3n, x4n, x5n, x6n, x7n,
                                  x8n, x9n, x10n, x11n)};
+#else
+        double t[5] = {predict11(PT_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                 x9, x10, x11),
+                       predict11(DBT_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                 x9, x10, x11),
+                       predict11(KSet_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                 x9, x10, x11),
+                       predict11(DT_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                 x9, x10, x11),
+                       predict11(MT_model_11, x1, x2, x3, x4, x5, x6, x7, x8,
+                                 x9, x10, x11)};
+#endif
 
         // 找最小值索引
         int min_idx = 0;
@@ -1941,14 +2114,14 @@ int main(int argc, char *argv[]) {
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
       {
+#ifdef NORM
         double x1_norm_11 = 0, x2_norm_11 = 0, x3_norm_11 = 0, x4_norm_11 = 0,
                x5_norm_11 = 0, x6_norm_11 = 0, x7_norm_11 = 0, x8_norm_11 = 0,
                x9_norm_11 = 0, x10_norm_11 = 0,
                x11_norm_11 = 0;  // JIA normalize
+#endif
         int arr[5] = {0};
         for (size_t i = 0; i < packetNum; ++i) {
-          kset_match_pri = -1;
-
           extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
           x_source_ip_0 = static_cast<double>(ip_bytes[0]);
           x_source_ip_1 = static_cast<double>(ip_bytes[1]);
@@ -1967,6 +2140,7 @@ int main(int argc, char *argv[]) {
               static_cast<double>(PT_packets[i].destination_port);
           x_protocol = static_cast<double>(PT_packets[i].protocol);
 
+#ifdef NORM
           /* JIA normalizeFeatures */
           x1_norm_11 = toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
           x2_norm_11 = toNormalized(x_source_ip_1, mean_X11[1], std_X11[1]);
@@ -2014,7 +2188,43 @@ int main(int argc, char *argv[]) {
                              x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
                              x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
           //// MT
-
+#else
+          //// DBT
+          arr[0] = predict11(DBT_model_11, x_source_ip_0, x_source_ip_1,
+                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
+                             x_destination_ip_1, x_destination_ip_2,
+                             x_destination_ip_3, x_source_port,
+                             x_destination_port, x_protocol);
+          //// DBT
+          //// PT
+          arr[1] = predict11(PT_model_11, x_source_ip_0, x_source_ip_1,
+                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
+                             x_destination_ip_1, x_destination_ip_2,
+                             x_destination_ip_3, x_source_port,
+                             x_destination_port, x_protocol);
+          //// PT
+          //// KSet
+          arr[2] = predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
+                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
+                             x_destination_ip_1, x_destination_ip_2,
+                             x_destination_ip_3, x_source_port,
+                             x_destination_port, x_protocol);
+          //// KSet
+          //// DT
+          arr[3] = predict11(DT_model_11, x_source_ip_0, x_source_ip_1,
+                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
+                             x_destination_ip_1, x_destination_ip_2,
+                             x_destination_ip_3, x_source_port,
+                             x_destination_port, x_protocol);
+          //// DT
+          //// MT
+          arr[4] = predict11(MT_model_11, x_source_ip_0, x_source_ip_1,
+                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
+                             x_destination_ip_1, x_destination_ip_2,
+                             x_destination_ip_3, x_source_port,
+                             x_destination_port, x_protocol);
+          //// MT
+#endif
           int min_idx = 0;
           for (int i = 1; i < 5; ++i) {
             if (arr[i] < arr[min_idx]) min_idx = i;
