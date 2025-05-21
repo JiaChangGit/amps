@@ -16,8 +16,8 @@ TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
 # RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
 
-RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
+# RULESET_PATH="../classbench_set/ipv4-ruleset/acl2_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
 
 # RULESET_PATH="../classbench_set/ipv4-ruleset/acl3_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/acl3_100k_trace"
@@ -46,11 +46,11 @@ TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
 # RULESET_PATH="../classbench_set/ipv4-ruleset/ipc1_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/ipc1_100k_trace"
 
-# RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
+RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/ipc2_100k_trace"
 
 ###
-# TRACE_PATH="../classbench_set/ipv4-trace/part_0"
+TRACE_PATH="../classbench_set/ipv4-trace/part_0"
 
 # 檢查並建立 build 目錄（如果不存在）
 if [ ! -d "$BUILD_DIR" ]; then
@@ -80,12 +80,12 @@ fi
 # 執行測試
 ulimit -s 81920
 
-echo "Running tests..."
-"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_acl2.txt
-echo "Running Again..."
-"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_acl2.txt
-
 # echo "Running tests..."
-# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_ipc2.txt
+# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_ipc2.txt
 # echo "Running Again..."
-# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_ipc2.txt
+# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_ipc2.txt
+
+echo "Running tests..."
+"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_ipc2.txt
+echo "Running Again..."
+"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_ipc2.txt

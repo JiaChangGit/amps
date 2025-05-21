@@ -1,4 +1,3 @@
-#include <omp.h>
 // #include <stdio.h>  // JIA remove printf
 // #include <stdlib.h>
 // #include <unistd.h>
@@ -52,8 +51,7 @@ using namespace std;
 #define TIMER_METHOD TIMER_RDTSCP
 #endif
 
-// #define SHUFFLE
-#define VALID
+// #define VALID
 // #define BIAS
 #define NORM
 #define CACHE
@@ -61,10 +59,17 @@ using namespace std;
 #define EIGEN_UNROLL_LOOP_LIMIT 64
 #define PERLOOKUPTIME_MODEL
 ///////// Shuffle /////////
+// #define SHUFFLE
 #ifdef SHUFFLE
 #include <random>
 #endif
 ///////// Shuffle /////////
+///////// MP /////////
+// #define OMP
+#ifdef OMP
+#include <omp.h>
+#endif
+///////// MP /////////
 ///////// bloomFilter /////////
 #define PERLOOKUPTIME_BLOOM
 #define BLOOM
@@ -1596,7 +1601,9 @@ int main(int argc, char *argv[]) {
 #endif
 
       //// 3-D
-      timer.timeReset();  // 平行處理
+      timer.timeReset();
+#ifdef OMP
+      // 平行處理
 #pragma omp parallel
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
@@ -1686,6 +1693,77 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         model_counter_MT += local_MT;
       }
+#else
+      for (size_t i = 0; i < packetNum; ++i) {
+        float ip_bytes[4];
+
+        // 提取 IP 特徵
+        extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
+        double x1 = static_cast<double>(ip_bytes[0]);
+        double x2 = static_cast<double>(ip_bytes[1]);
+
+        extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
+        double x3 = static_cast<double>(ip_bytes[0]);
+
+#ifdef NORM
+        // 標準化
+        double x1n = toNormalized(x1, mean_X3[0], std_X3[0]);
+        double x2n = toNormalized(x2, mean_X3[1], std_X3[1]);
+        double x3n = toNormalized(x3, mean_X3[2], std_X3[2]);
+
+        double t0 = predict3(PT_model_3, x1n, x2n, x3n);
+        double t1 = predict3(DBT_model_3, x1n, x2n, x3n);
+        double t2 = predict3(KSet_model_3, x1n, x2n, x3n);
+        double t3 = predict3(DT_model_3, x1n, x2n, x3n);
+        double t4 = predict3(MT_model_3, x1n, x2n, x3n);
+#else
+        double t0 = predict3(PT_model_3, x1, x2, x3);
+        double t1 = predict3(DBT_model_3, x1, x2, x3);
+        double t2 = predict3(KSet_model_3, x1, x2, x3);
+        double t3 = predict3(DT_model_3, x1, x2, x3);
+        double t4 = predict3(MT_model_3, x1, x2, x3);
+#endif
+
+        // 比較預測結果，選最小
+        int min_idx = 0;
+        double min_val = t0;
+        if (t1 < min_val) {
+          min_val = t1;
+          min_idx = 1;
+        }
+        if (t2 < min_val) {
+          min_val = t2;
+          min_idx = 2;
+        }
+        if (t3 < min_val) {
+          min_val = t3;
+          min_idx = 3;
+        }
+        if (t4 < min_val) {
+          min_val = t4;
+          min_idx = 4;
+        }
+
+        // 根據最小索引累加計數器
+        switch (min_idx) {
+          case 0:
+            ++model_counter_PT;
+            break;
+          case 1:
+            ++model_counter_DBT;
+            break;
+          case 2:
+            ++model_counter_KSet;
+            break;
+          case 3:
+            ++model_counter_DT;
+            break;
+          case 4:
+            ++model_counter_MT;
+            break;
+        }
+      }
+#endif
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
       vector<int> predict_choose(packetNum);
@@ -1833,7 +1911,9 @@ int main(int argc, char *argv[]) {
       Total_predict_time = 0;
       Total_search_time = 0;
 
-      timer.timeReset();  // 平行處理
+      timer.timeReset();
+#ifdef OMP
+      // 平行處理
 #pragma omp parallel
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
@@ -1934,7 +2014,77 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         model_counter_MT += local_MT;
       }
+#else
+      for (size_t i = 0; i < packetNum; ++i) {
+        float ip_bytes[4];
+
+        // Source IP 轉換
+        extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
+        double x1 = static_cast<double>(ip_bytes[0]);
+        double x2 = static_cast<double>(ip_bytes[1]);
+
+        // Destination IP 轉換
+        extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
+        double x5 = static_cast<double>(ip_bytes[0]);
+        double x6 = static_cast<double>(ip_bytes[1]);
+        double x10 = static_cast<double>(ip_bytes[2]);
+
+        // 特徵標準化
+        double x1n = toNormalized(x1, mean_X5[0], std_X5[0]);
+        double x2n = toNormalized(x2, mean_X5[1], std_X5[1]);
+        double x5n = toNormalized(x5, mean_X5[2], std_X5[2]);
+        double x6n = toNormalized(x6, mean_X5[3], std_X5[3]);
+        double x10n = toNormalized(x10, mean_X5[4], std_X5[4]);
+
+        // 五個模型預測時間
+        double t0 = predict5(PT_model_5, x1n, x2n, x5n, x6n, x10n);
+        double t1 = predict5(DBT_model_5, x1n, x2n, x5n, x6n, x10n);
+        double t2 = predict5(KSet_model_5, x1n, x2n, x5n, x6n, x10n);
+        double t3 = predict5(DT_model_5, x1n, x2n, x5n, x6n, x10n);
+        double t4 = predict5(MT_model_5, x1n, x2n, x5n, x6n, x10n);
+
+        // 找出預測時間最小的模型索引
+        int min_idx = 0;
+        double min_val = t0;
+        if (t1 < min_val) {
+          min_val = t1;
+          min_idx = 1;
+        }
+        if (t2 < min_val) {
+          min_val = t2;
+          min_idx = 2;
+        }
+        if (t3 < min_val) {
+          min_val = t3;
+          min_idx = 3;
+        }
+        if (t4 < min_val) {
+          min_val = t4;
+          min_idx = 4;
+        }
+
+        // 根據最小索引累加對應模型計數器
+        switch (min_idx) {
+          case 0:
+            ++model_counter_PT;
+            break;
+          case 1:
+            ++model_counter_DBT;
+            break;
+          case 2:
+            ++model_counter_KSet;
+            break;
+          case 3:
+            ++model_counter_DT;
+            break;
+          case 4:
+            ++model_counter_MT;
+            break;
+        }
+      }
+#endif
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+
       {
 #ifdef NORM
         double x1_norm_5 = 0, x2_norm_5 = 0, x5_norm_5 = 0, x6_norm_5 = 0,
@@ -2091,7 +2241,9 @@ int main(int argc, char *argv[]) {
       Total_predict_time = 0;
       Total_search_time = 0;
 
-      timer.timeReset();  // 平行處理
+      timer.timeReset();
+#ifdef OMP
+      // 平行處理
 #pragma omp parallel
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
@@ -2206,6 +2358,103 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         model_counter_MT += local_MT;
       }
+#else
+      for (size_t i = 0; i < packetNum; ++i) {
+        float ip_bytes[4];
+
+        // 提取 IP 特徵（共 11 維）
+        extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
+        double x1 = static_cast<double>(ip_bytes[0]);
+        double x2 = static_cast<double>(ip_bytes[1]);
+        double x3 = static_cast<double>(ip_bytes[2]);
+        double x4 = static_cast<double>(ip_bytes[3]);
+
+        extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
+        double x5 = static_cast<double>(ip_bytes[0]);
+        double x6 = static_cast<double>(ip_bytes[1]);
+        double x7 = static_cast<double>(ip_bytes[2]);
+        double x8 = static_cast<double>(ip_bytes[3]);
+
+        double x9 = static_cast<double>(PT_packets[i].source_port);
+        double x10 = static_cast<double>(PT_packets[i].destination_port);
+        double x11 = static_cast<double>(PT_packets[i].protocol);
+
+#ifdef NORM
+        // 標準化處理
+        double x1n = toNormalized(x1, mean_X11[0], std_X11[0]);
+        double x2n = toNormalized(x2, mean_X11[1], std_X11[1]);
+        double x3n = toNormalized(x3, mean_X11[2], std_X11[2]);
+        double x4n = toNormalized(x4, mean_X11[3], std_X11[3]);
+        double x5n = toNormalized(x5, mean_X11[4], std_X11[4]);
+        double x6n = toNormalized(x6, mean_X11[5], std_X11[5]);
+        double x7n = toNormalized(x7, mean_X11[6], std_X11[6]);
+        double x8n = toNormalized(x8, mean_X11[7], std_X11[7]);
+        double x9n = toNormalized(x9, mean_X11[8], std_X11[8]);
+        double x10n = toNormalized(x10, mean_X11[9], std_X11[9]);
+        double x11n = toNormalized(x11, mean_X11[10], std_X11[10]);
+
+        double t0 = predict11(PT_model_11, x1n, x2n, x3n, x4n, x5n, x6n, x7n,
+                              x8n, x9n, x10n, x11n);
+        double t1 = predict11(DBT_model_11, x1n, x2n, x3n, x4n, x5n, x6n, x7n,
+                              x8n, x9n, x10n, x11n);
+        double t2 = predict11(KSet_model_11, x1n, x2n, x3n, x4n, x5n, x6n, x7n,
+                              x8n, x9n, x10n, x11n);
+        double t3 = predict11(DT_model_11, x1n, x2n, x3n, x4n, x5n, x6n, x7n,
+                              x8n, x9n, x10n, x11n);
+        double t4 = predict11(MT_model_11, x1n, x2n, x3n, x4n, x5n, x6n, x7n,
+                              x8n, x9n, x10n, x11n);
+#else
+        double t0 = predict11(PT_model_11, x1, x2, x3, x4, x5, x6, x7, x8, x9,
+                              x10, x11);
+        double t1 = predict11(DBT_model_11, x1, x2, x3, x4, x5, x6, x7, x8, x9,
+                              x10, x11);
+        double t2 = predict11(KSet_model_11, x1, x2, x3, x4, x5, x6, x7, x8, x9,
+                              x10, x11);
+        double t3 = predict11(DT_model_11, x1, x2, x3, x4, x5, x6, x7, x8, x9,
+                              x10, x11);
+        double t4 = predict11(MT_model_11, x1, x2, x3, x4, x5, x6, x7, x8, x9,
+                              x10, x11);
+#endif
+
+        // 比較預測結果，選最小
+        int min_idx = 0;
+        double min_val = t0;
+        if (t1 < min_val) {
+          min_val = t1;
+          min_idx = 1;
+        }
+        if (t2 < min_val) {
+          min_val = t2;
+          min_idx = 2;
+        }
+        if (t3 < min_val) {
+          min_val = t3;
+          min_idx = 3;
+        }
+        if (t4 < min_val) {
+          min_val = t4;
+          min_idx = 4;
+        }
+
+        switch (min_idx) {
+          case 0:
+            ++model_counter_PT;
+            break;
+          case 1:
+            ++model_counter_DBT;
+            break;
+          case 2:
+            ++model_counter_KSet;
+            break;
+          case 3:
+            ++model_counter_DT;
+            break;
+          case 4:
+            ++model_counter_MT;
+            break;
+        }
+      }
+#endif
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
       {
@@ -2555,6 +2804,8 @@ int main(int argc, char *argv[]) {
       int bloom_counter_MT = 0;
 
       timer.timeReset();
+#ifdef OMP
+      // 平行處理
 #pragma omp parallel
       {
         int local_bloom_DBT = 0;
@@ -2615,6 +2866,46 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         bloom_counter_KSet += local_bloom_KSet;
       }
+#else
+      for (size_t i = 0; i < packetNum; ++i) {
+        // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
+        const uint64_t key_dbt =
+            (DBT_packets[i].ip.i_64) ^
+            (((static_cast<uint64_t>(DBT_packets[i].Port[0]) << 16) |
+              static_cast<uint64_t>(DBT_packets[i].Port[1]))
+             << 17);
+
+        const uint64_t key_pt =
+            (PT_packets[i].toIP64()) ^
+            (((static_cast<uint64_t>(PT_packets[i].source_port) << 16) |
+              static_cast<uint64_t>(PT_packets[i].destination_port))
+             << 17);
+
+        const uint64_t key_dt_mt =
+            (traces_DT_MT[i]->dst_src_ip) ^
+            (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
+              static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
+             << 17);
+
+        // Bloom Filter 查詢（避免 else-if 串鍊）
+        const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
+        const bool hit_pt = bloom_filter_pt.contains(key_pt);
+        const bool hit_dt = bloom_filter_dt.contains(key_dt_mt);
+        const bool hit_mt = bloom_filter_mt.contains(key_dt_mt);
+
+        if (!hit_dbt) {
+          ++bloom_counter_DBT;
+        } else if (!hit_pt) {
+          ++bloom_counter_PT;
+        } else if (!hit_dt) {
+          ++bloom_counter_DT;
+        } else if (!hit_mt) {
+          ++bloom_counter_MT;
+        } else {
+          ++bloom_counter_KSet;
+        }
+      }
+#endif
       Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
 
       // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
