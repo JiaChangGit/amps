@@ -44,7 +44,7 @@ struct SegmentNode {
   vector<Rule_KSet> rmdp[3];  // partition with protocol, tcp, udp, other
 };
 
-static inline int part_oder(int n) {
+static /* JIA */ __attribute__((always_inline)) inline int part_oder(int n) {
   int r = -1;
 
   switch (n) {
@@ -63,7 +63,8 @@ static inline int part_oder(int n) {
   return r;
 }
 
-static inline int hashSet0(uint32_t orig, int k) {
+static /* JIA */ __attribute__((always_inline)) inline int hashSet0(
+    uint32_t orig, int k) {
   uint32_t v = orig;
   int uk = 32 - k;
 
@@ -95,7 +96,8 @@ static inline int hashSet0(uint32_t orig, int k) {
   return v;
 }
 
-static inline int exactHash(uint32_t v, int ub) {
+static /* JIA */ __attribute__((always_inline)) inline int exactHash(uint32_t v,
+                                                                     int ub) {
   uint32_t res = v;
 
   int r_ub = 32 - ub;
@@ -127,7 +129,8 @@ static inline int exactHash(uint32_t v, int ub) {
   return res;
 }
 
-static inline bool cmpp(Rule_KSet const& a, Rule_KSet const& b) {
+static /* JIA */ __attribute__((always_inline)) inline bool cmpp(
+    Rule_KSet const& a, Rule_KSet const& b) {
   return a.priority > b.priority;
 }
 

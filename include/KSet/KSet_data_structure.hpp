@@ -25,7 +25,8 @@ struct Rule_KSet {
   std::vector<std::array<uint32_t, 2>> range;
   std::vector<uint32_t> prefix_length;
 
-  bool inline isMatch(const Packet& p) const {
+  bool /* JIA */ __attribute__((always_inline)) inline isMatch(
+      const Packet& p) const {
     for (size_t i = 0; i < dim; ++i) {
       if (p[i] < range[i][LowDim] || p[i] > range[i][HighDim]) return false;
     }

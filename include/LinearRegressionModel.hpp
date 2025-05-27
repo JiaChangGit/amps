@@ -11,11 +11,11 @@
 #include <string>
 #include <tuple>
 #include <vector>
-// #define BIAS
-//     JIA bias
+
+#define BIAS
 #ifdef BIAS
-inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
-                              Eigen::VectorXd &std_out) {
+/* JIA */ __attribute__((always_inline)) inline void normalizeFeatures(
+    Eigen::MatrixXd &X, Eigen::VectorXd &mean_out, Eigen::VectorXd &std_out) {
   int rows = X.rows();
   int cols = X.cols();
 
@@ -48,8 +48,8 @@ inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
  * @param mean_out [out]    每個特徵的平均值（用於還原或後續推論）。
  * @param std_out  [out]    每個特徵的標準差（用於還原或後續推論）。
  */
-inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
-                              Eigen::VectorXd &std_out) {
+/* JIA */ __attribute__((always_inline)) inline void normalizeFeatures(
+    Eigen::MatrixXd &X, Eigen::VectorXd &mean_out, Eigen::VectorXd &std_out) {
   const int rows = X.rows();
   const int cols = X.cols();
 
@@ -85,7 +85,8 @@ inline void normalizeFeatures(Eigen::MatrixXd &X, Eigen::VectorXd &mean_out,
  * 使用公式：normalized_value = (value - mean) / stddev
  * 若 stddev 太小則視為常數特徵，直接回傳 (value - mean)
  */
-inline double toNormalized(double value, double mean, double stddev) {
+/* JIA */ __attribute__((always_inline)) inline double toNormalized(
+    double value, double mean, double stddev) {
   return (stddev < 1e-8) ? (value - mean) : (value - mean) / stddev;
 }
 /**
@@ -94,14 +95,14 @@ inline double toNormalized(double value, double mean, double stddev) {
  *    beta = argmin ||X * beta - y||^2
  * 解法：beta = (X^T X)^-1 X^T y，這裡用 Householder QR 分解求解
  */
-inline Eigen::VectorXd linearRegressionFit(const Eigen::MatrixXd &X,
-                                           const Eigen::VectorXd &y) {
+/* JIA */ __attribute__((always_inline)) inline Eigen::VectorXd
+linearRegressionFit(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
   // assert(X.rows() == y.size());
   return X.householderQr().solve(y);
 }
 
-inline double predict3(const Eigen::VectorXd &a, double x1, double x2,
-                       double x3) {
+/* JIA */ __attribute__((always_inline)) inline double predict3(
+    const Eigen::VectorXd &a, double x1, double x2, double x3) {
 // assert(a.size() == 3);
 #ifdef BIAS
   return (a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3)); /* + a(3) JIA bias */
@@ -110,8 +111,9 @@ inline double predict3(const Eigen::VectorXd &a, double x1, double x2,
 #endif
 }
 
-inline double predict5(const Eigen::VectorXd &a, double x1, double x2,
-                       double x3, double x4, double x5) {
+/* JIA */ __attribute__((always_inline)) inline double predict5(
+    const Eigen::VectorXd &a, double x1, double x2, double x3, double x4,
+    double x5) {
 // assert(a.size() == 5);
 #ifdef BIAS
   return (a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
@@ -121,9 +123,10 @@ inline double predict5(const Eigen::VectorXd &a, double x1, double x2,
 #endif
 }
 
-inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
-                        double x3, double x4, double x5, double x6, double x7,
-                        double x8, double x9, double x10, double x11) {
+/* JIA */ __attribute__((always_inline)) inline double predict11(
+    const Eigen::VectorXd &a, double x1, double x2, double x3, double x4,
+    double x5, double x6, double x7, double x8, double x9, double x10,
+    double x11) {
 // assert(a.size() == 11);
 #ifdef BIAS
   return (a(0) * x1 + a(1) * x2 + a(2) * x3 + a(3) * x4 + a(4) * x5 +
@@ -136,16 +139,19 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
 #endif
 }
 
-// inline double predict3_poly2(const Eigen::VectorXd &a, double x1, double x2,
+// /* JIA */ __attribute__((always_inline)) inline double predict3_poly2(const
+// Eigen::VectorXd &a, double x1, double x2,
 //                              double x3) {
 //   // assert(a.size() == 3);
 //   return  std::abs(a(0) * (x1 + x1 * x1) + a(1) * (x2 + x2 * x2) + a(2) * (x3
 //   + x3 * x3));
 // }
 
-// inline double computeMean(const Eigen::VectorXd &v) { return v.mean(); }
+// /* JIA */ __attribute__((always_inline)) inline double computeMean(const
+// Eigen::VectorXd &v) { return v.mean(); }
 
-// inline double computeMedian(Eigen::VectorXd v) {
+// /* JIA */ __attribute__((always_inline)) inline double
+// computeMedian(Eigen::VectorXd v) {
 //   const int n = v.size();
 //   // assert(n > 0);
 
@@ -167,7 +173,8 @@ inline double predict11(const Eigen::VectorXd &a, double x1, double x2,
 // @param p [in]  百分位數值，需介於 0.0 到 1.0 之間，例如 0.95 表示第 95 百分位
 // @return        回傳對應百分位的值（使用線性內插）
 // -----------------------------------------------------------------------------
-inline double computePercentile(const Eigen::VectorXd &v, double p) {
+/* JIA */ __attribute__((always_inline)) inline double computePercentile(
+    const Eigen::VectorXd &v, double p) {
   const int n = v.size();
   // assert(n > 0 && "向量不能為空");
   // assert(p >= 0.0 && p <= 1.0 && "百分位數 p 必須介於 0.0 與 1.0 之間");
@@ -198,7 +205,8 @@ inline double computePercentile(const Eigen::VectorXd &v, double p) {
 // @param mean  [in] 事先計算好的平均值（為避免重複運算而外部傳入）
 // @return           回傳標準差（stddev = sqrt(Σ(x - μ)² / n)）
 // -----------------------------------------------------------------------------
-inline double computeStdDev(const Eigen::VectorXd &v, double mean) {
+/* JIA */ __attribute__((always_inline)) inline double computeStdDev(
+    const Eigen::VectorXd &v, double mean) {
   const int n = v.size();
   if (n <= 1) return 0.0;  // 單一元素無標準差
 
@@ -216,8 +224,9 @@ inline double computeStdDev(const Eigen::VectorXd &v, double mean) {
 // 輸出統計摘要，並回傳 tuple<double, double, double, double, double>
 // 代表：mean, median, p75, p95, p99
 // -----------------------------------------------------------------------------
-inline std::tuple<double, double, double, double, double> printStatistics(
-    const std::string &label, const Eigen::VectorXd &data) {
+/* JIA */ __attribute__((
+    always_inline)) inline std::tuple<double, double, double, double, double>
+printStatistics(const std::string &label, const Eigen::VectorXd &data) {
   if (data.size() == 0) {
     std::cout << "|--- " << label << " No data available\n";
     return {0.0, 0.0, 0.0, 0.0, 0.0};
@@ -244,8 +253,9 @@ inline std::tuple<double, double, double, double, double> printStatistics(
   return {mean, median, p75, p95, p99};
 }
 
-inline std::tuple<double, double, double, double, double> printStatistics(
-    const Eigen::VectorXd &data) {
+/* JIA */ __attribute__((
+    always_inline)) inline std::tuple<double, double, double, double, double>
+printStatistics(const Eigen::VectorXd &data) {
   if (data.size() == 0) {
     return {0.0, 0.0, 0.0, 0.0, 0.0};
   }
@@ -280,11 +290,10 @@ std::vector<int> find_all_max_indices(const std::array<double, 5> &values) {
   return indices;
 }
 
-inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,
-                                                double predicted_time_dbt,
-                                                double predicted_time_kset,
-                                                double predicted_time_dt,
-                                                double predicted_time_mt) {
+/* JIA */ __attribute__((always_inline)) inline std::tuple<double, int>
+get_min_max_time(double predicted_time_pt, double predicted_time_dbt,
+                 double predicted_time_kset, double predicted_time_dt,
+                 double predicted_time_mt) {
   double min_val = predicted_time_pt;
   int min_id_predict = 0;
 
@@ -304,6 +313,24 @@ inline std::tuple<double, int> get_min_max_time(double predicted_time_pt,
     min_val = predicted_time_mt;
     min_id_predict = 4;
   }
+  return {min_val, min_id_predict};
+}
+/* JIA */ __attribute__((always_inline)) inline std::tuple<double, int>
+get_min_max_time(double predicted_time_pt, double predicted_time_dbt,
+                 double predicted_time_dt) {
+  double min_val = predicted_time_pt;
+  int min_id_predict = 0;
+
+  if (predicted_time_dbt < min_val) {
+    min_val = predicted_time_dbt;
+    min_id_predict = 1;
+  }
+
+  if (predicted_time_dt < min_val) {
+    min_val = predicted_time_dt;
+    min_id_predict = 3;
+  }
+
   return {min_val, min_id_predict};
 }
 #endif  // LINEAR_REGRESSION_MODEL_HPP

@@ -68,7 +68,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer -fprefetch-loop-arr
 # - `-finline-functions`：允許跨檔案函數內聯
 # - `-fassociative-math`：更寬鬆的數學重排自由度（注意：非 IEEE 精確）
 # - `-flto`：Link-time Optimization，跨模組優化
-# - `-fipa-pta`：會在 LTO 階段嘗試跨函式分析資料指向，對 inline decision、alias analysis、function pruning 有影響
+# - `-fipa-pta`：會在 LTO 階段嘗試跨函式分析資料指向，對 /* JIA */ __attribute__((always_inline)) inline decision、alias analysis、function pruning 有影響
 # 如果有啟用 OpenMP（見 find_package ），則加入 -fopenmp 支援平行運算
 # ==============================================================================
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

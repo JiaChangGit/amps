@@ -52,7 +52,7 @@ using namespace std;
 #endif
 
 // #define VALID
-// #define BIAS
+#define BIAS
 #define NORM
 #define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
@@ -65,7 +65,7 @@ using namespace std;
 #endif
 ///////// Shuffle /////////
 ///////// MP /////////
-// #define OMP
+#define OMP
 #ifdef OMP
 #include <omp.h>
 #endif
@@ -538,20 +538,21 @@ vector<Rule_KSet> convertRules_DTMTtoKSet(
   return ksetRules;
 }
 
-inline void warmup_PT(PT::PTtree &tree,
-                      const vector<PT::PT_Packet> &PT_packets) {
+/* JIA */ __attribute__((always_inline)) inline void warmup_PT(
+    PT::PTtree &tree, const vector<PT::PT_Packet> &PT_packets) {
   for (size_t i = 0; i < 2; ++i) {
     tree.search(PT_packets[i]);
   }
 }
-inline void warmup_DBT(DBT::DBTable &dbt,
-                       const vector<DBT::Packet> &DBT_packets) {
+/* JIA */ __attribute__((always_inline)) inline void warmup_DBT(
+    DBT::DBTable &dbt, const vector<DBT::Packet> &DBT_packets) {
   for (size_t i = 0; i < 2; ++i) {
     dbt.search(DBT_packets[i]);
   }
 }
-inline void warmup_KSet(vector<KSet> &set, const vector<Packet> &packets,
-                        const int num_set[], const int max_pri_set[4]) {
+/* JIA */ __attribute__((always_inline)) inline void warmup_KSet(
+    vector<KSet> &set, const vector<Packet> &packets, const int num_set[],
+    const int max_pri_set[4]) {
   for (size_t i = 0; i < 2; ++i) {
     int kset_match_pri = -1;
     if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
@@ -559,18 +560,18 @@ inline void warmup_KSet(vector<KSet> &set, const vector<Packet> &packets,
       kset_match_pri = max(kset_match_pri, set[1].ClassifyAPacket(packets[i]));
     if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
       kset_match_pri = max(kset_match_pri, set[2].ClassifyAPacket(packets[i]));
-    if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+    if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
       kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
   }
 }
-inline void warmup_DT(DynamicTuple &dynamictuple,
-                      const vector<Trace *> &traces_DT_MT) {
+/* JIA */ __attribute__((always_inline)) inline void warmup_DT(
+    DynamicTuple &dynamictuple, const vector<Trace *> &traces_DT_MT) {
   for (size_t i = 0; i < 2; ++i) {
     (dynamictuple.Lookup(traces_DT_MT[i], 0));
   }
 }
-inline void warmup_MT(MultilayerTuple &multilayertuple,
-                      const vector<Trace *> &traces_DT_MT) {
+/* JIA */ __attribute__((always_inline)) inline void warmup_MT(
+    MultilayerTuple &multilayertuple, const vector<Trace *> &traces_DT_MT) {
   for (size_t i = 0; i < 2; ++i) {
     (multilayertuple.Lookup(traces_DT_MT[i], 0));
   }
@@ -890,7 +891,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
             kset_match_pri =
                 max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
 #endif
@@ -907,7 +909,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
             kset_match_pri =
                 max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
           _KSet_search_time = timer.elapsed_ns();
@@ -1863,7 +1866,8 @@ int main(int argc, char *argv[]) {
                       kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-              if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
                 kset_match_pri =
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
@@ -1881,7 +1885,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-      cout << "\n|=== AVG predict time(Model-3): " << (Total_predict_time)
+#ifdef OMP
+      cout << "\n|=== OpenMP(Model-3)===|\n";
+#else
+      cout << "\n|=== Single(Model-3)===|\n";
+#endif
+      cout << "|=== AVG predict time(Model-3): " << (Total_predict_time)
            << "ns\n";
       cout << "|=== AVG search with predict time(Model-3): "
            << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
@@ -1942,25 +1951,19 @@ int main(int argc, char *argv[]) {
           double x6n = toNormalized(x6, mean_X5[3], std_X5[3]);
           double x10n = toNormalized(x10, mean_X5[4], std_X5[4]);
           // 五個模型預測時間
-          double t[5] = {predict5(PT_model_5, x1n, x2n, x5n, x6n, x10n),
-                         predict5(DBT_model_5, x1n, x2n, x5n, x6n, x10n),
-                         predict5(KSet_model_5, x1n, x2n, x5n, x6n, x10n),
-                         predict5(DT_model_5, x1n, x2n, x5n, x6n, x10n),
-                         predict5(MT_model_5, x1n, x2n, x5n, x6n, x10n)};
-#else
-          double t[5] = {predict5(PT_model_5, x1, x2, x5, x6, x10),
-                         predict5(DBT_model_5, x1, x2, x5, x6, x10),
-                         predict5(KSet_model_5, x1, x2, x5, x6, x10),
-                         predict5(DT_model_5, x1, x2, x5, x6, x10),
-                         predict5(MT_model_5, x1, x2, x5, x6, x10)};
-#endif
-
-          // 模型預測時間
           double t0 = predict5(PT_model_5, x1n, x2n, x5n, x6n, x10n);
           double t1 = predict5(DBT_model_5, x1n, x2n, x5n, x6n, x10n);
           double t2 = predict5(KSet_model_5, x1n, x2n, x5n, x6n, x10n);
           double t3 = predict5(DT_model_5, x1n, x2n, x5n, x6n, x10n);
           double t4 = predict5(MT_model_5, x1n, x2n, x5n, x6n, x10n);
+#else
+          // 模型預測時間
+          double t0 = predict5(PT_model_5, x1, x2, x5, x6, x10);
+          double t1 = predict5(DBT_model_5, x1, x2, x5, x6, x10);
+          double t2 = predict5(KSet_model_5, x1, x2, x5, x6, x10);
+          double t3 = predict5(DT_model_5, x1, x2, x5, x6, x10);
+          double t4 = predict5(MT_model_5, x1, x2, x5, x6, x10);
+#endif
 
           // 找最小值索引
           int min_idx = 0;
@@ -2193,7 +2196,8 @@ int main(int argc, char *argv[]) {
                       kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-              if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
                 kset_match_pri =
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
@@ -2211,7 +2215,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-      cout << "\n|=== AVG predict time(Model-5): " << (Total_predict_time)
+#ifdef OMP
+      cout << "\n|=== OpenMP(Model-5)===|\n";
+#else
+      cout << "\n|=== Single(Model-5)===|\n";
+#endif
+      cout << "|=== AVG predict time(Model-5): " << (Total_predict_time)
            << "ns\n";
       cout << "|=== AVG search with predict time(Model-5): "
            << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
@@ -2602,7 +2611,8 @@ int main(int argc, char *argv[]) {
                       kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-              if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
                 kset_match_pri =
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
@@ -2620,7 +2630,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-      cout << "\n|=== AVG predict time(Model-11): " << (Total_predict_time)
+#ifdef OMP
+      cout << "\n|=== OpenMP(Model-11)===|\n";
+#else
+      cout << "\n|=== Single(Model-11)===|\n";
+#endif
+      cout << "|=== AVG predict time(Model-11): " << (Total_predict_time)
            << "ns\n";
       cout << "|=== AVG search with predict time(Model-11): "
            << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
@@ -2656,10 +2671,10 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd DT_y(packetNum);
       Eigen::VectorXd MT_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      XAI::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.01, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.01, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.01, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.01, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.1, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.1, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.1, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.1, 0.01);
 
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
@@ -2698,7 +2713,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
             kset_match_pri =
                 max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
 #endif
@@ -2714,7 +2730,8 @@ int main(int argc, char *argv[]) {
                   kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri =
                 max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
             kset_match_pri =
                 max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
           _KSet_search_time = timer.elapsed_ns();
@@ -2957,7 +2974,8 @@ int main(int argc, char *argv[]) {
                     kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
               kset_match_pri =
                   max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-            if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+            if (__builtin_expect(
+                    kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
               kset_match_pri =
                   max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
           }
@@ -2968,7 +2986,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-      cout << "\n|=== AVG predict time(BloomFilter): " << (Total_predict_time)
+#ifdef OMP
+      cout << "\n|=== OpenMP(BloomFilter)===|\n";
+#else
+      cout << "\n|=== Single(BloomFilter)===|\n";
+#endif
+      cout << "|=== AVG predict time(BloomFilter): " << (Total_predict_time)
            << "ns\n";
       cout << "|=== AVG search time with predict(BloomFilter): "
            << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
@@ -3086,7 +3109,8 @@ int main(int argc, char *argv[]) {
           if (__builtin_expect(
                   kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
             kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(ptk));
-          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
+          if (__builtin_expect(
+                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
             kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(ptk));
           _KSet_search_time = timer.elapsed_ns();
           KSet_search_time += _KSet_search_time;

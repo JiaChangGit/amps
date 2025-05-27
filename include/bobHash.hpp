@@ -11,23 +11,28 @@
 // #include <stdexcept>
 
 template <typename T>
-inline uint32_t hash(const T& data, uint32_t seed = 0);
+/* JIA */ __attribute__((always_inline)) inline uint32_t hash(
+    const T& data, uint32_t seed = 0);
 
 template <typename T>
-inline __m256i hash_avx2(const T& data, uint32_t seed1 = 0, uint32_t seed2 = 1,
-                         uint32_t seed3 = 2, uint32_t seed4 = 3);
+/* JIA */ __attribute__((always_inline)) inline __m256i hash_avx2(
+    const T& data, uint32_t seed1 = 0, uint32_t seed2 = 1, uint32_t seed3 = 2,
+    uint32_t seed4 = 3);
 
 template <typename T>
-inline __m128i hash_sse2(const T& data, uint32_t seed1 = 0, uint32_t seed2 = 1,
-                         uint32_t seed3 = 2, uint32_t seed4 = 3);
+/* JIA */ __attribute__((always_inline)) inline __m128i hash_sse2(
+    const T& data, uint32_t seed1 = 0, uint32_t seed2 = 1, uint32_t seed3 = 2,
+    uint32_t seed4 = 3);
 
-inline long long randomGenerator();
+/* JIA */ __attribute__((always_inline)) inline long long randomGenerator();
 
 static std::random_device rd;
 static std::mt19937_64 rng(rd());
 static std::uniform_real_distribution<double> dis(0, 1);
 
-inline long long randomGenerator() { return rng(); }
+/* JIA */ __attribute__((always_inline)) inline long long randomGenerator() {
+  return rng();
+}
 
 #define MAX_PRIME 1229
 
@@ -174,6 +179,33 @@ inline long long randomGenerator() { return rng(); }
     c = _mm256_sub_epi64(c, a);                        \
     c = _mm256_sub_epi64(c, b);                        \
     c = _mm256_xor_si256(c, _mm256_srli_epi64(b, 22)); \
+  }
+#define mix64_simple(a, b, c) \
+  {                           \
+    a -= b + c;               \
+    a ^= (c >> 43);           \
+    b -= c + a;               \
+    b ^= (a << 9);            \
+    c -= a + b;               \
+    c ^= (b >> 8);            \
+    a -= b + c;               \
+    a ^= (c >> 38);           \
+    b -= c + a;               \
+    b ^= (a << 23);           \
+    c -= a + b;               \
+    c ^= (b >> 5);            \
+    a -= b + c;               \
+    a ^= (c >> 35);           \
+    b -= c + a;               \
+    b ^= (a << 49);           \
+    c -= a + b;               \
+    c ^= (b >> 11);           \
+    a -= b + c;               \
+    a ^= (c >> 12);           \
+    b -= c + a;               \
+    b ^= (a << 18);           \
+    c -= a + b;               \
+    c ^= (b >> 22);           \
   }
 
 static const uint32_t prime[] = {
@@ -381,185 +413,57 @@ class Hash {
   }
 
   static uint64_t BOBHash64(const uint8_t* str, uint32_t len, uint32_t num) {
-    if (num >= MAX_PRIME) {
-      throw std::out_of_range("prime 數組索引越界: num=" + std::to_string(num));
-    }
+    // if (num >= MAX_PRIME) {
+    //   throw std::out_of_range("prime 數組索引越界: num=" +
+    //   std::to_string(num));
+    // }
     uint64_t a, b, c;
-    a = b = 0x9e3779b97f4a7c13LL;
-    c = prime[num];
+    a = b = 0x9e3779b97f4a7c13LL;  // 黃金比例常數
+    c = prime[num];                // 假設 prime 是一個有效的 uint64_t 數組
 
+    // 主循環：每次處理 24 字節（3 × 8 字節）
     while (len >= 24) {
-      a += (str[0] + ((uint64_t)str[1] << 8) + ((uint64_t)str[2] << 16) +
-            ((uint64_t)str[3] << 24) + ((uint64_t)str[4] << 32) +
-            ((uint64_t)str[5] << 40) + ((uint64_t)str[6] << 48) +
-            ((uint64_t)str[7] << 56));
-      b += (str[8] + ((uint64_t)str[9] << 8) + ((uint64_t)str[10] << 16) +
-            ((uint64_t)str[11] << 24) + ((uint64_t)str[12] << 32) +
-            ((uint64_t)str[13] << 40) + ((uint64_t)str[14] << 48) +
-            ((uint64_t)str[15] << 56));
-      c += (str[16] + ((uint64_t)str[17] << 8) + ((uint64_t)str[18] << 16) +
-            ((uint64_t)str[19] << 24) + ((uint64_t)str[20] << 32) +
-            ((uint64_t)str[21] << 40) + ((uint64_t)str[22] << 48) +
-            ((uint64_t)str[23] << 56));
+      uint64_t tmp[3];
+      std::memcpy(tmp, str, 24);  // 安全處理未對齊讀取
+      a += tmp[0];
+      b += tmp[1];
+      c += tmp[2];
       mix64(a, b, c);
       str += 24;
       len -= 24;
     }
 
+    // 處理剩餘字節
     c += len;
-    switch (len) {
-      case 23:
-        c += ((uint64_t)str[22] << 56);
-      case 22:
-        c += ((uint64_t)str[21] << 48);
-      case 21:
-        c += ((uint64_t)str[20] << 40);
-      case 20:
-        c += ((uint64_t)str[19] << 32);
-      case 19:
-        c += ((uint64_t)str[18] << 24);
-      case 18:
-        c += ((uint64_t)str[17] << 16);
-      case 17:
-        c += ((uint64_t)str[16] << 8);
-      case 16:
-        b += ((uint64_t)str[15] << 56);
-      case 15:
-        b += ((uint64_t)str[14] << 48);
-      case 14:
-        b += ((uint64_t)str[13] << 40);
-      case 13:
-        b += ((uint64_t)str[12] << 32);
-      case 12:
-        b += ((uint64_t)str[11] << 24);
-      case 11:
-        b += ((uint64_t)str[10] << 16);
-      case 10:
-        b += ((uint64_t)str[9] << 8);
-      case 9:
-        b += ((uint64_t)str[8]);
-      case 8:
-        a += ((uint64_t)str[7] << 56);
-      case 7:
-        a += ((uint64_t)str[6] << 48);
-      case 6:
-        a += ((uint64_t)str[5] << 40);
-      case 5:
-        a += ((uint64_t)str[4] << 32);
-      case 4:
-        a += ((uint64_t)str[3] << 24);
-      case 3:
-        a += ((uint64_t)str[2] << 16);
-      case 2:
-        a += ((uint64_t)str[1] << 8);
-      case 1:
-        a += ((uint64_t)str[0]);
-    }
-    mix64(a, b, c);
-    return c;
-  }
-
-  static __m256i BOBHash64_AVX2(const uint8_t* str, uint32_t len,
-                                uint32_t seed1, uint32_t seed2, uint32_t seed3,
-                                uint32_t seed4) {
-    __m256i a, b, c;
-    const __m256i golden_ratio = _mm256_set1_epi64x(0x9e3779b97f4a7c13LL);
-
-    a = _mm256_set1_epi64x(0x9e3779b97f4a7c13LL);
-    b = _mm256_set1_epi64x(0x9e3779b97f4a7c13LL);
-    c = _mm256_set_epi64x(
-        (uint64_t)prime[seed4 % MAX_PRIME], (uint64_t)prime[seed3 % MAX_PRIME],
-        (uint64_t)prime[seed2 % MAX_PRIME], (uint64_t)prime[seed1 % MAX_PRIME]);
-
-    while (len >= 24) {
-      uint64_t block_a = *(const uint64_t*)(str);
-      uint64_t block_b = *(const uint64_t*)(str + 8);
-      uint64_t block_c = *(const uint64_t*)(str + 16);
-
-      a = _mm256_add_epi64(a, _mm256_set1_epi64x(block_a));
-      b = _mm256_add_epi64(b, _mm256_set1_epi64x(block_b));
-      c = _mm256_add_epi64(c, _mm256_set1_epi64x(block_c));
-
-      mix64_avx2(a, b, c);
-
-      str += 24;
-      len -= 24;
+    if (len >= 8) {
+      uint64_t tmp[2];
+      std::memcpy(tmp, str, (len >= 16) ? 16 : 8);
+      a += tmp[0];
+      if (len >= 16) {
+        b += tmp[1];
+        str += 16;
+        len -= 16;
+      } else {
+        str += 8;
+        len -= 8;
+      }
     }
 
-    c = _mm256_add_epi64(c, _mm256_set1_epi64x(len));
-
+    // 處理最後 0~7 字節
     if (len > 0) {
-      if (len >= 23)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[22] << 56));
-      if (len >= 22)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[21] << 48));
-      if (len >= 21)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[20] << 40));
-      if (len >= 20)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[19] << 32));
-      if (len >= 19)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[18] << 24));
-      if (len >= 18)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[17] << 16));
-      if (len >= 17)
-        c = _mm256_add_epi64(c, _mm256_set1_epi64x((uint64_t)str[16] << 8));
-      if (len >= 16)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[15] << 56));
-      if (len >= 15)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[14] << 48));
-      if (len >= 14)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[13] << 40));
-      if (len >= 13)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[12] << 32));
-      if (len >= 12)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[11] << 24));
-      if (len >= 11)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[10] << 16));
-      if (len >= 10)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[9] << 8));
-      if (len >= 9)
-        b = _mm256_add_epi64(b, _mm256_set1_epi64x((uint64_t)str[8]));
-      if (len >= 8)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[7] << 56));
-      if (len >= 7)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[6] << 48));
-      if (len >= 6)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[5] << 40));
-      if (len >= 5)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[4] << 32));
-      if (len >= 4)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[3] << 24));
-      if (len >= 3)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[2] << 16));
-      if (len >= 2)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[1] << 8));
-      if (len >= 1)
-        a = _mm256_add_epi64(a, _mm256_set1_epi64x((uint64_t)str[0]));
+      uint64_t tmp = 0;
+      std::memcpy(&tmp, str, len);  // 讀取剩餘字節
+      a += tmp;
     }
-
-    mix64_avx2(a, b, c);
-
+    mix64_simple(a, b, c);
     return c;
   }
 };
 
 template <typename T>
-inline uint32_t hash(const T& data, uint32_t seed) {
+/* JIA */ __attribute__((always_inline)) inline uint32_t hash(const T& data,
+                                                              uint32_t seed) {
   return Hash::BOBHash32((uint8_t*)&data, sizeof(T), seed);
-}
-
-template <typename T>
-inline __m256i hash_avx2(const T& data, uint32_t seed1, uint32_t seed2,
-                         uint32_t seed3, uint32_t seed4) {
-  return Hash::BOBHash64_AVX2((uint8_t*)&data, sizeof(T), seed1, seed2, seed3,
-                              seed4);
-}
-
-template <typename T>
-inline __m128i hash_sse2(const T& data, uint32_t seed1, uint32_t seed2,
-                         uint32_t seed3, uint32_t seed4) {
-  return Hash::BOBHash32_SSE2((uint8_t*)&data, sizeof(T), seed1, seed2, seed3,
-                              seed4);
 }
 
 #endif

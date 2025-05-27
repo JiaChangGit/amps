@@ -47,7 +47,7 @@ class Timer {
  public:
   Timer() { timeReset(); }
 
-  inline void timeReset() {
+  /* JIA */ __attribute__((always_inline)) inline void timeReset() {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     m_beg = Clock::now();
 #elif TIMER_METHOD == TIMER_RDTSCP
@@ -55,7 +55,7 @@ class Timer {
 #endif
   }
 
-  inline double elapsed_s() const {
+  /* JIA */ __attribute__((always_inline)) inline double elapsed_s() const {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     return std::chrono::duration<double>(Clock::now() - m_beg).count();
 #elif TIMER_METHOD == TIMER_RDTSCP
@@ -63,7 +63,8 @@ class Timer {
 #endif
   }
 
-  inline unsigned long long elapsed_ns() const {
+  /* JIA */ __attribute__((always_inline)) inline unsigned long long
+  elapsed_ns() const {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     return std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() -
                                                                 m_beg)
@@ -76,13 +77,15 @@ class Timer {
 
  private:
 #if TIMER_METHOD == TIMER_RDTSCP
-  inline uint64_t perf_counter() const {
+  /* JIA */ __attribute__((always_inline)) inline uint64_t perf_counter()
+      const {
     uint32_t lo, hi;
     __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi));
     return ((uint64_t)lo) | (((uint64_t)hi) << 32);
   }
 
-  inline double get_cpu_frequency_hz() const {
+  /* JIA */ __attribute__((always_inline)) inline double get_cpu_frequency_hz()
+      const {
     return 5.0e9;  // 假設 CPU 時脈為 5 GHz，需根據實際 CPU 頻率調整
   }
 #endif
@@ -213,30 +216,35 @@ class CommandLineParser {
   //// DT MT ////
 };
 
-inline double ip_to_uint32_be(const unsigned char ip[4]) {
+/* JIA */ __attribute__((always_inline)) inline double ip_to_uint32_be(
+    const unsigned char ip[4]) {
   return static_cast<double>((static_cast<uint32_t>(ip[0]) << 24) |
                              (static_cast<uint32_t>(ip[1]) << 16) |
                              (static_cast<uint32_t>(ip[2]) << 8) |
                              (static_cast<uint32_t>(ip[3])));
 }
-inline void extract_ip_bytes_to_float(const unsigned char ip[4], float out[4]) {
+/* JIA */ __attribute__((always_inline)) inline void extract_ip_bytes_to_float(
+    const unsigned char ip[4], float out[4]) {
   for (int i = 0; i < 4; ++i) {
     out[i] = static_cast<float>(ip[i]);
   }
 }
-// inline void bytes_reverse(uint32_t ip, uint8_t bytes[4]) {
+// /* JIA */ __attribute__((always_inline)) inline void bytes_reverse(uint32_t
+// ip, uint8_t bytes[4]) {
 //   bytes[0] = (ip >> 24) & 0xFF;
 //   bytes[1] = (ip >> 16) & 0xFF;
 //   bytes[2] = (ip >> 8) & 0xFF;
 //   bytes[3] = ip & 0xFF;
 // }
-inline void bytes_allocate(uint32_t ip, uint8_t bytes[4]) {
+/* JIA */ __attribute__((always_inline)) inline void bytes_allocate(
+    uint32_t ip, uint8_t bytes[4]) {
   bytes[0] = ip & 0xFF;
   bytes[1] = (ip >> 8) & 0xFF;
   bytes[2] = (ip >> 16) & 0xFF;
   bytes[3] = (ip >> 24) & 0xFF;
 }
-inline void bytes_allocate_rev(const uint8_t bytes[4], uint32_t& ip) {
+/* JIA */ __attribute__((always_inline)) inline void bytes_allocate_rev(
+    const uint8_t bytes[4], uint32_t& ip) {
   ip = static_cast<uint32_t>(bytes[0]) |
        (static_cast<uint32_t>(bytes[1]) << 8) |
        (static_cast<uint32_t>(bytes[2]) << 16) |
