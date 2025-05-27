@@ -70,37 +70,6 @@ static std::uniform_real_distribution<double> dis(0, 1);
     c ^= (b >> 15);  \
   }
 
-#define mix_sse2(a, b, c)                        \
-  {                                              \
-    a = _mm_sub_epi32(a, b);                     \
-    a = _mm_sub_epi32(a, c);                     \
-    a = _mm_xor_si128(a, _mm_srli_epi32(c, 13)); \
-    b = _mm_sub_epi32(b, c);                     \
-    b = _mm_sub_epi32(b, a);                     \
-    b = _mm_xor_si128(b, _mm_slli_epi32(a, 8));  \
-    c = _mm_sub_epi32(c, a);                     \
-    c = _mm_sub_epi32(c, b);                     \
-    c = _mm_xor_si128(c, _mm_srli_epi32(b, 13)); \
-    a = _mm_sub_epi32(a, b);                     \
-    a = _mm_sub_epi32(a, c);                     \
-    a = _mm_xor_si128(a, _mm_srli_epi32(c, 12)); \
-    b = _mm_sub_epi32(b, c);                     \
-    b = _mm_sub_epi32(b, a);                     \
-    b = _mm_xor_si128(b, _mm_slli_epi32(a, 16)); \
-    c = _mm_sub_epi32(c, a);                     \
-    c = _mm_sub_epi32(c, b);                     \
-    c = _mm_xor_si128(c, _mm_srli_epi32(b, 5));  \
-    a = _mm_sub_epi32(a, b);                     \
-    a = _mm_sub_epi32(a, c);                     \
-    a = _mm_xor_si128(a, _mm_srli_epi32(c, 3));  \
-    b = _mm_sub_epi32(b, c);                     \
-    b = _mm_sub_epi32(b, a);                     \
-    b = _mm_xor_si128(b, _mm_slli_epi32(a, 10)); \
-    c = _mm_sub_epi32(c, a);                     \
-    c = _mm_sub_epi32(c, b);                     \
-    c = _mm_xor_si128(c, _mm_srli_epi32(b, 15)); \
-  }
-
 #define mix64(a, b, c) \
   {                    \
     a -= b;            \
@@ -141,45 +110,6 @@ static std::uniform_real_distribution<double> dis(0, 1);
     c ^= (b >> 22);    \
   }
 
-#define mix64_avx2(a, b, c)                            \
-  {                                                    \
-    a = _mm256_sub_epi64(a, b);                        \
-    a = _mm256_sub_epi64(a, c);                        \
-    a = _mm256_xor_si256(a, _mm256_srli_epi64(c, 43)); \
-    b = _mm256_sub_epi64(b, c);                        \
-    b = _mm256_sub_epi64(b, a);                        \
-    b = _mm256_xor_si256(b, _mm256_slli_epi64(a, 9));  \
-    c = _mm256_sub_epi64(c, a);                        \
-    c = _mm256_sub_epi64(c, b);                        \
-    c = _mm256_xor_si256(c, _mm256_srli_epi64(b, 8));  \
-    a = _mm256_sub_epi64(a, b);                        \
-    a = _mm256_sub_epi64(a, c);                        \
-    a = _mm256_xor_si256(a, _mm256_srli_epi64(c, 38)); \
-    b = _mm256_sub_epi64(b, c);                        \
-    b = _mm256_sub_epi64(b, a);                        \
-    b = _mm256_xor_si256(b, _mm256_slli_epi64(a, 23)); \
-    c = _mm256_sub_epi64(c, a);                        \
-    c = _mm256_sub_epi64(c, b);                        \
-    c = _mm256_xor_si256(c, _mm256_srli_epi64(b, 5));  \
-    a = _mm256_sub_epi64(a, b);                        \
-    a = _mm256_sub_epi64(a, c);                        \
-    a = _mm256_xor_si256(a, _mm256_srli_epi64(c, 35)); \
-    b = _mm256_sub_epi64(b, c);                        \
-    b = _mm256_sub_epi64(b, a);                        \
-    b = _mm256_xor_si256(b, _mm256_slli_epi64(a, 49)); \
-    c = _mm256_sub_epi64(c, a);                        \
-    c = _mm256_sub_epi64(c, b);                        \
-    c = _mm256_xor_si256(c, _mm256_srli_epi64(b, 11)); \
-    a = _mm256_sub_epi64(a, b);                        \
-    a = _mm256_sub_epi64(a, c);                        \
-    a = _mm256_xor_si256(a, _mm256_srli_epi64(c, 12)); \
-    b = _mm256_sub_epi64(b, c);                        \
-    b = _mm256_sub_epi64(b, a);                        \
-    b = _mm256_xor_si256(b, _mm256_slli_epi64(a, 18)); \
-    c = _mm256_sub_epi64(c, a);                        \
-    c = _mm256_sub_epi64(c, b);                        \
-    c = _mm256_xor_si256(c, _mm256_srli_epi64(b, 22)); \
-  }
 #define mix64_simple(a, b, c) \
   {                           \
     a -= b + c;               \
@@ -189,23 +119,11 @@ static std::uniform_real_distribution<double> dis(0, 1);
     c -= a + b;               \
     c ^= (b >> 8);            \
     a -= b + c;               \
-    a ^= (c >> 38);           \
-    b -= c + a;               \
-    b ^= (a << 23);           \
-    c -= a + b;               \
-    c ^= (b >> 5);            \
-    a -= b + c;               \
     a ^= (c >> 35);           \
     b -= c + a;               \
     b ^= (a << 49);           \
     c -= a + b;               \
     c ^= (b >> 11);           \
-    a -= b + c;               \
-    a ^= (c >> 12);           \
-    b -= c + a;               \
-    b ^= (a << 18);           \
-    c -= a + b;               \
-    c ^= (b >> 22);           \
   }
 
 static const uint32_t prime[] = {
@@ -358,57 +276,6 @@ class Hash {
         a += str[0];
     }
     mix(a, b, c);
-    return c;
-  }
-
-  static __m128i BOBHash32_SSE2(const uint8_t* str, uint32_t len,
-                                uint32_t seed1, uint32_t seed2, uint32_t seed3,
-                                uint32_t seed4) {
-    __m128i a, b, c;
-    a = _mm_set1_epi32(0x9e3779b9);
-    b = _mm_set1_epi32(0x9e3779b9);
-    c = _mm_set_epi32(prime[seed4 % MAX_PRIME], prime[seed3 % MAX_PRIME],
-                      prime[seed2 % MAX_PRIME], prime[seed1 % MAX_PRIME]);
-
-    while (len >= 12) {
-      uint32_t block_a = *(const uint32_t*)(str);
-      uint32_t block_b = *(const uint32_t*)(str + 4);
-      uint32_t block_c = *(const uint32_t*)(str + 8);
-
-      a = _mm_add_epi32(a, _mm_set1_epi32(block_a));
-      b = _mm_add_epi32(b, _mm_set1_epi32(block_b));
-      c = _mm_add_epi32(c, _mm_set1_epi32(block_c));
-
-      mix_sse2(a, b, c);
-
-      str += 12;
-      len -= 12;
-    }
-
-    c = _mm_add_epi32(c, _mm_set1_epi32(len));
-
-    if (len > 0) {
-      if (len >= 11)
-        c = _mm_add_epi32(c, _mm_set1_epi32((uint32_t)str[10] << 24));
-      if (len >= 10)
-        c = _mm_add_epi32(c, _mm_set1_epi32((uint32_t)str[9] << 16));
-      if (len >= 9) c = _mm_add_epi32(c, _mm_set1_epi32((uint32_t)str[8] << 8));
-      if (len >= 8)
-        b = _mm_add_epi32(b, _mm_set1_epi32((uint32_t)str[7] << 24));
-      if (len >= 7)
-        b = _mm_add_epi32(b, _mm_set1_epi32((uint32_t)str[6] << 16));
-      if (len >= 6) b = _mm_add_epi32(b, _mm_set1_epi32((uint32_t)str[5] << 8));
-      if (len >= 5) b = _mm_add_epi32(b, _mm_set1_epi32((uint32_t)str[4]));
-      if (len >= 4)
-        a = _mm_add_epi32(a, _mm_set1_epi32((uint32_t)str[3] << 24));
-      if (len >= 3)
-        a = _mm_add_epi32(a, _mm_set1_epi32((uint32_t)str[2] << 16));
-      if (len >= 2) a = _mm_add_epi32(a, _mm_set1_epi32((uint32_t)str[1] << 8));
-      if (len >= 1) a = _mm_add_epi32(a, _mm_set1_epi32((uint32_t)str[0]));
-    }
-
-    mix_sse2(a, b, c);
-
     return c;
   }
 

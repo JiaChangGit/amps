@@ -56,7 +56,7 @@ using namespace std;
 #define NORM
 #define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
-#define EIGEN_UNROLL_LOOP_LIMIT 64
+// #define EIGEN_UNROLL_LOOP_LIMIT 64
 #define PERLOOKUPTIME_MODEL
 ///////// Shuffle /////////
 // #define SHUFFLE
@@ -790,7 +790,7 @@ int main(int argc, char *argv[]) {
     ///////// Model /////////
     {
       cout
-          << ("\n**************** Build(Model 3-D and 11-D) "
+          << ("\n**************** Build(Model) "
               "****************\n");
       cout << "\tThe number of packet in the trace file = " << packetNum
            << "\n";
@@ -2671,10 +2671,10 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd DT_y(packetNum);
       Eigen::VectorXd MT_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      XAI::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.1, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.1, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.1, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.1, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.5, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.5, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.5, 0.01);
+      XAI::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.5, 0.01);
 
       for (size_t t = 0; t < 2; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
