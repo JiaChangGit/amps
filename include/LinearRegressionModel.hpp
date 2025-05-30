@@ -240,7 +240,7 @@ printStatistics(const std::string &label, const Eigen::VectorXd &data) {
   const double p99 = computePercentile(data, 0.99);
 
   // 統一輸出格式
-  // std::cout << "|--- " << label << " Mean: " << mean << "\n";
+  std::cout << "|--- " << label << " Mean: " << mean << "\n";
   // std::cout << "|--- " << label << " 25th Percentile: " << p25 << "\n";
   std::cout << "|--- " << label << " median Percentile: " << median << "\n";
   std::cout << "|--- " << label << " 75th Percentile: " << p75 << "\n";

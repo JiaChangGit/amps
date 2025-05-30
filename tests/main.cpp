@@ -57,7 +57,7 @@ using namespace std;
 #define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
 // #define EIGEN_UNROLL_LOOP_LIMIT 64
-#define PERLOOKUPTIME_MODEL
+// #define PERLOOKUPTIME_MODEL
 ///////// Shuffle /////////
 // #define SHUFFLE
 #ifdef SHUFFLE
@@ -65,13 +65,9 @@ using namespace std;
 #endif
 ///////// Shuffle /////////
 ///////// MP /////////
-#define OMP
-#ifdef OMP
 #include <omp.h>
-#endif
 ///////// MP /////////
 ///////// bloomFilter /////////
-#define PERLOOKUPTIME_BLOOM
 #define BLOOM
 #ifdef BLOOM
 #include "bloomFilter.hpp"
@@ -616,6 +612,7 @@ int main(int argc, char *argv[]) {
   cout << "The number of rules = " << number_rule << "\n";
   const size_t packetNum = packets.size();
   cout << "The number of packets = " << packetNum << "\n";
+  vector<int> predict_choose(packetNum);
   unsigned long long PT_search_time = 0, _PT_search_time = 0;
   unsigned long long DBT_search_time = 0, _DBT_search_time = 0;
   unsigned long long KSet_search_time = 0, _KSet_search_time = 0;
@@ -785,7 +782,7 @@ int main(int argc, char *argv[]) {
 
   if (parser.isSearchMode()) {
     unsigned long long Total_search_time = 0, _Total_search_time = 0;
-    unsigned long long Total_predict_time = 0;
+    unsigned long long Omp_predict_time = 0, Sig_predict_time = 0;
     /*************************************************************************/
     ///////// Model /////////
     {
@@ -1591,7 +1588,8 @@ int main(int argc, char *argv[]) {
       cout << ("\n**************** Classification(Model) ****************\n");
       int model_counter_DBT = 0, model_counter_PT = 0, model_counter_KSet = 0,
           model_counter_DT = 0, model_counter_MT = 0;
-      Total_predict_time = 0;
+      Omp_predict_time = 0;
+      Sig_predict_time = 0;
       Total_search_time = 0;
 #ifdef PERLOOKUPTIME_MODEL
       Eigen::VectorXd Total_y(packetNum);
@@ -1602,11 +1600,8 @@ int main(int argc, char *argv[]) {
       FILE *total_model_11_fp = nullptr;
       total_model_11_fp = fopen("./INFO/Total_model_11_result.txt", "w");
 #endif
-
       //// 3-D
       timer.timeReset();
-#ifdef OMP
-      // 平行處理
 #pragma omp parallel
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
@@ -1696,7 +1691,9 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         model_counter_MT += local_MT;
       }
-#else
+      Omp_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+
+      timer.timeReset();
       for (size_t i = 0; i < packetNum; ++i) {
         float ip_bytes[4];
 
@@ -1746,100 +1743,10 @@ int main(int argc, char *argv[]) {
           min_val = t4;
           min_idx = 4;
         }
-
-        // 根據最小索引累加計數器
-        switch (min_idx) {
-          case 0:
-            ++model_counter_PT;
-            break;
-          case 1:
-            ++model_counter_DBT;
-            break;
-          case 2:
-            ++model_counter_KSet;
-            break;
-          case 3:
-            ++model_counter_DT;
-            break;
-          case 4:
-            ++model_counter_MT;
-            break;
-        }
+        predict_choose[i] = min_idx;
       }
-#endif
-      Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+      Sig_predict_time = ((timer.elapsed_ns() / packetNum));
 
-      vector<int> predict_choose(packetNum);
-      {
-#ifdef NORM
-        double x1_norm_3 = 0, x2_norm_3 = 0, x3_norm_3 = 0;  // JIA normalize
-#endif
-        int arr[5] = {0};
-        for (size_t i = 0; i < packetNum; ++i) {
-          extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
-          x_source_ip_0 = static_cast<double>(ip_bytes[0]);
-          x_source_ip_1 = static_cast<double>(ip_bytes[1]);
-
-          extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
-          x_destination_ip_0 = static_cast<double>(ip_bytes[0]);
-
-#ifdef NORM
-          /* JIA normalizeFeatures */
-          x1_norm_3 = toNormalized(x_source_ip_0, mean_X3[0], std_X3[0]);
-          x2_norm_3 = toNormalized(x_source_ip_1, mean_X3[1], std_X3[1]);
-          x3_norm_3 = toNormalized(x_destination_ip_0, mean_X3[2], std_X3[2]);
-
-          //// DBT
-          arr[0] = predict3(DBT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-          //// DBT
-
-          //// PT
-          arr[1] = predict3(PT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-          //// PT
-
-          //// KSet
-          arr[2] = predict3(KSet_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-          //// KSet
-
-          //// DT
-          arr[3] = predict3(DT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-          //// DT
-
-          //// MT
-          arr[4] = predict3(MT_model_3, x1_norm_3, x2_norm_3, x3_norm_3);
-          //// MT
-#else
-          //// DBT
-          arr[0] = predict3(DBT_model_3, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0);
-          //// DBT
-          //// PT
-          arr[1] = predict3(PT_model_3, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0);
-          //// PT
-          //// KSet
-          arr[2] = predict3(KSet_model_3, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0);
-          //// KSet
-          //// DT
-          arr[3] = predict3(DT_model_3, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0);
-          //// DT
-          //// MT
-          arr[4] = predict3(MT_model_3, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0);
-//// MT
-#endif
-          /* JIA normalizeFeatures */
-          int min_idx = 0;
-          for (int i = 1; i < 5; ++i) {
-            if (arr[i] < arr[min_idx]) {
-              min_idx = i;
-            }
-          }
-          predict_choose[i] = min_idx;
-        }
-      }
       // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
       // warmup_MT(multilayertuple, traces_DT_MT);
       warmup_DT(dynamictuple, traces_DT_MT);
@@ -1885,15 +1792,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-#ifdef OMP
-      cout << "\n|=== OpenMP(Model-3)===|\n";
-#else
-      cout << "\n|=== Single(Model-3)===|\n";
-#endif
-      cout << "|=== AVG predict time(Model-3): " << (Total_predict_time)
+      cout << "\n|=== AVG predict time(Model-3  Single): " << (Sig_predict_time)
+           << "ns\n======";
+      cout << "\n|=== AVG predict time(Model-3  Omp): " << (Omp_predict_time)
            << "ns\n";
-      cout << "|=== AVG search with predict time(Model-3): "
-           << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
+      cout << "|=== AVG search with predict time(Model-3 + Omp): "
+           << ((Total_search_time / (packetNum * trials)) + Omp_predict_time)
            << "ns\n";
       cout << "|=== PT, DBT, KSET, DT, MT (%): "
            << 100 * (model_counter_PT) / (packetNum * 1.0) << ", "
@@ -1917,12 +1821,11 @@ int main(int argc, char *argv[]) {
       model_counter_KSet = 0;
       model_counter_DT = 0;
       model_counter_MT = 0;
-      Total_predict_time = 0;
+      Omp_predict_time = 0;
+      Sig_predict_time = 0;
       Total_search_time = 0;
 
       timer.timeReset();
-#ifdef OMP
-      // 平行處理
 #pragma omp parallel
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
@@ -2017,7 +1920,9 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         model_counter_MT += local_MT;
       }
-#else
+      Omp_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+
+      timer.timeReset();
       for (size_t i = 0; i < packetNum; ++i) {
         float ip_bytes[4];
 
@@ -2066,110 +1971,10 @@ int main(int argc, char *argv[]) {
           min_idx = 4;
         }
 
-        // 根據最小索引累加對應模型計數器
-        switch (min_idx) {
-          case 0:
-            ++model_counter_PT;
-            break;
-          case 1:
-            ++model_counter_DBT;
-            break;
-          case 2:
-            ++model_counter_KSet;
-            break;
-          case 3:
-            ++model_counter_DT;
-            break;
-          case 4:
-            ++model_counter_MT;
-            break;
-        }
+        predict_choose[i] = min_idx;
       }
-#endif
-      Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+      Sig_predict_time = ((timer.elapsed_ns() / packetNum));
 
-      {
-#ifdef NORM
-        double x1_norm_5 = 0, x2_norm_5 = 0, x5_norm_5 = 0, x6_norm_5 = 0,
-               x10_norm_5 = 0;  // JIA normalize
-#endif
-        int arr[5] = {0};
-        for (size_t i = 0; i < packetNum; ++i) {
-          extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
-          x_source_ip_0 = static_cast<double>(ip_bytes[0]);
-          x_source_ip_1 = static_cast<double>(ip_bytes[1]);
-
-          extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
-          x_destination_ip_0 = static_cast<double>(ip_bytes[0]);
-          x_destination_ip_1 = static_cast<double>(ip_bytes[1]);
-          x_destination_ip_2 = static_cast<double>(ip_bytes[2]);
-
-#ifdef NORM
-          /* JIA normalizeFeatures */
-          x1_norm_5 = toNormalized(x_source_ip_0, mean_X5[0], std_X5[0]);
-          x2_norm_5 = toNormalized(x_source_ip_1, mean_X5[1], std_X5[1]);
-          x5_norm_5 = toNormalized(x_destination_ip_0, mean_X5[2], std_X5[2]);
-          x6_norm_5 = toNormalized(x_destination_ip_1, mean_X5[3], std_X5[3]);
-          x10_norm_5 = toNormalized(x_destination_ip_2, mean_X5[4], std_X5[4]);
-
-          //// DBT
-          arr[0] = predict5(DBT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
-                            x6_norm_5, x10_norm_5);
-          //// DBT
-
-          //// PT
-          arr[1] = predict5(PT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
-                            x6_norm_5, x10_norm_5);
-          //// PT
-
-          //// KSet
-          arr[2] = predict5(KSet_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
-                            x6_norm_5, x10_norm_5);
-          //// KSet
-
-          //// DT
-          arr[3] = predict5(DT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
-                            x6_norm_5, x10_norm_5);
-          //// DT
-
-          //// MT
-          arr[4] = predict5(MT_model_5, x1_norm_5, x2_norm_5, x5_norm_5,
-                            x6_norm_5, x10_norm_5);
-          //// MT
-#else
-          //// DBT
-          arr[0] = predict5(DBT_model_5, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0, x_destination_ip_1,
-                            x_destination_ip_2);
-          //// DBT
-          //// PT
-          arr[1] = predict5(PT_model_5, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0, x_destination_ip_1,
-                            x_destination_ip_2);
-          //// PT
-          //// KSet
-          arr[2] = predict5(KSet_model_5, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0, x_destination_ip_1,
-                            x_destination_ip_2);
-          //// KSet
-          //// DT
-          arr[3] = predict5(DT_model_5, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0, x_destination_ip_1,
-                            x_destination_ip_2);
-          //// DT
-          //// MT
-          arr[4] = predict5(MT_model_5, x_source_ip_0, x_source_ip_1,
-                            x_destination_ip_0, x_destination_ip_1,
-                            x_destination_ip_2);
-          //// MT
-#endif
-          int min_idx = 0;
-          for (int i = 1; i < 5; ++i) {
-            if (arr[i] < arr[min_idx]) min_idx = i;
-          }
-          predict_choose[i] = min_idx;
-        }
-      }
       // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
       // warmup_MT(multilayertuple, traces_DT_MT);
       warmup_DT(dynamictuple, traces_DT_MT);
@@ -2215,15 +2020,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-#ifdef OMP
-      cout << "\n|=== OpenMP(Model-5)===|\n";
-#else
-      cout << "\n|=== Single(Model-5)===|\n";
-#endif
-      cout << "|=== AVG predict time(Model-5): " << (Total_predict_time)
+      cout << "\n|=== AVG predict time(Model-5  Single): " << (Sig_predict_time)
+           << "ns\n======";
+      cout << "\n|=== AVG predict time(Model-5  Omp): " << (Omp_predict_time)
            << "ns\n";
-      cout << "|=== AVG search with predict time(Model-5): "
-           << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
+      cout << "|=== AVG search with predict time(Model-5 + Omp): "
+           << ((Total_search_time / (packetNum * trials)) + Omp_predict_time)
            << "ns\n";
       cout << "|=== PT, DBT, KSET, DT, MT (%): "
            << 100 * (model_counter_PT) / (packetNum * 1.0) << ", "
@@ -2247,12 +2049,11 @@ int main(int argc, char *argv[]) {
       model_counter_KSet = 0;
       model_counter_DT = 0;
       model_counter_MT = 0;
-      Total_predict_time = 0;
+      Omp_predict_time = 0;
+      Sig_predict_time = 0;
       Total_search_time = 0;
 
       timer.timeReset();
-#ifdef OMP
-      // 平行處理
 #pragma omp parallel
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
@@ -2367,7 +2168,9 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         model_counter_MT += local_MT;
       }
-#else
+      Omp_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+
+      timer.timeReset();
       for (size_t i = 0; i < packetNum; ++i) {
         float ip_bytes[4];
 
@@ -2444,147 +2247,10 @@ int main(int argc, char *argv[]) {
           min_val = t4;
           min_idx = 4;
         }
-
-        switch (min_idx) {
-          case 0:
-            ++model_counter_PT;
-            break;
-          case 1:
-            ++model_counter_DBT;
-            break;
-          case 2:
-            ++model_counter_KSet;
-            break;
-          case 3:
-            ++model_counter_DT;
-            break;
-          case 4:
-            ++model_counter_MT;
-            break;
-        }
+        predict_choose[i] = min_idx;
       }
-#endif
-      Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+      Sig_predict_time = ((timer.elapsed_ns() / packetNum));
 
-      {
-#ifdef NORM
-        double x1_norm_11 = 0, x2_norm_11 = 0, x3_norm_11 = 0, x4_norm_11 = 0,
-               x5_norm_11 = 0, x6_norm_11 = 0, x7_norm_11 = 0, x8_norm_11 = 0,
-               x9_norm_11 = 0, x10_norm_11 = 0,
-               x11_norm_11 = 0;  // JIA normalize
-#endif
-        int arr[5] = {0};
-        for (size_t i = 0; i < packetNum; ++i) {
-          extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
-          x_source_ip_0 = static_cast<double>(ip_bytes[0]);
-          x_source_ip_1 = static_cast<double>(ip_bytes[1]);
-          x_source_ip_2 = static_cast<double>(ip_bytes[2]);
-          x_source_ip_3 = static_cast<double>(ip_bytes[3]);
-
-          extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
-          x_destination_ip_0 = static_cast<double>(ip_bytes[0]);
-          x_destination_ip_1 = static_cast<double>(ip_bytes[1]);
-          x_destination_ip_2 = static_cast<double>(ip_bytes[2]);
-          x_destination_ip_3 = static_cast<double>(ip_bytes[3]);
-
-          // port（轉 uint16）
-          x_source_port = static_cast<double>(PT_packets[i].source_port);
-          x_destination_port =
-              static_cast<double>(PT_packets[i].destination_port);
-          x_protocol = static_cast<double>(PT_packets[i].protocol);
-
-#ifdef NORM
-          /* JIA normalizeFeatures */
-          x1_norm_11 = toNormalized(x_source_ip_0, mean_X11[0], std_X11[0]);
-          x2_norm_11 = toNormalized(x_source_ip_1, mean_X11[1], std_X11[1]);
-          x3_norm_11 = toNormalized(x_source_ip_2, mean_X11[2], std_X11[2]);
-          x4_norm_11 = toNormalized(x_source_ip_3, mean_X11[3], std_X11[3]);
-          x5_norm_11 =
-              toNormalized(x_destination_ip_0, mean_X11[4], std_X11[4]);
-          x6_norm_11 =
-              toNormalized(x_destination_ip_1, mean_X11[5], std_X11[5]);
-          x7_norm_11 =
-              toNormalized(x_destination_ip_2, mean_X11[6], std_X11[6]);
-          x8_norm_11 =
-              toNormalized(x_destination_ip_3, mean_X11[7], std_X11[7]);
-          x9_norm_11 = toNormalized(x_source_port, mean_X11[8], std_X11[8]);
-          x10_norm_11 =
-              toNormalized(x_destination_port, mean_X11[9], std_X11[9]);
-          x11_norm_11 = toNormalized(x_protocol, mean_X11[10], std_X11[10]);
-
-          //// DBT
-          arr[0] = predict11(DBT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
-                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          //// DBT
-
-          //// PT
-          arr[1] = predict11(PT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
-                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          //// PT
-
-          //// KSet
-          arr[2] = predict11(KSet_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
-                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          //// KSet
-
-          //// DT
-          arr[3] = predict11(DT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
-                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          //// DT
-
-          //// MT
-          arr[4] = predict11(MT_model_11, x1_norm_11, x2_norm_11, x3_norm_11,
-                             x4_norm_11, x5_norm_11, x6_norm_11, x7_norm_11,
-                             x8_norm_11, x9_norm_11, x10_norm_11, x11_norm_11);
-          //// MT
-#else
-          //// DBT
-          arr[0] = predict11(DBT_model_11, x_source_ip_0, x_source_ip_1,
-                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
-                             x_destination_ip_1, x_destination_ip_2,
-                             x_destination_ip_3, x_source_port,
-                             x_destination_port, x_protocol);
-          //// DBT
-          //// PT
-          arr[1] = predict11(PT_model_11, x_source_ip_0, x_source_ip_1,
-                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
-                             x_destination_ip_1, x_destination_ip_2,
-                             x_destination_ip_3, x_source_port,
-                             x_destination_port, x_protocol);
-          //// PT
-          //// KSet
-          arr[2] = predict11(KSet_model_11, x_source_ip_0, x_source_ip_1,
-                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
-                             x_destination_ip_1, x_destination_ip_2,
-                             x_destination_ip_3, x_source_port,
-                             x_destination_port, x_protocol);
-          //// KSet
-          //// DT
-          arr[3] = predict11(DT_model_11, x_source_ip_0, x_source_ip_1,
-                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
-                             x_destination_ip_1, x_destination_ip_2,
-                             x_destination_ip_3, x_source_port,
-                             x_destination_port, x_protocol);
-          //// DT
-          //// MT
-          arr[4] = predict11(MT_model_11, x_source_ip_0, x_source_ip_1,
-                             x_source_ip_2, x_source_ip_3, x_destination_ip_0,
-                             x_destination_ip_1, x_destination_ip_2,
-                             x_destination_ip_3, x_source_port,
-                             x_destination_port, x_protocol);
-          //// MT
-#endif
-          int min_idx = 0;
-          for (int i = 1; i < 5; ++i) {
-            if (arr[i] < arr[min_idx]) min_idx = i;
-          }
-          predict_choose[i] = min_idx;
-        }
-      }
       // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
       // warmup_MT(multilayertuple, traces_DT_MT);
       warmup_DT(dynamictuple, traces_DT_MT);
@@ -2630,15 +2296,12 @@ int main(int argc, char *argv[]) {
 #endif
         }
       }
-#ifdef OMP
-      cout << "\n|=== OpenMP(Model-11)===|\n";
-#else
-      cout << "\n|=== Single(Model-11)===|\n";
-#endif
-      cout << "|=== AVG predict time(Model-11): " << (Total_predict_time)
+      cout << "\n|=== AVG predict time(Model-11  Single): "
+           << (Sig_predict_time) << "ns\n======";
+      cout << "\n|=== AVG predict time(Model-11  Omp): " << (Omp_predict_time)
            << "ns\n";
-      cout << "|=== AVG search with predict time(Model-11): "
-           << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
+      cout << "|=== AVG search with predict time(Model-11 + Omp): "
+           << ((Total_search_time / (packetNum * trials)) + Omp_predict_time)
            << "ns\n";
       cout << "|=== PT, DBT, KSET, DT, MT (%): "
            << 100 * (model_counter_PT) / (packetNum * 1.0) << ", "
@@ -2801,18 +2464,17 @@ int main(int argc, char *argv[]) {
                << 17));
         }
       }
-///////// BloomFilter Construct /////////
-/*************************************************************************/
+      ///////// BloomFilter Construct /////////
+      /*************************************************************************/
 
-/*************************************************************************/
-///////// BloomFilter Classification /////////
-#ifdef PERLOOKUPTIME_BLOOM
+      /*************************************************************************/
+      ///////// BloomFilter Classification /////////
       FILE *Bloom_res = nullptr;
       Bloom_res = fopen("./INFO/BloomResults.txt", "w");
       Eigen::VectorXd BloomFilter_y(packetNum);
-#endif
 
-      Total_predict_time = 0;
+      Omp_predict_time = 0;
+      Sig_predict_time = 0;
       Total_search_time = 0;
       int bloom_counter_DBT = 0;
       int bloom_counter_PT = 0;
@@ -2821,8 +2483,6 @@ int main(int argc, char *argv[]) {
       int bloom_counter_MT = 0;
 
       timer.timeReset();
-#ifdef OMP
-      // 平行處理
 #pragma omp parallel
       {
         int local_bloom_DBT = 0;
@@ -2883,7 +2543,9 @@ int main(int argc, char *argv[]) {
 #pragma omp atomic
         bloom_counter_KSet += local_bloom_KSet;
       }
-#else
+      Omp_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+
+      timer.timeReset();
       for (size_t i = 0; i < packetNum; ++i) {
         // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
         const uint64_t key_dbt =
@@ -2911,19 +2573,18 @@ int main(int argc, char *argv[]) {
         const bool hit_mt = bloom_filter_mt.contains(key_dt_mt);
 
         if (!hit_dbt) {
-          ++bloom_counter_DBT;
+          predict_choose[i] = 1;
         } else if (!hit_pt) {
-          ++bloom_counter_PT;
+          predict_choose[i] = 0;
         } else if (!hit_dt) {
-          ++bloom_counter_DT;
+          predict_choose[i] = 3;
         } else if (!hit_mt) {
-          ++bloom_counter_MT;
+          predict_choose[i] = 4;
         } else {
-          ++bloom_counter_KSet;
+          predict_choose[i] = 2;
         }
       }
-#endif
-      Total_predict_time = ((timer.elapsed_ns() / packetNum));  // 平行處理
+      Sig_predict_time = ((timer.elapsed_ns() / packetNum));
 
       // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
       // warmup_MT(multilayertuple, traces_DT_MT);
@@ -2932,69 +2593,49 @@ int main(int argc, char *argv[]) {
       warmup_DBT(dbt, DBT_packets);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
-          // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
-          const uint64_t key_dbt =
-              (DBT_packets[i].ip.i_64) ^
-              (((static_cast<uint64_t>(DBT_packets[i].Port[0]) << 16) |
-                static_cast<uint64_t>(DBT_packets[i].Port[1]))
-               << 17);
-          const uint64_t key_pt =
-              (PT_packets[i].toIP64()) ^
-              (((static_cast<uint64_t>(PT_packets[i].source_port) << 16) |
-                static_cast<uint64_t>(PT_packets[i].destination_port))
-               << 17);
-          const uint64_t key_dt_mt =
-              (traces_DT_MT[i]->dst_src_ip) ^
-              (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
-                static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
-               << 17);
-          // Bloom Filter 查詢，優化條件分支結構（避免 else-if 嵌套）
-          const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
-          const bool hit_pt = bloom_filter_pt.contains(key_pt);
-          const bool hit_dt = bloom_filter_dt.contains(key_dt_mt);
-          const bool hit_mt = bloom_filter_mt.contains(key_dt_mt);
           timer.timeReset();
-          if (__builtin_expect(!hit_dbt, 1)) {
-            dbt.search(DBT_packets[i]);
-          } else if (!hit_pt) {
-            tree.search(PT_packets[i]);
-          } else if (!hit_dt) {
-            (dynamictuple.Lookup(traces_DT_MT[i], 0));
-          } else if (!hit_mt) {
-            (multilayertuple.Lookup(traces_DT_MT[i], 0));
-          } else {
-            kset_match_pri = -1;
-            if (__builtin_expect(num_set[0] > 0, 1))
-              kset_match_pri = set0.ClassifyAPacket(packets[i]);
-            if (__builtin_expect(
-                    kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
-              kset_match_pri =
-                  max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-            if (__builtin_expect(
-                    kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
-              kset_match_pri =
-                  max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-            if (__builtin_expect(
-                    kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
-              kset_match_pri =
-                  max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+          switch (predict_choose[i]) {
+            case 0:
+              tree.search(PT_packets[i]);
+              break;
+            case 1:
+              dbt.search(DBT_packets[i]);
+              break;
+            case 2:
+              kset_match_pri = -1;
+              if (__builtin_expect(num_set[0] > 0, 1))
+                kset_match_pri = set0.ClassifyAPacket(packets[i]);
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+                kset_match_pri =
+                    max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+                kset_match_pri =
+                    max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+              if (__builtin_expect(
+                      kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+                kset_match_pri =
+                    max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+              break;
+            case 3:
+              (dynamictuple.Lookup(traces_DT_MT[i], 0));
+              break;
+            case 4:
+              (multilayertuple.Lookup(traces_DT_MT[i], 0));
+              break;
           }
           _Total_search_time = timer.elapsed_ns();
           Total_search_time += _Total_search_time;
-#ifdef PERLOOKUPTIME_BLOOM
           BloomFilter_y(i) = (static_cast<double>(_Total_search_time));
-#endif
         }
       }
-#ifdef OMP
-      cout << "\n|=== OpenMP(BloomFilter)===|\n";
-#else
-      cout << "\n|=== Single(BloomFilter)===|\n";
-#endif
-      cout << "|=== AVG predict time(BloomFilter): " << (Total_predict_time)
-           << "ns\n";
-      cout << "|=== AVG search time with predict(BloomFilter): "
-           << ((Total_search_time / (packetNum * trials)) + Total_predict_time)
+      cout << "\n|=== AVG predict time(BloomFilter  Single): "
+           << (Sig_predict_time) << "ns\n======";
+      cout << "\n|=== AVG predict time(BloomFilter  Omp): "
+           << (Omp_predict_time) << "ns\n";
+      cout << "|=== AVG search time with predict(BloomFilter + Omp): "
+           << ((Total_search_time / (packetNum * trials)) + Omp_predict_time)
            << "ns\n";
       cout << "|=== PT, DBT, KSET, DT, MT (%): "
            << 100 * (bloom_counter_PT) / (packetNum * 1.0) << ", "
@@ -3003,13 +2644,11 @@ int main(int argc, char *argv[]) {
            << 100 * (bloom_counter_DT) / (packetNum * 1.0) << ", "
            << 100 * (bloom_counter_MT) / (packetNum * 1.0) << "\n";
 
-#ifdef PERLOOKUPTIME_BLOOM
       for (size_t i = 0; i < packetNum; ++i) {
         fprintf(Bloom_res, "Packet %ld \t Time(ns) %f\n", i, BloomFilter_y(i));
       }
       fclose(Bloom_res);
       printStatistics("BloomFilter_y", BloomFilter_y);
-#endif
 
       ///////// BloomFilter Classification /////////
       /*************************************************************************/
