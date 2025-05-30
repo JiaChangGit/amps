@@ -3,6 +3,7 @@
 
 *.Identifier
 #INFO/*.txt
+#git update-index --assume-unchanged ./INFO/*.txt
 third_party/*
 
 ### C ###
