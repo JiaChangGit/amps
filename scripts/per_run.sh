@@ -10,8 +10,8 @@
 BUILD_DIR="./build"
 TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
 
-# RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_1k"
-# TRACE_PATH="../classbench_set/ipv4-trace/acl1_1k_trace"
+RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_1k"
+TRACE_PATH="../classbench_set/ipv4-trace/acl1_1k_trace"
 
 # RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/acl1_100k_trace"
@@ -46,8 +46,8 @@ TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
 # RULESET_PATH="../classbench_set/ipv4-ruleset/ipc1_100k"
 # TRACE_PATH="../classbench_set/ipv4-trace/ipc1_100k_trace"
 
-RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
-TRACE_PATH="../classbench_set/ipv4-trace/ipc2_100k_trace"
+# RULESET_PATH="../classbench_set/ipv4-ruleset/ipc2_100k"
+# TRACE_PATH="../classbench_set/ipv4-trace/ipc2_100k_trace"
 
 ###
 # TRACE_PATH="../classbench_set/ipv4-trace/part_0"
