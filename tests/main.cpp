@@ -580,17 +580,18 @@ vector<Rule_KSet> convertRules_DTMTtoKSet(
   }
 }
 void convert_packets_to_datas(const vector<array<uint32_t, 6>> &packets,
-                              vector<array<float, 5>> &datas) {
+                              vector<array<double, 5>> &datas) {
   datas.clear();
   datas.reserve(packets.size());  // 預先分配記憶體以避免 realloc
 
   for (const auto &pkt : packets) {
-    array<float, 5> data;
+    array<double, 5> data;
     for (size_t i = 0; i < 5; ++i) {
-      data[i] = static_cast<float>(pkt[i]);  // 保留轉型語意清晰
+      data[i] = static_cast<double>(pkt[i]);  // 保留轉型語意清晰
     }
     datas.emplace_back(data);
   }
+  datas.shrink_to_fit();
 }
 /////////////////
 int main(int argc, char *argv[]) {
@@ -1555,7 +1556,6 @@ int main(int argc, char *argv[]) {
 #pragma omp for schedule(static)
           for (size_t i = 0; i < packetNum; ++i) {
             float ip_bytes[4];
-
             // 提取 IP 特徵
             extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
             double x1 = static_cast<double>(ip_bytes[0]);
@@ -1583,7 +1583,6 @@ int main(int argc, char *argv[]) {
             double t3 = predict3(DT_model_3, x1, x2, x3);
             double t4 = predict3(MT_model_3, x1, x2, x3);
 #endif
-
             // 找出預測最小的模型
             int min_idx = 0;
             double min_val = t0;
@@ -1623,7 +1622,6 @@ int main(int argc, char *argv[]) {
                 break;
             }
           }
-
           // 匯總到全域變數（使用 atomic）
 #pragma omp atomic
           model_counter_PT += local_PT;
@@ -1641,7 +1639,6 @@ int main(int argc, char *argv[]) {
         timer.timeReset();
         for (size_t i = 0; i < packetNum; ++i) {
           float ip_bytes[4];
-
           // 提取 IP 特徵
           extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
           double x1 = static_cast<double>(ip_bytes[0]);
@@ -2013,7 +2010,6 @@ int main(int argc, char *argv[]) {
 #pragma omp for schedule(static)
           for (size_t i = 0; i < packetNum; ++i) {
             float ip_bytes[4];
-
             // 提取 IP 特徵（共 11 維）
             extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
             double x1 = static_cast<double>(ip_bytes[0]);
@@ -2121,7 +2117,6 @@ int main(int argc, char *argv[]) {
         timer.timeReset();
         for (size_t i = 0; i < packetNum; ++i) {
           float ip_bytes[4];
-
           // 提取 IP 特徵（共 11 維）
           extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
           double x1 = static_cast<double>(ip_bytes[0]);
@@ -2288,7 +2283,7 @@ int main(int argc, char *argv[]) {
     vector<uint8_t>().swap(knnLable);
     // vector<LabeledSample>().swap(knn_training_data); // WRONG!! (core dumped)
     ///////// KNN Construct /////////
-    vector<array<float, 5>> datas;
+    vector<array<double, 5>> datas;
     convert_packets_to_datas(packets, datas);
     //// KNN ACC
     {
@@ -2381,7 +2376,6 @@ int main(int argc, char *argv[]) {
               break;
           }
         }
-
         // 匯總到全域變數（使用 atomic）
 #pragma omp atomic
         knn_counter_PT += local_PT;

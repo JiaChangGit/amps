@@ -22,7 +22,7 @@ enum class DataStructure : uint8_t {
 // --------------------------------------------
 // 資料樣本：包含一筆 6 維輸入資料與對應的分類標籤
 // - 其中只有前 5 維會被用於 KNN 查詢
-// - 第 6 維無意義（可能保留給其他任務）
+// - 第 6 維無意義
 // --------------------------------------------
 struct LabeledSample {
   Packet data;
@@ -41,8 +41,8 @@ struct DatasetAdaptor {
   inline size_t kdtree_get_point_count() const { return samples.size(); }
 
   // 回傳第 idx 筆資料在第 dim 維的值（僅前5維有效）
-  inline float kdtree_get_pt(const size_t idx, const size_t dim) const {
-    return static_cast<float>(samples[idx].data[dim]);
+  inline double kdtree_get_pt(const size_t idx, const size_t dim) const {
+    return static_cast<double>(samples[idx].data[dim]);
   }
 
   // 若不支援 bounding box，可以直接回傳 false（不影響查詢）
@@ -60,11 +60,11 @@ struct DatasetAdaptor {
 class KNNClassifier {
   // 定義 KD-Tree 類型：使用 L2 距離、5 維空間
   using KDTree = nanoflann::KDTreeSingleIndexAdaptor<
-      // nanoflann::L2_Simple_Adaptor<float, DatasetAdaptor>,  // 距離函式（L2
+      // nanoflann::L2_Simple_Adaptor<double, DatasetAdaptor>,  // 距離函式（L2
       // Norm）
-      nanoflann::L1_Adaptor<float, DatasetAdaptor>,  // 改用 L1 距離
-      DatasetAdaptor,                                // 資料來源
-      5>;                                            // 使用前五維（維度）
+      nanoflann::L1_Adaptor<double, DatasetAdaptor>,  // 改用 L1 距離
+      DatasetAdaptor,                                 // 資料來源
+      5>;                                             // 使用前五維（維度）
 
   const std::vector<LabeledSample>& samples;  // 原始資料（外部傳入）
   DatasetAdaptor adaptor;                     // nanoflann 接頭（包裝用）
@@ -84,13 +84,13 @@ class KNNClassifier {
   // 預測函式：給定一筆 6 維輸入資料，使用 KNN 找到最近鄰投票
   // - 預設取 K = 3 個鄰居
   __attribute__((always_inline)) inline DataStructure predict_vote3(
-      const std::array<float, 5>& query, size_t K = 3) const {
+      const std::array<double, 5>& query, size_t K = 3) const {
     // 儲存 K 個最近鄰的索引與距離
     std::vector<size_t> ret_indexes(K);
-    std::vector<float> out_dists(K);
+    std::vector<double> out_dists(K);
 
     // 建立查詢結果容器
-    nanoflann::KNNResultSet<float> resultSet(K);
+    nanoflann::KNNResultSet<double> resultSet(K);
     resultSet.init(ret_indexes.data(), out_dists.data());
 
     // 執行 KNN 查詢，設置 eps=0.5 or NULL
@@ -110,11 +110,11 @@ class KNNClassifier {
 
   // - 預設取 K = 1 個鄰居
   __attribute__((always_inline)) inline DataStructure predict(
-      const std::array<float, 5>& query) const {
+      const std::array<double, 5>& query) const {
     size_t nearest_index = 0;
-    float nearest_dist = 0.0f;
+    double nearest_dist = 0.0f;
 
-    nanoflann::KNNResultSet<float> resultSet(1);
+    nanoflann::KNNResultSet<double> resultSet(1);
     resultSet.init(&nearest_index, &nearest_dist);
     // 設置 eps=0.5 or NULL
     index.findNeighbors(resultSet, query.data(), nanoflann::SearchParameters());
