@@ -801,108 +801,107 @@ int main(int argc, char *argv[]) {
   ///////// DS Construct /////////
   /*************************************************************************/
 
+  /*************************************************************************/
+  ///////// Baseline /////////
+  // y 向量共用 (3, 5, 11)
+  Eigen::VectorXd PT_y(packetNum);
+  Eigen::VectorXd DBT_y(packetNum);
+  Eigen::VectorXd KSet_y(packetNum);
+  Eigen::VectorXd DT_y(packetNum);
+  Eigen::VectorXd MT_y(packetNum);
+#if defined(PERLOOKUPTIME_MODEL) || defined(PERLOOKUPTIME_KNN)
+  Eigen::VectorXd Total_y(packetNum);
+#endif
+  for (int t = 0; t < 2; ++t) {
+    for (size_t i = 0; i < packetNum; ++i) {
+// 搜尋時間量測 (PT)
+#ifdef CACHE
+      tree.search(PT_packets[i]);
+#endif
+      timer.timeReset();
+      tree.search(PT_packets[i]);
+      _PT_search_time = timer.elapsed_ns();
+      PT_y(i) = static_cast<double>(_PT_search_time);
+    }
+  }
+  for (int t = 0; t < 2; ++t) {
+    for (size_t i = 0; i < packetNum; ++i) {
+// 搜尋時間量測 (DBT)
+#ifdef CACHE
+      dbt.search(DBT_packets[i]);
+#endif
+      timer.timeReset();
+      dbt.search(DBT_packets[i]);
+      _DBT_search_time = timer.elapsed_ns();
+      DBT_y(i) = static_cast<double>(_DBT_search_time);
+    }
+  }
+  if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
+  for (int t = 0; t < 2; ++t) {
+    for (size_t i = 0; i < packetNum; ++i) {
+// 搜尋時間量測 (KSet)
+#ifdef CACHE
+      kset_match_pri = -1;
+      if (__builtin_expect(num_set[0] > 0, 1))
+        kset_match_pri = set0.ClassifyAPacket(packets[i]);
+      if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
+                           1))
+        kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+      if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0,
+                           1))
+        kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+      if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
+                           0))
+        kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+#endif
+
+      timer.timeReset();
+      kset_match_pri = -1;
+      if (__builtin_expect(num_set[0] > 0, 1))
+        kset_match_pri = set0.ClassifyAPacket(packets[i]);
+      if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
+                           1))
+        kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
+      if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0,
+                           1))
+        kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
+      if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
+                           0))
+        kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
+      _KSet_search_time = timer.elapsed_ns();
+      KSet_y(i) = static_cast<double>(_KSet_search_time);
+    }
+  }
+  for (int t = 0; t < 2; ++t) {
+    for (size_t i = 0; i < packetNum; ++i) {
+// 搜尋時間量測 (DT)
+#ifdef CACHE
+      (dynamictuple.Lookup(traces_DT_MT[i], 0));
+#endif
+      timer.timeReset();
+      (dynamictuple.Lookup(traces_DT_MT[i], 0));
+      _DT_search_time = timer.elapsed_ns();
+      DT_y(i) = static_cast<double>(_DT_search_time);
+    }
+  }
+  for (int t = 0; t < 2; ++t) {
+    for (size_t i = 0; i < packetNum; ++i) {
+// 搜尋時間量測 (MT)
+#ifdef CACHE
+      (multilayertuple.Lookup(traces_DT_MT[i], 0));
+#endif
+      timer.timeReset();
+      (multilayertuple.Lookup(traces_DT_MT[i], 0));
+      _MT_search_time = timer.elapsed_ns();
+      MT_y(i) = static_cast<double>(_MT_search_time);
+    }
+  }
+  ///////// Baseline /////////
+  /*************************************************************************/
+
   if (parser.isSearchMode()) {
     unsigned long long Total_search_time = 0, _Total_search_time = 0;
     unsigned long long Omp_predict_time = 0, Sig_predict_time = 0;
-    // y 向量共用 (3, 5, 11)
-    Eigen::VectorXd PT_y(packetNum);
-    Eigen::VectorXd DBT_y(packetNum);
-    Eigen::VectorXd KSet_y(packetNum);
-    Eigen::VectorXd DT_y(packetNum);
-    Eigen::VectorXd MT_y(packetNum);
-#if defined(PERLOOKUPTIME_MODEL) || defined(PERLOOKUPTIME_KNN)
-    Eigen::VectorXd Total_y(packetNum);
-#endif
-    for (int t = 0; t < 2; ++t) {
-      for (size_t i = 0; i < packetNum; ++i) {
-// 搜尋時間量測 (PT)
-#ifdef CACHE
-        tree.search(PT_packets[i]);
-#endif
-        timer.timeReset();
-        tree.search(PT_packets[i]);
-        _PT_search_time = timer.elapsed_ns();
-        PT_y(i) = static_cast<double>(_PT_search_time);
-      }
-    }
-    for (int t = 0; t < 2; ++t) {
-      for (size_t i = 0; i < packetNum; ++i) {
-// 搜尋時間量測 (DBT)
-#ifdef CACHE
-        dbt.search(DBT_packets[i]);
-#endif
-        timer.timeReset();
-        dbt.search(DBT_packets[i]);
-        _DBT_search_time = timer.elapsed_ns();
-        DBT_y(i) = static_cast<double>(_DBT_search_time);
-      }
-    }
-    if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
-    for (int t = 0; t < 2; ++t) {
-      for (size_t i = 0; i < packetNum; ++i) {
-// 搜尋時間量測 (KSet)
-#ifdef CACHE
-        kset_match_pri = -1;
-        if (__builtin_expect(num_set[0] > 0, 1))
-          kset_match_pri = set0.ClassifyAPacket(packets[i]);
-        if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
-                             1))
-          kset_match_pri =
-              max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-        if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0,
-                             1))
-          kset_match_pri =
-              max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-        if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
-                             0))
-          kset_match_pri =
-              max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
-#endif
-
-        timer.timeReset();
-        kset_match_pri = -1;
-        if (__builtin_expect(num_set[0] > 0, 1))
-          kset_match_pri = set0.ClassifyAPacket(packets[i]);
-        if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
-                             1))
-          kset_match_pri =
-              max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-        if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0,
-                             1))
-          kset_match_pri =
-              max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-        if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
-                             0))
-          kset_match_pri =
-              max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
-        _KSet_search_time = timer.elapsed_ns();
-        KSet_y(i) = static_cast<double>(_KSet_search_time);
-      }
-    }
-    for (int t = 0; t < 2; ++t) {
-      for (size_t i = 0; i < packetNum; ++i) {
-// 搜尋時間量測 (DT)
-#ifdef CACHE
-        (dynamictuple.Lookup(traces_DT_MT[i], 0));
-#endif
-        timer.timeReset();
-        (dynamictuple.Lookup(traces_DT_MT[i], 0));
-        _DT_search_time = timer.elapsed_ns();
-        DT_y(i) = static_cast<double>(_DT_search_time);
-      }
-    }
-    for (int t = 0; t < 2; ++t) {
-      for (size_t i = 0; i < packetNum; ++i) {
-// 搜尋時間量測 (MT)
-#ifdef CACHE
-        (multilayertuple.Lookup(traces_DT_MT[i], 0));
-#endif
-        timer.timeReset();
-        (multilayertuple.Lookup(traces_DT_MT[i], 0));
-        _MT_search_time = timer.elapsed_ns();
-        MT_y(i) = static_cast<double>(_MT_search_time);
-      }
-    }
     /*************************************************************************/
     ///////// Linear Model /////////
     {
@@ -2332,12 +2331,10 @@ int main(int argc, char *argv[]) {
       }
       fclose(knn_prediction_out);
       cout << "\n**************** KNN(Acc and Fail) ****************\n";
-      cout << "    KNN_acc 3 (%): " << 100 * KNN_acc / (packetNum * 1.0)
+      cout << "    KNN_acc (%): " << 100 * KNN_acc / (packetNum * 1.0) << "\n";
+      cout << "    KNN_fail (%): " << 100 * KNN_fail / (packetNum * 1.0)
            << "\n";
-      cout << "    KNN_fail 3 (%): " << 100 * KNN_fail / (packetNum * 1.0)
-           << "\n";
-      cout << "    KNN_oth 3 (%): " << 100 * KNN_oth / (packetNum * 1.0)
-           << "\n";
+      cout << "    KNN_oth (%): " << 100 * KNN_oth / (packetNum * 1.0) << "\n";
       cout << "**************** KNN(Acc and Fail) ****************";
     }
     //// KNN ACC
@@ -2477,103 +2474,12 @@ int main(int argc, char *argv[]) {
 
 #ifdef BLOOM
     {
-      Eigen::VectorXd PT_y(packetNum);
-      Eigen::VectorXd DBT_y(packetNum);
-      Eigen::VectorXd KSet_y(packetNum);
-      Eigen::VectorXd DT_y(packetNum);
-      Eigen::VectorXd MT_y(packetNum);
       cout << ("\n**************** Classification(BLOOM) ****************\n");
       XAI::BloomFilter<uint64_t> bloom_filter_mt(packetNum * 0.5, 0.01);
       XAI::BloomFilter<uint64_t> bloom_filter_dt(packetNum * 0.5, 0.01);
       XAI::BloomFilter<uint64_t> bloom_filter_pt(packetNum * 0.5, 0.01);
       XAI::BloomFilter<uint64_t> bloom_filter_dbt(packetNum * 0.5, 0.01);
 
-      for (size_t t = 0; t < 2; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-#ifdef CACHE
-          tree.search(PT_packets[i]);
-#endif
-          timer.timeReset();
-          tree.search(PT_packets[i]);
-          _PT_search_time = timer.elapsed_ns();
-          PT_y(i) = static_cast<double>(_PT_search_time);
-        }
-      }
-      for (size_t t = 0; t < 2; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-#ifdef CACHE
-          dbt.search(DBT_packets[i]);
-#endif
-          timer.timeReset();
-          dbt.search(DBT_packets[i]);
-          _DBT_search_time = timer.elapsed_ns();
-          DBT_y(i) = static_cast<double>(_DBT_search_time);
-        }
-      }
-
-      for (size_t t = 0; t < 2; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-#ifdef CACHE
-          kset_match_pri = -1;
-          if (__builtin_expect(num_set[0] > 0, 1))
-            kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
-            kset_match_pri =
-                max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
-            kset_match_pri =
-                max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
-            kset_match_pri =
-                max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
-#endif
-          timer.timeReset();
-          kset_match_pri = -1;
-          if (__builtin_expect(num_set[0] > 0, 1))
-            kset_match_pri = set0.ClassifyAPacket(packets[i]);
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
-            kset_match_pri =
-                max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
-            kset_match_pri =
-                max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
-            kset_match_pri =
-                max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
-          _KSet_search_time = timer.elapsed_ns();
-          KSet_y(i) = static_cast<double>(_KSet_search_time);
-        }
-      }
-
-      for (size_t t = 0; t < 2; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-#ifdef CACHE
-          (dynamictuple.Lookup(traces_DT_MT[i], 0));
-#endif
-          timer.timeReset();
-          (dynamictuple.Lookup(traces_DT_MT[i], 0));
-          _DT_search_time = timer.elapsed_ns();
-          DT_y(i) = static_cast<double>(_DT_search_time);
-        }
-      }
-
-      for (size_t t = 0; t < 2; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-#ifdef CACHE
-          (multilayertuple.Lookup(traces_DT_MT[i], 0));
-#endif
-          timer.timeReset();
-          (multilayertuple.Lookup(traces_DT_MT[i], 0));
-          _MT_search_time = timer.elapsed_ns();
-          MT_y(i) = static_cast<double>(_MT_search_time);
-        }
-      }
       auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
           printStatistics(PT_y);
       auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
@@ -2639,10 +2545,8 @@ int main(int argc, char *argv[]) {
         int local_bloom_DT = 0;
         int local_bloom_MT = 0;
         int local_bloom_KSet = 0;
-
 #pragma omp for schedule(static)
         for (size_t i = 0; i < packetNum; ++i) {
-          // 預先計算 Bloom key（避免重複呼叫 XOR 運算）
           const uint64_t key_dbt =
               (DBT_packets[i].ip.i_64) ^
               (((static_cast<uint64_t>(DBT_packets[i].Port[0]) << 16) |
@@ -2660,8 +2564,6 @@ int main(int argc, char *argv[]) {
               (((static_cast<uint64_t>(traces_DT_MT[i]->key[2]) << 16) |
                 static_cast<uint64_t>(traces_DT_MT[i]->key[3]))
                << 17);
-
-          // Bloom Filter 查詢（避免 else-if 串鍊）
           const bool hit_dbt = bloom_filter_dbt.contains(key_dbt);
           const bool hit_pt = bloom_filter_pt.contains(key_pt);
           const bool hit_dt = bloom_filter_dt.contains(key_dt_mt);
@@ -2669,18 +2571,23 @@ int main(int argc, char *argv[]) {
 
           if (!hit_dbt) {
             ++local_bloom_DBT;
-          } else if (!hit_pt) {
-            ++local_bloom_PT;
-          } else if (!hit_dt) {
-            ++local_bloom_DT;
-          } else if (!hit_mt) {
-            ++local_bloom_MT;
-          } else {
-            ++local_bloom_KSet;
+            continue;
           }
+          if (!hit_mt) {
+            ++local_bloom_MT;
+            continue;
+          }
+          if (!hit_dt) {
+            ++local_bloom_DT;
+            continue;
+          }
+          if (!hit_pt) {
+            ++local_bloom_PT;
+            continue;
+          }
+          ++local_bloom_KSet;
         }
 
-        // 匯總回全域計數器
 #pragma omp atomic
         bloom_counter_DBT += local_bloom_DBT;
 #pragma omp atomic
