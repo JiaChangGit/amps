@@ -2573,16 +2573,16 @@ int main(int argc, char *argv[]) {
             ++local_bloom_DBT;
             continue;
           }
-          if (!hit_mt) {
-            ++local_bloom_MT;
-            continue;
-          }
           if (!hit_dt) {
             ++local_bloom_DT;
             continue;
           }
           if (!hit_pt) {
             ++local_bloom_PT;
+            continue;
+          }
+          if (!hit_mt) {
+            ++local_bloom_MT;
             continue;
           }
           ++local_bloom_KSet;
@@ -2627,18 +2627,23 @@ int main(int argc, char *argv[]) {
         const bool hit_pt = bloom_filter_pt.contains(key_pt);
         const bool hit_dt = bloom_filter_dt.contains(key_dt_mt);
         const bool hit_mt = bloom_filter_mt.contains(key_dt_mt);
-
         if (!hit_dbt) {
           predict_choose[i] = 1;
-        } else if (!hit_pt) {
-          predict_choose[i] = 0;
-        } else if (!hit_dt) {
-          predict_choose[i] = 3;
-        } else if (!hit_mt) {
-          predict_choose[i] = 4;
-        } else {
-          predict_choose[i] = 2;
+          continue;
         }
+        if (!hit_dt) {
+          predict_choose[i] = 3;
+          continue;
+        }
+        if (!hit_pt) {
+          predict_choose[i] = 0;
+          continue;
+        }
+        if (!hit_mt) {
+          predict_choose[i] = 4;
+          continue;
+        }
+        predict_choose[i] = 2;
       }
       Sig_predict_time = ((timer.elapsed_ns() / packetNum));
 
