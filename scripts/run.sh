@@ -58,6 +58,8 @@ run_test_for_ruleset() {
     local ruleset_name="$1"
     local ruleset_path="$RULESET_DIR/$ruleset_name"
     local trace_path="$TRACE_DIR/${ruleset_name}_trace"
+    #define VALID (main.cpp)
+    # local trace_path="$TRACE_DIR/part_0"
     local output_file="$OUTPUT_DIR/${EXECUTABLE##*/}_c_${ruleset_name%%_*}.txt"
 
     # 檢查檔案存在

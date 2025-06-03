@@ -3,6 +3,7 @@ import pandas as pd
 
 # 檔案名稱
 input_file = "Total_prediction_3_result.txt"
+# input_file = "Total_prediction_knn_result.txt"
 output_excel = "Cache_search_analyz.xlsx"
 
 # 要提取的欄位
@@ -17,11 +18,11 @@ with open(input_file, "r", encoding="utf-8") as f:
     for line in f:
         current = {key: None for key in fields}
         matches = pattern.findall(line)
-        
+
         for key, val in matches:
             if key in fields:
                 current[key] = float(val)
-        
+
         # 若所有欄位皆有值，則記錄
         if all(current[k] is not None for k in fields):
             results.append(current)

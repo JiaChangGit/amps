@@ -166,6 +166,12 @@ This script auto-detects CPU instruction sets, enables `-march=native -O3 -flto`
 
 此腳本會自動偵測 CPU 指令集，啟用 `-march=native -O3 -flto` 及 BMI2/AVX2 選項，完成建置後立即執行預設基準測試並輸出統計結果。
 
+Notice:
+
+part_0 cannot use acl5 and ipc2. You can use ./scripts/run.sh to confirm whether the trace file can be used (#define VALID # local trace_path="$TRACE_DIR/part_0")
+
+您可以使用./scripts/run.sh來確認trace file可否使用(#define VALID # local trace_path="$TRACE_DIR/part_0")
+
 ---
 
 ## Performance Evaluation / 效能評估指標
