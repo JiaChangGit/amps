@@ -10,8 +10,7 @@ class LinearSearch {
   // explicit LinearSearch() { results.resize(0); };
   // explicit LinearSearch(int _packetNum) { results.resize(_packetNum); };
 
-  int /* JIA */ __attribute__((always_inline)) inline search(
-      const std::vector<Rule_KSet> &rules, const Packet &packet) {
+  int search(const std::vector<Rule_KSet> &rules, const Packet &packet) {
     int counter = 0;
 
     for (const auto &rule : rules) {

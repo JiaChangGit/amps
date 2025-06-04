@@ -19,17 +19,18 @@
 
 #include <getopt.h>
 
+#include <atomic>
 #include <chrono>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 // 定義可選的計時模式
 #define TIMER_STEADY_CLOCK 1
 #define TIMER_RDTSCP 2
 
-// 讓 main.cpp 選擇計時模式
 #ifndef TIMER_METHOD
-#define TIMER_METHOD TIMER_STEADY_CLOCK  // 預設使用 std::chrono
+#define TIMER_METHOD TIMER_RDTSCP
 #endif
 
 class Timer {
@@ -37,17 +38,19 @@ class Timer {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
   using Clock = std::chrono::steady_clock;
   using TimePoint = std::chrono::time_point<Clock>;
-
   TimePoint m_beg;
+
 #elif TIMER_METHOD == TIMER_RDTSCP
   using TimePoint = uint64_t;
   TimePoint m_beg;
+  inline static std::atomic<double> cpu_freq_hz{0.0};  // 儲存估算後的 CPU 頻率
 #endif
 
  public:
   Timer() { timeReset(); }
 
-  /* JIA */ __attribute__((always_inline)) inline void timeReset() {
+  // 重設起始時間
+  __attribute__((always_inline)) inline void timeReset() {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     m_beg = Clock::now();
 #elif TIMER_METHOD == TIMER_RDTSCP
@@ -55,51 +58,84 @@ class Timer {
 #endif
   }
 
-  /* JIA */ __attribute__((always_inline)) inline double elapsed_s() const {
+  // 回傳秒數
+  __attribute__((always_inline)) inline double elapsed_s() const {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     return std::chrono::duration<double>(Clock::now() - m_beg).count();
 #elif TIMER_METHOD == TIMER_RDTSCP
-    return static_cast<double>(perf_counter() - m_beg) / get_cpu_frequency_hz();
+    ensure_cpu_freq_hz();
+    return static_cast<double>(perf_counter() - m_beg) / cpu_freq_hz.load();
 #endif
   }
 
-  /* JIA */ __attribute__((always_inline)) inline unsigned long long
-  elapsed_ns() const {
+  // 回傳奈秒
+  __attribute__((always_inline)) inline unsigned long long elapsed_ns() const {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     return std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() -
                                                                 m_beg)
         .count();
 #elif TIMER_METHOD == TIMER_RDTSCP
+    ensure_cpu_freq_hz();
     return static_cast<unsigned long long>((perf_counter() - m_beg) *
-                                           (1e9 / get_cpu_frequency_hz()));
+                                           (1e9 / cpu_freq_hz.load()));
+#endif
+  }
+
+  // 額外提供的 warmup 函式：主動估算 CPU 頻率（若尚未估算）
+  static void warmup() {
+#if TIMER_METHOD == TIMER_RDTSCP
+    ensure_cpu_freq_hz();
 #endif
   }
 
  private:
 #if TIMER_METHOD == TIMER_RDTSCP
-  /* JIA */ __attribute__((always_inline)) inline uint64_t perf_counter()
-      const {
+
+  static __attribute__((always_inline)) inline uint64_t perf_counter() {
     uint32_t lo, hi;
-    __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi));
-    return ((uint64_t)lo) | (((uint64_t)hi) << 32);
+    __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi)::"%rcx");
+    return ((uint64_t)hi << 32) | lo;
   }
 
-  /* JIA */ __attribute__((always_inline)) inline double get_cpu_frequency_hz()
-      const {
-    return 5.0e9;  // 假設 CPU 時脈為 5 GHz，需根據實際 CPU 頻率調整
+  // 實際執行估算邏輯（會被 ensure 呼叫）
+  static void init_cpu_freq_hz() {
+    constexpr int sleep_us = 10000;  // 10ms
+    uint64_t start = perf_counter();
+    std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
+    uint64_t end = perf_counter();
+
+    double freq = static_cast<double>(end - start) / (sleep_us * 1e-6);  // Hz
+    cpu_freq_hz.store(freq);
+    std::cerr << "[Timer] CPU frequency estimated: " << freq * 1e-6 << " MHz\n";
   }
+
+  // 檢查是否已估算過，若無則呼叫初始化
+  static void ensure_cpu_freq_hz() {
+    if (cpu_freq_hz.load() == 0.0) {
+      double expected = 0.0;
+      if (cpu_freq_hz.compare_exchange_strong(expected, -1.0)) {
+        init_cpu_freq_hz();
+      } else {
+        // 等待其他執行緒完成初始化
+        while (cpu_freq_hz.load() <= 0.0) {
+          std::this_thread::yield();
+        }
+      }
+    }
+  }
+
 #endif
 };
+
 // How to use Timer:
-// #ifndef TIMER_METHOD
-// #define TIMER_METHOD TIMER_RDTSCP
+// #if TIMER_METHOD == TIMER_RDTSCP
+//   // 手動預熱，避免第一次調用 elapsed_ns() 時的額外延遲
+//   Timer::warmup();
 // #endif
-// 或 TIMER_STEADY_CLOCK
-// Timer t;
-// t.timeReset();
-// // 執行你的函數
-// double timeTaken = t.elapsed_s();
-// std::cout << "Time taken: " << timeTaken << " seconds\n";
+
+//   Timer t;
+//   // 你的程式邏輯
+//   std::cout << "Elapsed: " << t.elapsed_ns() << " ns\n";
 
 // 命令列參數解析類別
 class CommandLineParser {

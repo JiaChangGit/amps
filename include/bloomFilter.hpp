@@ -29,7 +29,8 @@ class BloomFilter {
    * @param seed 哈希種子
    * @return 位陣列索引
    */
-  size_t hash(const T& data, uint32_t seed) const {
+  /* JIA */ __attribute__((always_inline)) inline size_t hash(
+      const T& data, uint32_t seed) const {
     // if (sizeof(T) == 0) {
     //   throw std::runtime_error("無效數據大小");
     // }
@@ -108,7 +109,8 @@ class BloomFilter {
    * @param data 要查詢的數據
    * @return true 如果元素可能存在，false 如果元素確定不存在
    */
-  bool contains(const T& data) const {
+  /* JIA */ __attribute__((always_inline)) inline bool contains(
+      const T& data) const {
     // 單執行緒逐一檢查哈希對應的位
     for (size_t i = 0; i < num_hashes_; ++i) {
       size_t index = hash(data, seed_base_ + i);

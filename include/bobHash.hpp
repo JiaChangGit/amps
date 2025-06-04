@@ -14,16 +14,6 @@ template <typename T>
 /* JIA */ __attribute__((always_inline)) inline uint32_t hash(
     const T& data, uint32_t seed = 0);
 
-template <typename T>
-/* JIA */ __attribute__((always_inline)) inline __m256i hash_avx2(
-    const T& data, uint32_t seed1 = 0, uint32_t seed2 = 1, uint32_t seed3 = 2,
-    uint32_t seed4 = 3);
-
-template <typename T>
-/* JIA */ __attribute__((always_inline)) inline __m128i hash_sse2(
-    const T& data, uint32_t seed1 = 0, uint32_t seed2 = 1, uint32_t seed3 = 2,
-    uint32_t seed4 = 3);
-
 /* JIA */ __attribute__((always_inline)) inline long long randomGenerator();
 
 static std::random_device rd;

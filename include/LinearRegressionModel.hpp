@@ -95,8 +95,8 @@
  *    beta = argmin ||X * beta - y||^2
  * 解法：beta = (X^T X)^-1 X^T y，這裡用 Householder QR 分解求解
  */
-/* JIA */ __attribute__((always_inline)) inline Eigen::VectorXd
-linearRegressionFit(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
+Eigen::VectorXd linearRegressionFit(const Eigen::MatrixXd &X,
+                                    const Eigen::VectorXd &y) {
   // assert(X.rows() == y.size());
   return X.householderQr().solve(y);
 }
@@ -173,8 +173,7 @@ linearRegressionFit(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
 // @param p [in]  百分位數值，需介於 0.0 到 1.0 之間，例如 0.95 表示第 95 百分位
 // @return        回傳對應百分位的值（使用線性內插）
 // -----------------------------------------------------------------------------
-/* JIA */ __attribute__((always_inline)) inline double computePercentile(
-    const Eigen::VectorXd &v, double p) {
+double computePercentile(const Eigen::VectorXd &v, double p) {
   const int n = v.size();
   // assert(n > 0 && "向量不能為空");
   // assert(p >= 0.0 && p <= 1.0 && "百分位數 p 必須介於 0.0 與 1.0 之間");
@@ -205,8 +204,7 @@ linearRegressionFit(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
 // @param mean  [in] 事先計算好的平均值（為避免重複運算而外部傳入）
 // @return           回傳標準差（stddev = sqrt(Σ(x - μ)² / n)）
 // -----------------------------------------------------------------------------
-/* JIA */ __attribute__((always_inline)) inline double computeStdDev(
-    const Eigen::VectorXd &v, double mean) {
+double computeStdDev(const Eigen::VectorXd &v, double mean) {
   const int n = v.size();
   if (n <= 1) return 0.0;  // 單一元素無標準差
 
@@ -224,13 +222,12 @@ linearRegressionFit(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
 // 輸出統計摘要，並回傳 tuple<double, double, double, double, double>
 // 代表：mean, median, p75, p95, p99
 // -----------------------------------------------------------------------------
-/* JIA */ __attribute__((
-    always_inline)) inline std::tuple<double, double, double, double, double>
-printStatistics(const std::string &label, const Eigen::VectorXd &data) {
-  if (data.size() == 0) {
-    std::cout << "|--- " << label << " No data available\n";
-    return {0.0, 0.0, 0.0, 0.0, 0.0};
-  }
+std::tuple<double, double, double, double, double> printStatistics(
+    const std::string &label, const Eigen::VectorXd &data) {
+  // if (data.size() == 0) {
+  //   std::cout << "|--- " << label << " No data available\n";
+  //   return {0.0, 0.0, 0.0, 0.0, 0.0};
+  // }
   const double mean = data.mean();
   const double stddev = computeStdDev(data, mean);
   const double median = computePercentile(data, 0.5);
@@ -253,12 +250,11 @@ printStatistics(const std::string &label, const Eigen::VectorXd &data) {
   return {mean, median, p75, p95, p99};
 }
 
-/* JIA */ __attribute__((
-    always_inline)) inline std::tuple<double, double, double, double, double>
-printStatistics(const Eigen::VectorXd &data) {
-  if (data.size() == 0) {
-    return {0.0, 0.0, 0.0, 0.0, 0.0};
-  }
+std::tuple<double, double, double, double, double> printStatistics(
+    const Eigen::VectorXd &data) {
+  // if (data.size() == 0) {
+  //   return {0.0, 0.0, 0.0, 0.0, 0.0};
+  // }
   const double mean = data.mean();
   const double median = computePercentile(data, 0.5);
   // const double p25 = computePercentile(data, 0.25);
@@ -290,10 +286,11 @@ std::vector<int> find_all_max_indices(const std::array<double, 5> &values) {
   return indices;
 }
 
-/* JIA */ __attribute__((always_inline)) inline std::tuple<double, int>
-get_min_max_time(double predicted_time_pt, double predicted_time_dbt,
-                 double predicted_time_kset, double predicted_time_dt,
-                 double predicted_time_mt) {
+std::tuple<double, int> get_min_max_time(double predicted_time_pt,
+                                         double predicted_time_dbt,
+                                         double predicted_time_kset,
+                                         double predicted_time_dt,
+                                         double predicted_time_mt) {
   double min_val = predicted_time_pt;
   int min_id_predict = 0;
 
@@ -315,22 +312,22 @@ get_min_max_time(double predicted_time_pt, double predicted_time_dbt,
   }
   return {min_val, min_id_predict};
 }
-/* JIA */ __attribute__((always_inline)) inline std::tuple<double, int>
-get_min_max_time(double predicted_time_pt, double predicted_time_dbt,
-                 double predicted_time_dt) {
-  double min_val = predicted_time_pt;
-  int min_id_predict = 0;
+// std::tuple<double, int> get_min_max_time(double predicted_time_pt,
+//                                          double predicted_time_dbt,
+//                                          double predicted_time_dt) {
+//   double min_val = predicted_time_pt;
+//   int min_id_predict = 0;
 
-  if (predicted_time_dbt < min_val) {
-    min_val = predicted_time_dbt;
-    min_id_predict = 1;
-  }
+//   if (predicted_time_dbt < min_val) {
+//     min_val = predicted_time_dbt;
+//     min_id_predict = 1;
+//   }
 
-  if (predicted_time_dt < min_val) {
-    min_val = predicted_time_dt;
-    min_id_predict = 3;
-  }
+//   if (predicted_time_dt < min_val) {
+//     min_val = predicted_time_dt;
+//     min_id_predict = 3;
+//   }
 
-  return {min_val, min_id_predict};
-}
+//   return {min_val, min_id_predict};
+// }
 #endif  // LINEAR_REGRESSION_MODEL_HPP
