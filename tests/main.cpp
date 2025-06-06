@@ -685,11 +685,11 @@ int main(int argc, char *argv[]) {
   //   inputFile_test.loadPacket_test(packets, LoadPacket_test_path);
   //   cout << "Input packet test time(ns): " << timerTest.elapsed_ns() << "\n";
   // }
-  unsigned long long PT_search_time = 0, _PT_search_time = 0;
-  unsigned long long DBT_search_time = 0, _DBT_search_time = 0;
-  unsigned long long KSet_search_time = 0, _KSet_search_time = 0;
-  unsigned long long DT_search_time = 0, _DT_search_time = 0;
-  unsigned long long MT_search_time = 0, _MT_search_time = 0;
+  double PT_search_time = 0, _PT_search_time = 0;
+  double DBT_search_time = 0, _DBT_search_time = 0;
+  double KSet_search_time = 0, _KSet_search_time = 0;
+  double DT_search_time = 0, _DT_search_time = 0;
+  double MT_search_time = 0, _MT_search_time = 0;
   int PT_match_id = 0;
   uint32_t DBT_match_id = 0;
   const size_t number_rule = rule.size();
@@ -1004,8 +1004,8 @@ int main(int argc, char *argv[]) {
   /*************************************************************************/
 
   if (parser.isSearchMode()) {
-    unsigned long long Total_search_time = 0, _Total_search_time = 0;
-    unsigned long long Omp_predict_time = 0, Sig_predict_time = 0;
+    double Total_search_time = 0, _Total_search_time = 0;
+    double Omp_predict_time = 0, Sig_predict_time = 0;
     /*************************************************************************/
     ///////// Linear Model /////////
     {

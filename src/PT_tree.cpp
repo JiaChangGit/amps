@@ -1864,8 +1864,8 @@ bool PTtree::update(vector<PT_Rule>& rules, int num, Timer& timer) {
     rd_idx.emplace_back(cur_idx);
   }
 
-  unsigned long long delete_time = 0, _delete_time = 0;
-  unsigned long long insert_time = 0, _insert_time = 0;
+  double delete_time = 0, _delete_time = 0;
+  double insert_time = 0, _insert_time = 0;
   // remove
   for (int i = 0; i < num; ++i) {
     timer.timeReset();
