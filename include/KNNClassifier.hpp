@@ -34,21 +34,54 @@ struct LabeledSample {
 // - 負責提供 KD-Tree 所需的資料讀取介面
 // - 不擁有資料，只是參考外部傳入的 vector
 // --------------------------------------------
+// struct DatasetAdaptor {
+//   const std::vector<LabeledSample>& samples;
+
+//   // 回傳資料點總數（KD-Tree 所需）
+//   inline size_t kdtree_get_point_count() const { return samples.size(); }
+
+//   // 回傳第 idx 筆資料在第 dim 維的值（僅前5維有效）
+//   inline double kdtree_get_pt(const size_t idx, const size_t dim) const {
+//     return static_cast<double>(samples[idx].data[dim]);
+//   }
+
+//   // 若不支援 bounding box，可以直接回傳 false（不影響查詢）
+//   template <class BBOX>
+//   bool kdtree_get_bbox(BBOX&) const {
+//     return false;
+//   }
+// };
 struct DatasetAdaptor {
   const std::vector<LabeledSample>& samples;
+  std::array<std::pair<float, float>, 5> bbox;  // 緩存邊界框
 
-  // 回傳資料點總數（KD-Tree 所需）
-  inline size_t kdtree_get_point_count() const { return samples.size(); }
-
-  // 回傳第 idx 筆資料在第 dim 維的值（僅前5維有效）
-  inline double kdtree_get_pt(const size_t idx, const size_t dim) const {
-    return static_cast<double>(samples[idx].data[dim]);
+  DatasetAdaptor(const std::vector<LabeledSample>& s) : samples(s) {
+    // 預計算邊界框
+    for (size_t dim = 0; dim < 5; ++dim) {
+      float min_val = std::numeric_limits<float>::max();
+      float max_val = std::numeric_limits<float>::lowest();
+      for (const auto& sample : samples) {
+        float val = static_cast<float>(sample.data[dim]);
+        min_val = std::min(min_val, val);
+        max_val = std::max(max_val, val);
+      }
+      bbox[dim] = {min_val, max_val};
+    }
   }
 
-  // 若不支援 bounding box，可以直接回傳 false（不影響查詢）
+  inline size_t kdtree_get_point_count() const { return samples.size(); }
+
+  inline float kdtree_get_pt(const size_t idx, const size_t dim) const {
+    return static_cast<float>(samples[idx].data[dim]);
+  }
+
   template <class BBOX>
-  bool kdtree_get_bbox(BBOX&) const {
-    return false;
+  bool kdtree_get_bbox(BBOX& bb) const {
+    for (size_t i = 0; i < 5; ++i) {
+      bb[i].low = bbox[i].first;
+      bb[i].high = bbox[i].second;
+    }
+    return true;
   }
 };
 

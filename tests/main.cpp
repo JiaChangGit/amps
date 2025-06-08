@@ -53,8 +53,6 @@ using namespace std;
 
 // #define VALID
 // #define SAMPLE
-#define TIMER_METHOD TIMER_RDTSCP
-// #define TIMER_METHOD TIMER_STEADY_CLOCK
 #define THREAD_NUM
 #define BIAS
 #define NORM
@@ -630,36 +628,6 @@ void split_sample_test(vector<Packet> &data, vector<Packet> &sample,
   sample.shrink_to_fit();
 }
 #endif
-void normalize_first_two_dims(vector<Packet> &data) {
-  if (data.empty()) return;
-
-  uint32_t min0 = UINT32_MAX, max0 = 0;
-  uint32_t min1 = UINT32_MAX, max1 = 0;
-
-  // 先找出第一、二維的最小與最大值
-  for (const auto &item : data) {
-    min0 = std::min(min0, item[0]);
-    max0 = std::max(max0, item[0]);
-
-    min1 = std::min(min1, item[1]);
-    max1 = std::max(max1, item[1]);
-  }
-
-  // 避免除以 0
-  double range0 = (max0 > min0) ? static_cast<double>(max0 - min0) : 1.0;
-  double range1 = (max1 > min1) ? static_cast<double>(max1 - min1) : 1.0;
-
-  // 對每筆資料的前兩維做 normalization（轉為 double 儲存）
-  for (auto &item : data) {
-    double norm0 = static_cast<double>(item[0] - min0) / range0;
-    double norm1 = static_cast<double>(item[1] - min1) / range1;
-
-    // 若要保留回原位（但 uint32_t 無法表示小數）→ 需轉存 double 結構或另建結構
-    // 範例：乘回來後儲存
-    item[0] = static_cast<uint32_t>(norm0 * 1e10);  // scale to [0, 1e10]
-    item[1] = static_cast<uint32_t>(norm1 * 1e10);
-  }
-}
 /////////////////
 int main(int argc, char *argv[]) {
   ios::sync_with_stdio(false);
@@ -926,8 +894,8 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       tree.search(PT_samples[i]);
       _PT_search_time = timer.elapsed_ns();
-      // PT_y(i) = static_cast<double>(_PT_search_time);
-      PT_y(i) += static_cast<double>(_PT_search_time);
+      PT_y(i) = static_cast<double>(_PT_search_time);
+      // PT_y(i) += static_cast<double>(_PT_search_time);
     }
   }
   for (int t = 0; t < 2; ++t) {
@@ -939,8 +907,8 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       dbt.search(DBT_samples[i]);
       _DBT_search_time = timer.elapsed_ns();
-      // DBT_y(i) = static_cast<double>(_DBT_search_time);
-      DBT_y(i) += static_cast<double>(_DBT_search_time);
+      DBT_y(i) = static_cast<double>(_DBT_search_time);
+      // DBT_y(i) += static_cast<double>(_DBT_search_time);
     }
   }
   if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
@@ -960,9 +928,8 @@ int main(int argc, char *argv[]) {
       if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
                            0))
 #endif
-
-        timer.timeReset();
-      kset_match_pri = -1;
+        kset_match_pri = -1;
+      timer.timeReset();
       if (__builtin_expect(num_set[0] > 0, 1))
         kset_match_pri = set0.ClassifyAPacket(samples[i]);
       if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
@@ -975,8 +942,8 @@ int main(int argc, char *argv[]) {
                            0))
         kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(samples[i]));
       _KSet_search_time = timer.elapsed_ns();
-      // KSet_y(i) = static_cast<double>(_KSet_search_time);
-      KSet_y(i) += static_cast<double>(_KSet_search_time);
+      KSet_y(i) = static_cast<double>(_KSet_search_time);
+      // KSet_y(i) += static_cast<double>(_KSet_search_time);
     }
   }
   for (int t = 0; t < 2; ++t) {
@@ -988,8 +955,8 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       (dynamictuple.Lookup(DT_MT_samples[i], 0));
       _DT_search_time = timer.elapsed_ns();
-      // DT_y(i) = static_cast<double>(_DT_search_time);
-      DT_y(i) += static_cast<double>(_DT_search_time);
+      DT_y(i) = static_cast<double>(_DT_search_time);
+      // DT_y(i) += static_cast<double>(_DT_search_time);
     }
   }
   for (int t = 0; t < 2; ++t) {
@@ -1001,17 +968,22 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       (multilayertuple.Lookup(DT_MT_samples[i], 0));
       _MT_search_time = timer.elapsed_ns();
-      // MT_y(i) = static_cast<double>(_MT_search_time);
-      MT_y(i) += static_cast<double>(_MT_search_time);
+      MT_y(i) = static_cast<double>(_MT_search_time);
+      // MT_y(i) += static_cast<double>(_MT_search_time);
     }
   }
-  for (size_t i = 0; i < sampleNum; ++i) {
-    MT_y(i) = (MT_y(i) / 2.0);
-    DT_y(i) = (DT_y(i) / 2.0);
-    KSet_y(i) = (KSet_y(i) / 2.0);
-    DBT_y(i) = (DBT_y(i) / 2.0);
-    PT_y(i) = (PT_y(i) / 2.0);
-  }
+  // for (size_t i = 0; i < sampleNum; ++i) {
+  //   MT_y(i) = (MT_y(i) / 2.0);
+  //   DT_y(i) = (DT_y(i) / 2.0);
+  //   KSet_y(i) = (KSet_y(i) / 2.0);
+  //   DBT_y(i) = (DBT_y(i) / 2.0);
+  //   PT_y(i) = (PT_y(i) / 2.0);
+  // }
+  printStatistics("CACHE_PT_y", PT_y);
+  printStatistics("CACHE_DBT_y", DBT_y);
+  printStatistics("CACHE_KSet_y", KSet_y);
+  printStatistics("CACHE_DT_y", DT_y);
+  printStatistics("CACHE_MT_y", MT_y);
   ///////// Baseline /////////
   /*************************************************************************/
 
@@ -2476,11 +2448,8 @@ int main(int argc, char *argv[]) {
 #ifdef SAMPLE
     vector<Packet> knn_packets = packets;
     vector<Packet> knn_samples = samples;
-    // normalize_first_two_dims(knn_samples);
-    // normalize_first_two_dims(knn_packets);
 #else
     vector<Packet> knn_packets = packets;
-    // normalize_first_two_dims(knn_packets);
     vector<Packet> &knn_samples = packets;
 #endif
     for (size_t i = 0; i < sampleNum; ++i) {
