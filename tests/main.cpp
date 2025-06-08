@@ -53,6 +53,9 @@ using namespace std;
 
 // #define VALID
 // #define SAMPLE
+#define TIMER_METHOD TIMER_RDTSCP
+// #define TIMER_METHOD TIMER_STEADY_CLOCK
+#define THREAD_NUM
 #define BIAS
 #define NORM
 #define CACHE
@@ -643,8 +646,8 @@ void normalize_first_two_dims(vector<Packet> &data) {
   }
 
   // 避免除以 0
-  double range0 = (max0 > min0) ? (max0 - min0) : 1.0;
-  double range1 = (max1 > min1) ? (max1 - min1) : 1.0;
+  double range0 = (max0 > min0) ? static_cast<double>(max0 - min0) : 1.0;
+  double range1 = (max1 > min1) ? static_cast<double>(max1 - min1) : 1.0;
 
   // 對每筆資料的前兩維做 normalization（轉為 double 儲存）
   for (auto &item : data) {
@@ -653,8 +656,8 @@ void normalize_first_two_dims(vector<Packet> &data) {
 
     // 若要保留回原位（但 uint32_t 無法表示小數）→ 需轉存 double 結構或另建結構
     // 範例：乘回來後儲存
-    item[0] = static_cast<uint32_t>(norm0 * 1e6);  // scale to [0, 1e6]
-    item[1] = static_cast<uint32_t>(norm1 * 1e6);
+    item[0] = static_cast<uint32_t>(norm0 * 1e10);  // scale to [0, 1e10]
+    item[1] = static_cast<uint32_t>(norm1 * 1e10);
   }
 }
 /////////////////
@@ -685,13 +688,6 @@ int main(int argc, char *argv[]) {
   //   inputFile_test.loadPacket_test(packets, LoadPacket_test_path);
   //   cout << "Input packet test time(ns): " << timerTest.elapsed_ns() << "\n";
   // }
-  double PT_search_time = 0, _PT_search_time = 0;
-  double DBT_search_time = 0, _DBT_search_time = 0;
-  double KSet_search_time = 0, _KSet_search_time = 0;
-  double DT_search_time = 0, _DT_search_time = 0;
-  double MT_search_time = 0, _MT_search_time = 0;
-  int PT_match_id = 0;
-  uint32_t DBT_match_id = 0;
   const size_t number_rule = rule.size();
   cout << "The number of rules = " << number_rule << "\n";
 #ifdef SAMPLE
@@ -706,17 +702,14 @@ int main(int argc, char *argv[]) {
   split_sample_test(packets, samples, 20, 1);
   const size_t packetNum = packets.size();
   const size_t sampleNum = samples.size();
-  cout << "The number of packets = " << packetNum << "\n";
-  cout << "The number of samples = " << sampleNum << "\n";
 #else
   // 若未定義 SAMPLE，samples 即為原始 packets（不拆分）
   vector<Packet> &samples = packets;
   const size_t packetNum = packets.size();
   const size_t &sampleNum = packetNum;
-  cout << "The number of packets = " << packetNum << "\n";
 #endif
-
-  vector<int> predict_choose(packetNum);
+  cout << "The number of packets = " << packetNum << "\n";
+  cout << "The number of samples = " << sampleNum << "\n";
 
 #ifdef SHUFFLE
   // 初始化亂數生成器
@@ -899,6 +892,14 @@ int main(int argc, char *argv[]) {
        << "Total(MB): " << MT_data_memory_size + MT_index_memory_size << "\n";
   cout << "MT tuples_num: " << multilayertuple.tuples_num << "\n";
   //// DT MT ////
+  double PT_search_time = 0, _PT_search_time = 0;
+  double DBT_search_time = 0, _DBT_search_time = 0;
+  double KSet_search_time = 0, _KSet_search_time = 0;
+  double DT_search_time = 0, _DT_search_time = 0;
+  double MT_search_time = 0, _MT_search_time = 0;
+  int PT_match_id = 0;
+  uint32_t DBT_match_id = 0;
+  vector<int> predict_choose(packetNum);
   ///////// DS Construct /////////
   /*************************************************************************/
 
@@ -925,7 +926,8 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       tree.search(PT_samples[i]);
       _PT_search_time = timer.elapsed_ns();
-      PT_y(i) = static_cast<double>(_PT_search_time);
+      // PT_y(i) = static_cast<double>(_PT_search_time);
+      PT_y(i) += static_cast<double>(_PT_search_time);
     }
   }
   for (int t = 0; t < 2; ++t) {
@@ -937,7 +939,8 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       dbt.search(DBT_samples[i]);
       _DBT_search_time = timer.elapsed_ns();
-      DBT_y(i) = static_cast<double>(_DBT_search_time);
+      // DBT_y(i) = static_cast<double>(_DBT_search_time);
+      DBT_y(i) += static_cast<double>(_DBT_search_time);
     }
   }
   if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
@@ -956,10 +959,9 @@ int main(int argc, char *argv[]) {
         kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(samples[i]));
       if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
                            0))
-        kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(samples[i]));
 #endif
 
-      timer.timeReset();
+        timer.timeReset();
       kset_match_pri = -1;
       if (__builtin_expect(num_set[0] > 0, 1))
         kset_match_pri = set0.ClassifyAPacket(samples[i]);
@@ -973,7 +975,8 @@ int main(int argc, char *argv[]) {
                            0))
         kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(samples[i]));
       _KSet_search_time = timer.elapsed_ns();
-      KSet_y(i) = static_cast<double>(_KSet_search_time);
+      // KSet_y(i) = static_cast<double>(_KSet_search_time);
+      KSet_y(i) += static_cast<double>(_KSet_search_time);
     }
   }
   for (int t = 0; t < 2; ++t) {
@@ -985,7 +988,8 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       (dynamictuple.Lookup(DT_MT_samples[i], 0));
       _DT_search_time = timer.elapsed_ns();
-      DT_y(i) = static_cast<double>(_DT_search_time);
+      // DT_y(i) = static_cast<double>(_DT_search_time);
+      DT_y(i) += static_cast<double>(_DT_search_time);
     }
   }
   for (int t = 0; t < 2; ++t) {
@@ -997,8 +1001,16 @@ int main(int argc, char *argv[]) {
       timer.timeReset();
       (multilayertuple.Lookup(DT_MT_samples[i], 0));
       _MT_search_time = timer.elapsed_ns();
-      MT_y(i) = static_cast<double>(_MT_search_time);
+      // MT_y(i) = static_cast<double>(_MT_search_time);
+      MT_y(i) += static_cast<double>(_MT_search_time);
     }
+  }
+  for (size_t i = 0; i < sampleNum; ++i) {
+    MT_y(i) = (MT_y(i) / 2.0);
+    DT_y(i) = (DT_y(i) / 2.0);
+    KSet_y(i) = (KSet_y(i) / 2.0);
+    DBT_y(i) = (DBT_y(i) / 2.0);
+    PT_y(i) = (PT_y(i) / 2.0);
   }
   ///////// Baseline /////////
   /*************************************************************************/
@@ -1652,7 +1664,7 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel
         {
 #pragma omp for schedule(static)
-          for (size_t i = 0; i < packetNum; ++i) {
+          for (size_t i = 0; i < 10; ++i) {
             float ip_bytes[4];
             // 提取 IP 特徵
             extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
@@ -1708,6 +1720,14 @@ int main(int argc, char *argv[]) {
         {
           int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
               local_MT = 0;
+#ifdef THREAD_NUM
+          // 印出每個 thread ID 及總 thread 數
+#pragma omp single
+          {
+            std::cout << "Model-3 Using " << omp_get_num_threads()
+                      << " threads.";
+          }
+#endif
 #pragma omp for schedule(static)
           for (size_t i = 0; i < packetNum; ++i) {
             float ip_bytes[4];
@@ -1935,7 +1955,14 @@ int main(int argc, char *argv[]) {
         {
           int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
               local_MT = 0;
-
+#ifdef THREAD_NUM
+          // 印出每個 thread ID 及總 thread 數
+#pragma omp single
+          {
+            std::cout << "Model-5 Using " << omp_get_num_threads()
+                      << " threads.";
+          }
+#endif
 #pragma omp for schedule(static)
           for (size_t i = 0; i < packetNum; ++i) {
             float ip_bytes[4];
@@ -2171,7 +2198,14 @@ int main(int argc, char *argv[]) {
         {
           int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
               local_MT = 0;
-
+#ifdef THREAD_NUM
+          // 印出每個 thread ID 及總 thread 數
+#pragma omp single
+          {
+            std::cout << "Model-11 Using " << omp_get_num_threads()
+                      << " threads.";
+          }
+#endif
 #pragma omp for schedule(static)
           for (size_t i = 0; i < packetNum; ++i) {
             float ip_bytes[4];
@@ -2442,12 +2476,12 @@ int main(int argc, char *argv[]) {
 #ifdef SAMPLE
     vector<Packet> knn_packets = packets;
     vector<Packet> knn_samples = samples;
-    normalize_first_two_dims(knn_samples);
-    normalize_first_two_dims(knn_packets);
+    // normalize_first_two_dims(knn_samples);
+    // normalize_first_two_dims(knn_packets);
 #else
     vector<Packet> knn_packets = packets;
+    // normalize_first_two_dims(knn_packets);
     vector<Packet> &knn_samples = packets;
-    normalize_first_two_dims(knn_packets);
 #endif
     for (size_t i = 0; i < sampleNum; ++i) {
       array<double, 5> real_values = {PT_y(i), DBT_y(i), KSet_y(i), DT_y(i),
@@ -2474,6 +2508,8 @@ int main(int argc, char *argv[]) {
       }
       int KNN_acc = 0, KNN_fail = 0, KNN_oth = 0;
       for (size_t i = 0; i < packetNum; ++i) {
+        // knn_classifier.predict_vote
+        // knn_classifier.predict
         int min_id_predict = static_cast<int>(knn_classifier.predict(datas[i]));
         //// acc
         // 建立實際值陣列，方便比較與存取
@@ -2514,7 +2550,7 @@ int main(int argc, char *argv[]) {
       cout << "    KNN_fail (%): " << 100 * KNN_fail / (packetNum * 1.0)
            << "\n";
       cout << "    KNN_oth (%): " << 100 * KNN_oth / (packetNum * 1.0) << "\n";
-      cout << "**************** KNN(Acc and Fail) ****************";
+      cout << "**************** KNN(Acc and Fail) ****************\n";
     }
     //// KNN ACC
 
@@ -2532,7 +2568,13 @@ int main(int argc, char *argv[]) {
       {
         int local_PT = 0, local_DBT = 0, local_KSet = 0, local_DT = 0,
             local_MT = 0;
-
+#ifdef THREAD_NUM
+        // 印出每個 thread ID 及總 thread 數
+#pragma omp single
+        {
+          std::cout << "KNN Using " << omp_get_num_threads() << " threads.";
+        }
+#endif
 #pragma omp for schedule(static)
         for (size_t i = 0; i < packetNum; ++i) {
           // 根據最小索引累加 local 計數器
@@ -2710,7 +2752,6 @@ int main(int argc, char *argv[]) {
       ///////// BloomFilter Classification /////////
       FILE *Bloom_res = nullptr;
       Bloom_res = fopen("./INFO/BloomResults.txt", "w");
-      // Eigen::VectorXd BloomFilter_y(packetNum);
 
       Omp_predict_time = 0;
       Sig_predict_time = 0;
@@ -2731,6 +2772,13 @@ int main(int argc, char *argv[]) {
         int local_bloom_DT = 0;
         int local_bloom_MT = 0;
         int local_bloom_KSet = 0;
+#ifdef THREAD_NUM
+        // 印出每個 thread ID 及總 thread 數
+#pragma omp single
+        {
+          std::cout << "Bloom Using " << omp_get_num_threads() << " threads.";
+        }
+#endif
 #pragma omp for schedule(static)
         for (size_t i = 0; i < packetNum; ++i) {
           const uint64_t key_dbt =

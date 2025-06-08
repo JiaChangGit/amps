@@ -82,9 +82,9 @@ class KNNClassifier {
   }
 
   // 預測函式：給定一筆 6 維輸入資料，使用 KNN 找到最近鄰投票
-  // - 預設取 K = 3 個鄰居
-  __attribute__((always_inline)) inline DataStructure predict_vote3(
-      const std::array<double, 5>& query, size_t K = 3) const {
+  // - 預設取 K = 5 個鄰居
+  __attribute__((always_inline)) inline DataStructure predict_vote(
+      const std::array<double, 5>& query, size_t K = 5) const {
     // 儲存 K 個最近鄰的索引與距離
     std::vector<size_t> ret_indexes(K);
     std::vector<double> out_dists(K);
