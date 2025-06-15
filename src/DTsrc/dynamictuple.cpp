@@ -447,3 +447,60 @@ int DynamicTuple::CalculateState(ProgramState *program_state) {
 }
 
 int DynamicTuple::Test(void *ptr) { return 0; }
+
+int FreeRules(vector<Rule_DT_MT *> &rules) {
+  int rules_num = rules.size();
+  for (int i = 0; i < rules_num; ++i) free(rules[i]);
+  rules.clear();
+  return 0;
+}
+vector<PrefixRange> GetPortMask(int port_start, int port_end) {
+  vector<PrefixRange> prefix;
+  PrefixRange prefix_range;
+  for (int pos = port_start; pos <= port_end;) {
+    int i;
+    for (i = 1; i < 17; ++i) {
+      int pos2 = pos + port_bit_mask[i][0];
+      if (pos2 > port_end ||
+          (pos & port_bit_mask[i][1]) != (pos2 & port_bit_mask[i][1]))
+        break;
+    }
+    --i;
+    prefix_range.low = pos;
+    prefix_range.high = pos + port_bit_mask[i][0];
+    prefix_range.prefix_len = 16 - i;
+    prefix.push_back(prefix_range);
+    pos += (port_bit_mask[i][0] + 1);
+  }
+  return prefix;
+}
+vector<Rule_DT_MT *> RulesPortPrefix(vector<Rule_DT_MT *> &rules,
+                                     bool free_rules) {
+  vector<Rule_DT_MT *> prefix_rules;
+  int rules_num = rules.size();
+  for (int i = 0; i < rules_num; ++i) {
+    vector<PrefixRange> src_port_prefix =
+        GetPortMask(rules[i]->range[2][0], rules[i]->range[2][1]);
+    vector<PrefixRange> dst_port_prefix =
+        GetPortMask(rules[i]->range[3][0], rules[i]->range[3][1]);
+    int src_port_prefix_num = src_port_prefix.size();
+    int dst_port_prefix_num = dst_port_prefix.size();
+    for (int j = 0; j < src_port_prefix_num; ++j)
+      for (int k = 0; k < dst_port_prefix_num; ++k) {
+        Rule_DT_MT *rule = (Rule_DT_MT *)malloc(sizeof(Rule_DT_MT));
+        *rule = *rules[i];
+
+        rule->range[2][0] = src_port_prefix[j].low;
+        rule->range[2][1] = src_port_prefix[j].high;
+        rule->prefix_len[2] = src_port_prefix[j].prefix_len;
+
+        rule->range[3][0] = dst_port_prefix[k].low;
+        rule->range[3][1] = dst_port_prefix[k].high;
+        rule->prefix_len[3] = dst_port_prefix[k].prefix_len;
+
+        prefix_rules.push_back(rule);
+      }
+  }
+  if (free_rules) FreeRules(rules);
+  return prefix_rules;
+}

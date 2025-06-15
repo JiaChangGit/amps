@@ -1,0 +1,8 @@
+PT_set_field=1 0 5
+PT_set_port=0
+DBT_binth=16
+DBT_end_bound=0.3
+DBT_top_k=8
+DBT_c_bound=18
+DT_threshold=13
+DT_is_prefix_5d=1

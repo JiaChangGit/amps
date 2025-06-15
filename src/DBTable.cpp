@@ -489,7 +489,7 @@ void CacuInfo::CacuIpMask(MASK& mask) {
     }
   }
 
-  print_bucket(_rules);
+  // print_bucket(_rules);
   cout << "\nDBS bitsNum: " << dbs_size << "\n\n";
 
   for (auto _r : _rules) delete _r;
@@ -864,7 +864,7 @@ void DBTable::construct() {
         subsets.ipNodes[j].rules.size() > C_BOUND)
       adjust_ipNode(&subsets.ipNodes[j]);
   }
-  print_nodes();
+  // print_nodes();
 }
 
 void DBTable::insert_to_ipNode(Rule* _r) {

@@ -5,7 +5,10 @@
 #INFO/*.txt
 #git update-index --assume-unchanged ./INFO/*.txt
 third_party/*
-
+# 忽略 tests 目錄下的 .so 檔案（僅限 tests 根層）
+tests/*.so
+# 忽略 tests 目錄下的所有子資料夾與其內容
+tests/*/
 ### C ###
 # Prerequisites
 *.d

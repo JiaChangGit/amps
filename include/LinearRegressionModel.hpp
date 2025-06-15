@@ -224,10 +224,10 @@ double computeStdDev(const Eigen::VectorXd &v, double mean) {
 // -----------------------------------------------------------------------------
 std::tuple<double, double, double, double, double> printStatistics(
     const std::string &label, const Eigen::VectorXd &data) {
-  // if (data.size() == 0) {
-  //   std::cout << "|--- " << label << " No data available\n";
-  //   return {0.0, 0.0, 0.0, 0.0, 0.0};
-  // }
+  if (data.size() == 0) {
+    std::cout << "|--- " << label << " No data available\n";
+    return {0.0, 0.0, 0.0, 0.0, 0.0};
+  }
   const double mean = data.mean();
   const double stddev = computeStdDev(data, mean);
   const double median = computePercentile(data, 0.5);

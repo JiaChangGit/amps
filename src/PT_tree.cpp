@@ -56,7 +56,39 @@ uint64_t reverse_byte(uint64_t x) {
 /// === ///
 
 /// ======= ///
+//// JIA
+// CacuInfo::CacuInfo(std::vector<PT_Rule>& _rules) {
+//   min_cost = std::numeric_limits<double>::max();  // 使用標準庫最大值
+//   best_fields_id = 0;
 
+//   for (const auto& rule : _rules) {
+//     // 過濾無效規則
+//     if (rule.source_mask < 4 && rule.destination_mask < 4) {
+//       continue;
+//     }
+
+//     // 創建 PT_CacuRule 物件
+//     auto cacu_rule = std::make_unique<PT_CacuRule>();
+//     cacu_rule->pri = rule.pri;
+//     cacu_rule->mask.i_32.smask = maskBit[rule.source_mask];
+//     cacu_rule->mask.i_32.dmask = maskBit[rule.destination_mask];
+//     cacu_rule->mask.i_64 = reverse_byte(cacu_rule->mask.i_64);
+
+//     // 複製並處理 IP 地址
+//     std::memcpy(&cacu_rule->ip.i_64, rule.source_ip, 8);
+//     cacu_rule->ip.i_64 = reverse_byte(cacu_rule->ip.i_64);
+//     cacu_rule->ip.i_64 &= cacu_rule->mask.i_64;
+
+//     // 添加到 cRules
+//     cRules.emplace_back(std::move(cacu_rule));
+//   }
+
+//   // 設置第一條規則的屬性（若 cRules 不為空）
+//   if (!cRules.empty()) {
+//     cRules[0]->is_first = true;
+//     cRules[0]->size = cRules.size();
+//   }
+// }
 CacuInfo::CacuInfo(vector<PT_Rule>& _rules) {
   min_cost = 0xFFFFFFFF;
   best_fields_id = 0;
@@ -95,8 +127,11 @@ void CacuInfo::read_fields() {
   tmp_fields.resize(3);
   FILE* fp_l3 = fopen("./include/PT/L3.txt", "r");
   if (fp_l3 == nullptr) {
-    fprintf(stderr, "error - can not open L3.txt\n");
-    exit(0);
+    fp_l3 = fopen("../include/PT/L3.txt", "r");
+    if (fp_l3 == nullptr) {
+      fprintf(stderr, "error - can not open L3.txt\n");
+      exit(0);
+    }
   }
   while (fscanf(fp_l3, "%hhu %hhu %hhu \n", &tmp_fields[0], &tmp_fields[1],
                 &tmp_fields[2]) != EOF) {
@@ -214,6 +249,19 @@ double CacuInfo::cacu_cost(vector<uint8_t>& _fields) {
 
 uint32_t CacuInfo::cacu_in_node(int _start, int _end) {
   uint32_t num = 0;
+  //// JIA
+  // 對 cRules[_start, _end] 進行排序
+  // std::sort(cRules.begin() + _start, cRules.begin() + _end + 1,
+  //           [](const std::unique_ptr<PT::PT_CacuRule>& a,
+  //              const std::unique_ptr<PT::PT_CacuRule>& b) -> bool {
+  //             if (a->cur_mask != b->cur_mask) {
+  //               return a->cur_mask > b->cur_mask;  // 降序
+  //             }
+  //             if (a->cur_byte != b->cur_byte) {
+  //               return a->cur_byte < b->cur_byte;  // 升序
+  //             }
+  //             return a->pri < b->pri;  // 升序
+  //           });
   sort(cRules.begin() + _start, cRules.begin() + _end,
        [](PT_CacuRule* a, PT_CacuRule* b) -> bool {
          if (a->cur_mask != b->cur_mask)
@@ -250,6 +298,19 @@ uint32_t CacuInfo::cacu_in_node(int _start, int _end) {
 
 double CacuInfo::cacu_in_leaf(int _start, int _end) {
   double score = 0;
+  //// JIA
+  // 對 cRules[_start, _end] 進行排序
+  // std::sort(cRules.begin() + _start, cRules.begin() + _end + 1,
+  //           [](const std::unique_ptr<PT::PT_CacuRule>& a,
+  //              const std::unique_ptr<PT::PT_CacuRule>& b) -> bool {
+  //             if (a->cur_mask != b->cur_mask) {
+  //               return a->cur_mask > b->cur_mask;  // 降序
+  //             }
+  //             if (a->cur_byte != b->cur_byte) {
+  //               return a->cur_byte < b->cur_byte;  // 升序
+  //             }
+  //             return a->pri < b->pri;  // 升序
+  //           });
   sort(cRules.begin() + _start, cRules.begin() + _end,
        [](PT_CacuRule* a, PT_CacuRule* b) -> bool {
          if (a->cur_mask != b->cur_mask)

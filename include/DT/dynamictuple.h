@@ -51,4 +51,20 @@ class DynamicTuple : public Classifier {
   void SortTuples();
 };
 
+int FreeRules(vector<Rule_DT_MT *> &rules);
+static int port_bit_mask[17][2] = {
+    {0, 0xffff},     {0x1, 0xfffe},    {0x3, 0xfffc},    {0x7, 0xfff8},
+    {0xf, 0xfff0},   {0x1f, 0xffe0},   {0x3f, 0xffc0},   {0x7f, 0xff80},
+    {0xff, 0xff00},  {0x1ff, 0xfe00},  {0x3ff, 0xfc00},  {0x7ff, 0xf800},
+    {0xfff, 0xf000}, {0x1fff, 0xe000}, {0x3fff, 0xc000}, {0x7fff, 0x8000},
+    {0xffff, 0}};
+struct PrefixRange {
+  uint32_t low;
+  uint32_t high;
+  uint32_t prefix_len;
+};
+vector<PrefixRange> GetPortMask(int port_start, int port_end);
+vector<Rule_DT_MT *> RulesPortPrefix(vector<Rule_DT_MT *> &rules,
+                                     bool free_rules);
+
 #endif

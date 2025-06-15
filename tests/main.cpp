@@ -3,10 +3,9 @@
 // #include <unistd.h>
 
 #include "LinearRegressionModel.hpp"
-
+#include "basis.hpp"
 //// KSet ////
 #include "KSet.hpp"
-#include "basis.hpp"
 #include "input.hpp"
 // #include "inputFile_test.hpp"
 // #include "linearSearch_test.hpp"

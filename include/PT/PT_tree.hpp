@@ -127,7 +127,9 @@ uint64_t reverse_byte(uint64_t x);
 
 class CacuInfo {
  public:
+  //// JIA
   vector<PT_CacuRule*> cRules;
+  // vector<std::unique_ptr<PT_CacuRule>> cRules;
   vector<vector<uint8_t>> fields;
   int best_fields_id;
   double min_cost;

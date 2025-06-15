@@ -36,6 +36,13 @@ else()
     message(FATAL_ERROR "Eigen3 not found. Please install it (e.g., sudo apt install libeigen3-dev)")
 endif()
 
+# 尋找 pybind11
+find_package(pybind11 REQUIRED)
+if (pybind11_FOUND)
+    message(STATUS "pybind11 found")
+else()
+    message(FATAL_ERROR "pybind11 not found. Please install it (e.g., pip install pybind11)")
+endif()
 
 # ==============================================================================
 # 基本編譯旗標（所有 build type 都適用）
@@ -90,6 +97,9 @@ endif()
 # -fno-unroll-loops 禁止所有自動 loop unrolling（包含 -O3 、 -funroll-loops 和 -funroll-all-loops）
 # -funroll-loops  VS  -funroll-all-loops  VS  -fno-unroll-loops
 
+# 設置輸出目錄
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # ==============================================================================
 # 新增子目錄編譯
