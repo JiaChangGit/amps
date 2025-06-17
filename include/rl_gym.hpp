@@ -15,12 +15,13 @@ class PT_Object {
   std::vector<uint8_t> set_field;
   int set_port;
   int sampleNum;
-  double slow_time;
+
   std::vector<PT_Rule> rules;
   std::vector<PT_Packet> packets;
   std::vector<int> slow_Packets;
 
  public:
+  double slow_time;
   // PT_Object() {
   //   build_pt();
   // }

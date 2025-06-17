@@ -283,7 +283,7 @@ void PT_Object::build_pt() {
   // }
   auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
       printStatistics("PT", PT_y);
-  slow_time = per99_PT;
+  slow_time = per95_PT;
   slow_Packets.clear();
   for (size_t i = 0; i < sampleNum; ++i) {
     if (PT_y(i) >= slow_time) slow_Packets.emplace_back(i);
@@ -322,7 +322,7 @@ void DBT_Object::build_dbt() {
   // }
   auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
       printStatistics("DBT", DBT_y);
-  slow_time = per99_DBT;
+  slow_time = per95_DBT;
   slow_Packets.clear();
   for (size_t i = 0; i < sampleNum; ++i) {
     if (DBT_y(i) >= slow_time) slow_Packets.emplace_back(i);
@@ -359,7 +359,7 @@ void DT_Object::build_dt() {
   // }
   auto [mean_DT, median_DT, per75_DT, per95_DT, per99_DT] =
       printStatistics("DT", DT_y);
-  slow_time = per99_DT;
+  slow_time = per95_DT;
   slow_Packets.clear();
   for (size_t i = 0; i < sampleNum; ++i) {
     if (DT_y(i) >= slow_time) slow_Packets.emplace_back(i);
@@ -369,8 +369,7 @@ void DT_Object::build_dt() {
 }
 // PT 計算
 double compute_pt(const PT_Object& pt_obj) {
-  auto per99_arr = (pt_obj.get_slow_Packets());
-  double score = per99_arr[0];
+  double score = pt_obj.slow_time;
   cout << "PT score: " << score << endl;
   return score;
 }

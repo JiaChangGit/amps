@@ -9,7 +9,7 @@
 
 #include "bobHash.hpp"
 
-namespace XAI {
+namespace LONG {
 inline namespace V1 {
 /**
  * @brief Bloom Filter 實現，支持單執行緒高速查詢，64 位和 128 位數據
@@ -144,6 +144,6 @@ class BloomFilter {
   }
 };
 }  // namespace V1
-}  // namespace XAI
+}  // namespace LONG
 
 #endif

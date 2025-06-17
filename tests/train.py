@@ -94,7 +94,7 @@ except Exception as e:
 
 # ============================ [訓練流程（多輪）] ============================
 
-for i in range(10):
+for i in range(8):
     try:
         result = algorithm.train()
         print(f"\n[訓練迭代 {result['training_iteration']}]")

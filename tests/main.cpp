@@ -46,16 +46,11 @@ uint32_t DBT::getBit[32] = {
 
 using namespace std;
 
-#ifndef TIMER_METHOD
-#define TIMER_METHOD TIMER_RDTSCP
-#endif
-
 // #define VALID
 // #define SAMPLE
 #define THREAD_NUM
 #define BIAS
 #define NORM
-#define CACHE
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
 // #define EIGEN_UNROLL_LOOP_LIMIT 64
 #define PERLOOKUPTIME_MODEL
@@ -886,10 +881,9 @@ int main(int argc, char *argv[]) {
 #endif
   for (int t = 0; t < 2; ++t) {
     for (size_t i = 0; i < sampleNum; ++i) {
-// 搜尋時間量測 (PT)
-#ifdef CACHE
+      // 搜尋時間量測 (PT)
       tree.search(PT_samples[i]);
-#endif
+
       timer.timeReset();
       tree.search(PT_samples[i]);
       _PT_search_time = timer.elapsed_ns();
@@ -899,10 +893,9 @@ int main(int argc, char *argv[]) {
   }
   for (int t = 0; t < 2; ++t) {
     for (size_t i = 0; i < sampleNum; ++i) {
-// 搜尋時間量測 (DBT)
-#ifdef CACHE
+      // 搜尋時間量測 (DBT)
       dbt.search(DBT_samples[i]);
-#endif
+
       timer.timeReset();
       dbt.search(DBT_samples[i]);
       _DBT_search_time = timer.elapsed_ns();
@@ -913,8 +906,7 @@ int main(int argc, char *argv[]) {
   if (max_pri_set[1] < max_pri_set[2]) max_pri_set[1] = max_pri_set[2];
   for (int t = 0; t < 2; ++t) {
     for (size_t i = 0; i < sampleNum; ++i) {
-// 搜尋時間量測 (KSet)
-#ifdef CACHE
+      // 搜尋時間量測 (KSet)
       kset_match_pri = -1;
       if (__builtin_expect(num_set[0] > 0, 1))
         kset_match_pri = set0.ClassifyAPacket(samples[i]);
@@ -926,7 +918,7 @@ int main(int argc, char *argv[]) {
         kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(samples[i]));
       if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
                            0))
-#endif
+
         kset_match_pri = -1;
       timer.timeReset();
       if (__builtin_expect(num_set[0] > 0, 1))
@@ -947,10 +939,9 @@ int main(int argc, char *argv[]) {
   }
   for (int t = 0; t < 2; ++t) {
     for (size_t i = 0; i < sampleNum; ++i) {
-// 搜尋時間量測 (DT)
-#ifdef CACHE
+      // 搜尋時間量測 (DT)
       (dynamictuple.Lookup(DT_MT_samples[i], 0));
-#endif
+
       timer.timeReset();
       (dynamictuple.Lookup(DT_MT_samples[i], 0));
       _DT_search_time = timer.elapsed_ns();
@@ -960,10 +951,9 @@ int main(int argc, char *argv[]) {
   }
   for (int t = 0; t < 2; ++t) {
     for (size_t i = 0; i < sampleNum; ++i) {
-// 搜尋時間量測 (MT)
-#ifdef CACHE
+      // 搜尋時間量測 (MT)
       (multilayertuple.Lookup(DT_MT_samples[i], 0));
-#endif
+
       timer.timeReset();
       (multilayertuple.Lookup(DT_MT_samples[i], 0));
       _MT_search_time = timer.elapsed_ns();
@@ -2669,10 +2659,10 @@ int main(int argc, char *argv[]) {
 #ifdef BLOOM
     {
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      XAI::BloomFilter<uint64_t> bloom_filter_mt(sampleNum * 0.5, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_dt(sampleNum * 0.5, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_pt(sampleNum * 0.5, 0.01);
-      XAI::BloomFilter<uint64_t> bloom_filter_dbt(sampleNum * 0.5, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_mt(sampleNum * 0.5, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_dt(sampleNum * 0.5, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_pt(sampleNum * 0.5, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_dbt(sampleNum * 0.5, 0.01);
 
       auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
           printStatistics(PT_y);

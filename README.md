@@ -1,35 +1,62 @@
-# multiple_parallel_PC
+multiple_parallel_PC
+A High-Performance, Multi-Classifier Packet Classification Framework with Latency Prediction and Complementary Optimization高效能多分類器封包分類架構，結合延遲預測與互補性最佳化
 
-A High-Performance, Multi-Algorithm Packet Classification Framework
-高效能多演算法封包分類框架
+Overview / 專案概觀
+Englishmultiple_parallel_PC is a high-performance packet classification architecture implemented in C++17 and Eigen3. It is designed for multiclassifier collaboration and supports five heterogeneous and complementary packet classification data structures: KSet, PT-Tree, DBTable, DynamicTuple, and MultilayerTuple. The core design explores multiple classifier choices through two independent mechanisms.
+中文multiple_parallel_PC 是一套以 C++17 與 Eigen3 實作的高效能封包分類架構，專為多分類器協同運作設計，支持五種具異質性與互補性的封包分類資料結構：KSet、PT-Tree、DBTable、DynamicTuple 及 MultilayerTuple。其核心設計透過兩個獨立機制探討多分類器選擇。
 
----
+Key Mechanisms / 核心機制
+1. Latency-Aware Classifier Prediction / 延遲預測導向的分類器選擇
+EnglishThe framework employs a multidimensional linear regression model that uses a packet's five-tuple (source IP, destination IP, source port, destination port, transport protocol) to predict the query latency for each classifier (PT-Tree, DBTable, DynamicTuple). It dynamically selects the classifier with the lowest predicted latency for each packet, improving average query performance and avoiding degradation under high-variability traffic.
+中文本系統利用多維線性回歸模型，以封包的五維欄位（來源 IP、目的 IP、來源 port、目的 port、傳輸層協定）為輸入，預測該封包在各分類器（PT-Tree、DBTable、DynamicTuple）的查詢延遲，並動態選擇延遲預期最小者進行分類。此動態選擇機制可即時因應封包特徵，提升平均查詢效能，避免單一分類器在高變異度流量下的效能劣化。
+2. Long-Tail-Aware Filtering / 長尾封包感知式過濾機制
+EnglishTo handle high-latency tail packets, each classifier (PT-Tree, DBTable, DynamicTuple, MultilayerTuple) identifies packets exceeding the 99th percentile query latency threshold as slow packets. These packets' five-tuple signatures are stored in a Bloom Filter, Cuckoo Filter, or Elastic Bloom Filter. If a packet matches the long-tail filters of all classifiers, indicating high query latency across them, it is routed to the stable KSet classifier to mitigate tail latency.
+中文為處理高查詢延遲的長尾封包（tail packets），每個分類器（PT-Tree、DBTable、DynamicTuple、MultilayerTuple）根據查詢行為特徵，將超過第 99 百分位查詢延遲門檻的封包識別為 slow packets，並將其五維欄位構成 signature，插入對應的 Bloom Filter、Cuckoo Filter 或 Elastic Bloom Filter。若某封包同時命中所有分類器的長尾過濾器，則表示其查詢延遲均偏高，此時會交由效能穩定的 KSet 處理，以降低長尾延遲。
+3. RL-Based Multi-Classifier Parameter Optimization / 強化學習導向的分類器參數組合選擇
+EnglishTo enhance classifier complementarity, a three-stage reinforcement learning (RL) search strategy optimizes parameter configurations:
 
-## Overview / 專案概觀
+First Classifier: The RL agent evaluates the 99th percentile latency to select the best-performing classifier.
+Second Classifier: Slow packets from the first classifier (exceeding P99 latency) are identified. The RL agent selects the second classifier by minimizing the intersection of slow packets with the first classifier, ensuring high complementarity.
+Third Classifier: Extends the strategy to exclude slow packets from both prior classifiers, selecting the third classifier with minimal intersection for optimal complementarity.Current implementation order: PT-Tree → DBTable → DynamicTuple. Future extensions can adjust ordering and combinations.
 
-**English**
-`multiple_parallel_PC` is a high-performance multi-algorithm packet classification framework written in C++17. It dynamically determines whether each packet should be processed by one of the KSet, PT-Tree, DBTable, DynamicTuple, or MultilayerTuple algorithms by using a linear regression model or a Bloom Filter. This mechanism balances the query latency and facilitates in-depth comparison of the performance trade-offs among algorithms.
+中文為提升分類器參數組合的互補性，本架構導入三階段強化學習（RL）搜尋策略：
 
-**中文**
-`multiple_parallel_PC` 是一套以 C++17 撰寫的高效能多演算法封包分類框架。它透過線性回歸模型或 Bloom Filter 快速檢測，動態判斷每一筆封包應交由 KSet、PT-Tree、DBTable、DynamicTuple 或 MultilayerTuple 其中一種演算法處理。此機制可平衡查詢延遲，便於深入比較各演算法的效能取捨。
+第一分類器：以查詢延遲第 99 百分位為指標，RL agent 探索所有參數設定，挑選延遲表現最優者作為主分類器。
+第二分類器：將第一分類器查詢延遲高於 P99 門檻的 slow packets 視為需互補區間，根據第二分類器的 slow packets 記錄進行交集排除，產生 diff_first_vector。向量越小，互補性越高，作為 RL agent 的 reward signal，選出最佳第二參數。
+第三分類器：排除第一與第二分類器皆不擅長的 slow packets，與第三分類器的 slow packets 進行交集運算，得出 diff_second_vector。向量越小，互補效果越好，適合作為第三分類器。目前實作順序為 PT-Tree → DBTable → DynamicTuple，未來可依需求拓展排序與組合。
 
----
 
-## Features / 特色
+Features / 特色
 
-| Feature / 特色             | Description / 說明                                                                                      |
-|----------------------------|--------------------------------------------------------------------------------------------------------|
-| **Adaptive Dispatch**      | Linear regression or Bloom filter predicts the most efficient classifier for each packet in ~10 ns.    |
-| **Multi-Classifier Core**  | Built-in support for KSet, PT-Tree, DBTable, DynamicTuple, MultilayerTuple.                            |
-| **SIMD / PEXT Optimization** | AVX2/SSE2 intrinsics, BMI2 PEXT, and cache-aligned data structures for maximum throughput.           |
-| **Transparent Metrics**    | Construction time, throughput (pps), and memory footprint are measured automatically.                  |
-| **Scripted Benchmarking**  | `scripts/run.sh` builds, runs, and reports on synthetic or trace-driven workloads.                     |
 
----
 
-## Directory Structure / 目錄結構
+Feature / 特色
+Description / 說明
 
-```
+
+
+Adaptive Dispatch
+Linear regression or Bloom filter predicts the most efficient classifier in ~10 ns.
+
+
+Multi-Classifier Core
+Supports KSet, PT-Tree, DBTable, DynamicTuple, and MultilayerTuple.
+
+
+SIMD / PEXT Optimization
+Uses AVX2/SSE2 intrinsics, BMI2 PEXT, and cache-aligned data structures for maximum throughput.
+
+
+Transparent Metrics
+Automatically measures construction time, throughput (pps), and memory footprint.
+
+
+Scripted Benchmarking
+scripts/run.sh automates building, running, and reporting on synthetic or trace-driven workloads.
+
+
+
+Directory Structure / 目錄結構
 multiple_parallel_PC                      //
 ├─ .editorconfig                          //
 ├─ .mailmap                               //
@@ -39,10 +66,15 @@ multiple_parallel_PC                      //
 │  ├─ DBT_IndivResults.txt                //
 │  ├─ DBT_buckets.txt                     //
 │  ├─ DBT_nodes.txt                       //
+│  ├─ DBT_prediction_3_result.txt         //
 │  ├─ DT_IndivResults.txt                 //
+│  ├─ DT_prediction_3_result.txt          //
 │  ├─ KSet_IndivResults.txt               //
+│  ├─ KSet_prediction_3_result.txt        //
 │  ├─ MT_IndivResults.txt                 //
+│  ├─ MT_prediction_3_result.txt          //
 │  ├─ PT_IndivResults.txt                 //
+│  ├─ PT_prediction_3_result.txt          //
 │  ├─ Total_knn_result.txt                //
 │  ├─ Total_model_11_result.txt           //
 │  ├─ Total_model_3_result.txt            //
@@ -50,26 +82,17 @@ multiple_parallel_PC                      //
 │  ├─ Total_prediction_11_result.txt      //
 │  ├─ Total_prediction_3_result.txt       //
 │  ├─ Total_prediction_5_result.txt       //
-│  └─ Total_prediction_knn_result.txt     //
+│  ├─ Total_prediction_knn_result.txt     //
+│  └─ param.txt                           //
 ├─ LICENSE                                //
 ├─ README.md                              //
 ├─ build                                  //
 │  ├─ main_c_acl1.txt                     //
 │  ├─ main_c_acl2.txt                     //
-│  ├─ main_c_acl3.txt                     //
-│  ├─ main_c_acl4.txt                     //
-│  ├─ main_c_acl5.txt                     //
-│  ├─ main_c_fw1.txt                      //
-│  ├─ main_c_fw2.txt                      //
-│  ├─ main_c_fw3.txt                      //
-│  ├─ main_c_fw4.txt                      //
-│  ├─ main_c_fw5.txt                      //
-│  ├─ main_c_ipc1.txt                     //
-│  ├─ main_c_ipc2.txt                     //
 │  ├─ src                                 //
 │  └─ tests                               //
-│     ├─ main                             //
-│     └─ main_acl1.txt                    //
+│     └─ main                             //
+├─ file_structure                         //
 ├─ include                                //
 │  ├─ DBT                                 //
 │  │  ├─ DBT_core.hpp                     //
@@ -105,16 +128,17 @@ multiple_parallel_PC                      //
 │  ├─ bobHash.hpp                         //
 │  ├─ elementary_DT_MT.h                  //
 │  ├─ linearSearch_test.hpp               //
-│  └─ nanoflann.hpp                       //
+│  ├─ nanoflann.hpp                       //
+│  └─ rl_gym.hpp                          //
 ├─ scripts                                //
-│  ├─ append_rows.cpp                     //
 │  ├─ build.sh                            //
 │  ├─ cache_search_analyz.py              //
-│  ├─ extract_from_txt.py                 //
+│  ├─ extract_twoColumns.py               //
 │  ├─ part_0                              //
 │  ├─ pcap_to_5tuple.cpp                  //
 │  ├─ per_run.sh                          //
 │  ├─ run.sh                              //
+│  ├─ trace_append_rows.cpp               //
 │  └─ trace_statics.py                    //
 ├─ src                                    //
 │  ├─ CMakeLists.txt                      //
@@ -137,387 +161,80 @@ multiple_parallel_PC                      //
 │  └─ elementary_DT_MT.cpp                //
 └─ tests                                  //
    ├─ CMakeLists.txt                      //
-   └─ main.cpp                            //
-../
-../classbench_set/ipv4-ruleset/acl1_100k     //
-../classbench_set/ipv4-trace/acl1_100k_trace //
+   ├─ checkpoints                         //
+   │  ├─ algorithm_state.pkl              //
+   │  ├─ policies                         //
+   │  │  └─ default_policy                //
+   │  │     ├─ policy_state.pkl           //
+   │  │     └─ rllib_checkpoint.json      //
+   │  └─ rllib_checkpoint.json            //
+   ├─ main.cpp                            //
+   ├─ ray_results                         //
+   │  └─ ppo_tensorboard                  //
+   │     ├─ params.json                   //
+   │     ├─ params.pkl                    //
+   │     ├─ progress.csv                  //
+   │     └─ result.json                   //
+   ├─ rl_environment.py                   //
+   ├─ rl_gym.cpp                          //
+   └─ train.py                            //
 
-```
 
----
-
-## Build & Run / 編譯與執行
-
-### Prerequisites / 先備套件
-
-```bash
+Build & Run / 編譯與執行
+Prerequisites / 先備套件
 sudo apt-get update
 sudo apt-get install -y build-essential cmake libeigen3-dev libomp-dev
-```
 
-### One-Shot Script / 一鍵執行
-
-```bash
+One-Shot Script / 一鍵執行
 # In the project root directory
 sudo bash ./scripts/run.sh
-```
 
-This script auto-detects CPU instruction sets, enables `-march=native -O3 -flto` and BMI2/AVX2 options, builds the project, runs default benchmarks, and outputs results.
+EnglishThis script auto-detects CPU instruction sets, enables -march=native -O3 -flto and BMI2/AVX2 options, builds the project, runs default benchmarks, and outputs results.
+中文此腳本自動偵測 CPU 指令集，啟用 -march=native -O3 -flto 及 BMI2/AVX2 選項，完成建置後執行預設基準測試並輸出結果。
+Noticepart_0 cannot use acl5 or ipc2. Use ./scripts/run.sh to verify if the trace file is compatible (#define VALID # local trace_path="$TRACE_DIR/part_0").您可以使用 ./scripts/run.sh 確認 trace file 是否可用 (#define VALID # local trace_path="$TRACE_DIR/part_0")。
 
-此腳本會自動偵測 CPU 指令集，啟用 `-march=native -O3 -flto` 及 BMI2/AVX2 選項，完成建置後立即執行預設基準測試並輸出統計結果。
-
-Notice:
+Performance Evaluation / 效能評估指標
 
-part_0 cannot use acl5 and ipc2. You can use ./scripts/run.sh to confirm whether the trace file can be used (#define VALID # local trace_path="$TRACE_DIR/part_0")
-
-您可以使用./scripts/run.sh來確認trace file可否使用(#define VALID # local trace_path="$TRACE_DIR/part_0")
-
----
-
-## Performance Evaluation / 效能評估指標
-
-| Metric / 指標             | Definition / 定義                        |
-|--------------------------|------------------------------------------|
-| **Construction Time**    | Time to build classifier (ms) / 建構分類器所需時間 (ms) |
-| **Lookup Throughput**    | Query rate (Mpps) / 查詢吞吐量 (Mpps)    |
-| **Memory Usage**         | Memory footprint (MB) / 記憶體占用 (MB)  |
-
-Benchmark results are exported as txt reports for further analysis.
-測試結果將以 txt 輸出，方便後續分析。
-
----
-
-## Result / 結果
-
-main_acl2.txt:
-
-```
-
-The number of rules = 89229
-The number of packets = 892290
-The number of samples = 892290
-
-PT search config time: 2.26596 s
-0 4 2
-**************** Construction(PT) ****************
-
-Start build for single thread...
-|- Using fields:     0,4,2,1
-|- Construct time:   9466196ns
-|- tree.totalNodes: 23734
-|- Memory footprint: 10.8329MB
-binth=4 th_b=0.8 K=4 th_c=32
-
-**************** Construction(DBT) ****************
-buckets        : 24283
-max bucket size: 836
-target buckets : 19759 81.37%
-(10,50]        : 1470 6.05%
-(50,100]       : 120 0.49%
-big cell       : 30 0.12%
-
-DBS bitsNum: 17
-
-
-in_bucket 28861 0.32
-in_tuple 60368 0.68
-total buckets  : 189199
-used buckets   : 41835 22.11%
-max bucket size: 42
-target buckets : 36226 86.59%
-(10,50]        : 848 2.03%
-(50,100]       : 0 0.00%
-big cell       : 0 0.00%
-tuple spaces   : 131
-avg tuples     : 3.48
-max tuples     : 17
-
-Construction Time: 2536128480 ns
-
-Total memory 12.14 MB
-
-**************** Construction(KSet) ****************
-================KSet Precompute=============
-Set 0: 61768, Set 1: 13149, Set 2: 13174, Set 3: 1138
-max_pri[0]: 89228, max_pri[1]: 70780, max_pri[2]: 70961, max_pri[3]: 12092
-Set 0: 15 bits, Set 1: 13 bits, Set 2: 13 bits
-================Compute=============
-Set 0: 66377, Set 1: 14771, Set 2: 7339, Set 3: 742
-max_pri[0]: 89228, max_pri[1]: 68568, max_pri[2]: 67749, max_pri[3]: 8467
-non-empty_seg[0] = 0, non-empty_seg[1] = 0, non-empty_seg[2] = 0
-AVG[0]: inf, AVG[1]: inf, AVG[2]: inf
-MAX[0]: 830223536, MAX[1]: 830223520, MAX[2]: 830223520
-	Construction time: 64963773 ns
-
-	***Set 0:***
-	rules in set: 66377, rules in small node: 13470, rules in big node: 52907
-	tablesize: 32768, NULL_Node_Count = 26157, Small_Node_Count = 5407, Big_Node_Count = 1204
-	Table_memory: 128.000(KB), Total_Rules_memory(Small): 368.320(KB), Total_Rules_memory(Big): 1581.660(KB)
-	Total memory: 2077.980(KB), Byte/rule: 32.057
-
-	***Set 1:***
-	rules in set: 14771, rules in small node: 1764, rules in big node: 13007
-	tablesize: 8192, NULL_Node_Count = 7382, Small_Node_Count = 467, Big_Node_Count = 343
-	Table_memory: 32.000(KB), Total_Rules_memory(Small): 48.234(KB), Total_Rules_memory(Big): 380.414(KB)
-	Total memory: 460.648(KB), Byte/rule: 31.934
-
-	***Set 2:***
-	rules in set: 7339, rules in small node: 506, rules in big node: 6833
-	tablesize: 8192, NULL_Node_Count = 7834, Small_Node_Count = 223, Big_Node_Count = 135
-	Table_memory: 32.000(KB), Total_Rules_memory(Small): 13.836(KB), Total_Rules_memory(Big): 199.281(KB)
-	Total memory: 245.117(KB), Byte/rule: 34.201
-
-	***Set 3:***
-	rules in set: 742, rules in small node: 0, rules in big node: 742
-	tablesize: 1, NULL_Node_Count = 0, Small_Node_Count = 0, Big_Node_Count = 1
-	Table_memory: 0.004(KB), Total_Rules_memory(Small): 0.000(KB), Total_Rules_memory(Big): 22.551(KB)
-	Total memory: 22.555(KB), Byte/rule: 31.127
-**************** Construction(DT) ****************
-	Construction time: 3335845827 ns
-DT_data_memory_size: 4.425, DT_index_memory_size: 7.906
-Total(MB): 12.331
-DT tuples_num: 18
-**************** Construction(MT) ****************
-	Construction time: 22929352 ns
-MT_data_memory_size: 4.425, MT_index_memory_size: 8.557
-Total(MB): 12.982
-MT tuples_num: 9
-|--- CACHE_PT_y Mean: 19.173
-|--- CACHE_PT_y median Percentile: 22.000
-|--- CACHE_PT_y 75th Percentile: 22.000
-|--- CACHE_PT_y 95th Percentile: 22.000
-|--- CACHE_PT_y 99th Percentile: 23.000
-|--- CACHE_PT_y StdDev: 94.471 (dispersity)
-|--- CACHE_DBT_y Mean: 19.002
-|--- CACHE_DBT_y median Percentile: 22.000
-|--- CACHE_DBT_y 75th Percentile: 22.000
-|--- CACHE_DBT_y 95th Percentile: 22.000
-|--- CACHE_DBT_y 99th Percentile: 23.000
-|--- CACHE_DBT_y StdDev: 45.545 (dispersity)
-|--- CACHE_KSet_y Mean: 105.715
-|--- CACHE_KSet_y median Percentile: 66.000
-|--- CACHE_KSet_y 75th Percentile: 143.000
-|--- CACHE_KSet_y 95th Percentile: 276.000
-|--- CACHE_KSet_y 99th Percentile: 441.000
-|--- CACHE_KSet_y StdDev: 269.436 (dispersity)
-|--- CACHE_DT_y Mean: 18.905
-|--- CACHE_DT_y median Percentile: 22.000
-|--- CACHE_DT_y 75th Percentile: 22.000
-|--- CACHE_DT_y 95th Percentile: 22.000
-|--- CACHE_DT_y 99th Percentile: 23.000
-|--- CACHE_DT_y StdDev: 35.513 (dispersity)
-|--- CACHE_MT_y Mean: 80.102
-|--- CACHE_MT_y median Percentile: 66.000
-|--- CACHE_MT_y 75th Percentile: 100.000
-|--- CACHE_MT_y 95th Percentile: 144.000
-|--- CACHE_MT_y 99th Percentile: 429.000
-|--- CACHE_MT_y StdDev: 109.524 (dispersity)
-
-*********
-**************** Build(Linear Model) ****************
-	The number of test packet = 892290
-	Total samples run 4 times circularly: 3569160
-
-========= Model parameters =========
-
-[PT 3-feature model] (x1, x2, x3):
--0.025  0.060 -0.167 19.173
-
-[PT 5-feature model] (x1~x5):
--0.040  0.074 -0.101 -0.094 -0.147 19.173
-
-[PT 11-feature model] (x1~x11):
--0.044  0.059  0.071 -0.037 -0.098 -0.088 -0.136 -0.099 -0.063 -0.005 -0.021 19.173
-
-[DBT 3-feature model] (x1, x2, x3):
- 0.028  0.122 -0.019 19.002
-
-[DBT 5-feature model] (x1~x5):
- 0.025  0.124 -0.013  0.004 -0.044 19.002
-
-[DBT 11-feature model] (x1~x11):
- 0.024  0.116  0.031 -0.054 -0.009  0.008 -0.039 -0.055 -0.028 -0.005 -0.022 19.002
-
-[KSet 3-feature model] (x1, x2, x3):
- -2.461  -1.345   2.310 105.715
-
-[KSet 5-feature model] (x1~x5):
- -2.449  -1.443   1.668   2.282  -1.323 105.715
-
-[KSet 11-feature model] (x1~x11):
- -1.898  -0.178  -0.202   1.090   0.811   2.530  -1.414   2.516   2.021  11.647   9.208 105.715
-
-[DT 3-feature model] (x1, x2, x3):
- 0.029 -0.045  0.032 18.905
-
-[DT 5-feature model] (x1~x5):
- 0.032 -0.047  0.021  0.021  0.017 18.905
-
-[DT 11-feature model] (x1~x11):
- 0.027 -0.059  0.075  0.045  0.018  0.025  0.020 -0.023 -0.021 -0.003  0.006 18.905
-
-[MT 3-feature model] (x1, x2, x3):
--0.150 -1.045  0.982 80.102
-
-[MT 5-feature model] (x1~x5):
--0.245 -1.029  0.933  1.118 -1.988 80.102
-
-[MT 11-feature model] (x1~x11):
- 0.258  0.114 -1.024 -0.689  0.559  1.217 -1.938  1.999  2.845  6.171  8.783 80.102
-
-**************** Model(Acc and Fail) ****************
-    model_acc 3 (%): 62.895
-    model_fail 3 (%): 1.109
-    model_oth 3 (%): 35.996
-    model_acc 5 (%): 62.781
-    model_fail 5 (%): 1.111
-    model_oth 5 (%): 36.108
-    model_acc 11 (%): 62.815
-    model_fail 11 (%): 1.096
-    model_oth 11 (%): 36.090
-
-**************** Classification(Model) ****************
-Model-3 Using 16 threads.
-|=== AVG predict time(Model-3  Single): 11.000ns
-======
-|=== AVG predict time(Model-3  Omp): 2.000ns
-|=== AVG search with predict time(Model-3 + Omp): 21.889ns
-|=== PT, DBT, KSET, DT, MT (%): 5.679, 28.577, 0.000, 65.744, 0.000
-|--- Model-3_y Mean: 19.097
-|--- Model-3_y median Percentile: 22.000
-|--- Model-3_y 75th Percentile: 22.000
-|--- Model-3_y 95th Percentile: 22.000
-|--- Model-3_y 99th Percentile: 23.000
-|--- Model-3_y StdDev: 59.994 (dispersity)
-Model-5 Using 16 threads.
-|=== AVG predict time(Model-5  Single): 13.000ns
-======
-|=== AVG predict time(Model-5  Omp): 2.000ns
-|=== AVG search with predict time(Model-5 + Omp): 20.882ns
-|=== PT, DBT, KSET, DT, MT (%): 11.986, 26.863, 0.000, 61.151, 0.000
-|--- Model-5_y Mean: 18.866
-|--- Model-5_y median Percentile: 22.000
-|--- Model-5_y 75th Percentile: 22.000
-|--- Model-5_y 95th Percentile: 22.000
-|--- Model-5_y 99th Percentile: 23.000
-|--- Model-5_y StdDev: 43.171 (dispersity)
-Model-11 Using 16 threads.
-|=== AVG predict time(Model-11  Single): 22.000ns
-======
-|=== AVG predict time(Model-11  Omp): 17.000ns
-|=== AVG search with predict time(Model-11 + Omp): 36.323ns
-|=== PT, DBT, KSET, DT, MT (%): 11.803, 28.102, 0.000, 60.095, 0.000
-|--- Model-11_y Mean: 19.234
-|--- Model-11_y median Percentile: 22.000
-|--- Model-11_y 75th Percentile: 22.000
-|--- Model-11_y 95th Percentile: 22.000
-|--- Model-11_y 99th Percentile: 23.000
-|--- Model-11_y StdDev: 54.940 (dispersity)
-
-**************** KNN(Acc and Fail) ****************
-    KNN_acc (%): 74.498
-    KNN_fail (%): 1.081
-    KNN_oth (%): 24.421
-**************** KNN(Acc and Fail) ****************
-KNN Using 16 threads.
-|=== AVG predict time(KNN  Single): 6398.000ns
-======
-|=== AVG predict time(KNN  Omp): 3389.000ns
-|=== AVG search with predict time(KNN + Omp): 3428.348ns
-|=== PT, DBT, KSET, DT, MT (%): 62.669, 22.158, 0.041, 15.078, 0.055
-|--- KNN_y Mean: 19.734
-|--- KNN_y median Percentile: 22.000
-|--- KNN_y 75th Percentile: 22.000
-|--- KNN_y 95th Percentile: 22.000
-|--- KNN_y 99th Percentile: 23.000
-|--- KNN_y StdDev: 46.379 (dispersity)
-
-**************** Classification(BLOOM) ****************
-Bloom Using 16 threads.
-|=== AVG predict time(BloomFilter  Single): 54.000ns
-======
-|=== AVG predict time(BloomFilter  Omp): 7.000ns
-|=== AVG search time with predict(BloomFilter + Omp): 37.876ns
-|=== PT, DBT, KSET, DT, MT (%): 2.257, 58.601, 6.009, 6.529, 26.603
-|--- Total_y Mean: 30.557
-|--- Total_y median Percentile: 22.000
-|--- Total_y 75th Percentile: 33.000
-|--- Total_y 95th Percentile: 56.000
-|--- Total_y 99th Percentile: 88.000
-|--- Total_y StdDev: 103.365 (dispersity)
-
-************** Classification(Individual) **************
-**************** Classification(PT) ****************
-|--- indiv_PT_y Mean: 128.340
-|--- indiv_PT_y median Percentile: 99.000
-|--- indiv_PT_y 75th Percentile: 176.000
-|--- indiv_PT_y 95th Percentile: 331.000
-|--- indiv_PT_y 99th Percentile: 520.100
-|--- indiv_PT_y StdDev: 159.465 (dispersity)
-|- Average search time: 133.529ns
-
-**************** Classification(DBT) ****************
-|--- indiv_DBT_y Mean: 127.847
-|--- indiv_DBT_y median Percentile: 77.000
-|--- indiv_DBT_y 75th Percentile: 187.000
-|--- indiv_DBT_y 95th Percentile: 331.000
-|--- indiv_DBT_y 99th Percentile: 485.000
-|--- indiv_DBT_y StdDev: 328.617 (dispersity)
-|- Average search time: 126.410ns
-
-avg_acc_bucket: 1.563 max: 2
-avg_acc_tuple: 5.047 max: 22
-avg_acc_rule: 7.181 max: 70
-
-**************** Classification(KSet) ****************
-|--- indiv_KSet_y Mean: 344.213
-|--- indiv_KSet_y median Percentile: 187.000
-|--- indiv_KSet_y 75th Percentile: 573.000
-|--- indiv_KSet_y 95th Percentile: 981.000
-|--- indiv_KSet_y 99th Percentile: 1355.000
-|--- indiv_KSet_y StdDev: 710.329 (dispersity)
-	Average search time: 336.525 ns
-
-**************** Classification(DT) ****************
-|--- indiv_DT_y Mean: 126.067
-|--- indiv_DT_y median Percentile: 77.000
-|--- indiv_DT_y 75th Percentile: 177.000
-|--- indiv_DT_y 95th Percentile: 363.000
-|--- indiv_DT_y 99th Percentile: 551.000
-|--- indiv_DT_y StdDev: 186.907 (dispersity)
-	Average search time: 130.773 ns
-
-**************** Classification(MT) ****************
-|--- indiv_MT_y Mean: 189.771
-|--- indiv_MT_y median Percentile: 89.000
-|--- indiv_MT_y 75th Percentile: 286.000
-|--- indiv_MT_y 95th Percentile: 551.000
-|--- indiv_MT_y 99th Percentile: 893.000
-|--- indiv_MT_y StdDev: 290.944 (dispersity)
-	Average search time: 193.952 ns
-
-```
-
----
-
-## References / 參考文獻
-
-1. Y.-K. Chang et al. "Efficient Hierarchical Hash-Based Multi-Field Packet Classification With Fast Update for Software Switches," *IEEE Access*, vol. 13, pp. 28962‑28978, 2025.
-2. Z. Liao et al. "PT‑Tree: A Cascading Prefix Tuple Tree for Packet Classification in Dynamic Scenarios," *IEEE/ACM Transactions on Networking*, vol. 32, no. 1, pp. 506‑519, 2024.
-3. Z. Liao et al. "DBTable: Leveraging Discriminative Bitsets for High‑Performance Packet Classification," *IEEE/ACM Transactions on Networking*, vol. 32, no. 6, pp. 5232‑5246, 2024.
-4. C. Zhang, G. Xie, X. Wang. "DynamicTuple: The Dynamic Adaptive Tuple for High‑Performance Packet Classification," *Computer Networks*, vol. 202, 2022.
-5. C. Zhang, G. Xie. "MultilayerTuple: A General, Scalable and High‑Performance Packet Classification Algorithm for SDN," *IFIP Networking*, 2021.
-
----
-
-## License / 授權
-
-Released under the **MIT License**. Contributions via pull requests are welcome!
-
-本專案採用 **MIT 授權**，歡迎提交 Pull Request 共同參與開發！
-
----
-
-> For more details, please refer to the source code and scripts in this repository.
-> 詳細內容請參考本專案原始碼與腳本。
+
+
+Metric / 指標
+Definition / 定義
+
+
+
+Construction Time
+Time to build classifier (ms) / 建構分類器所需時間 (ms)
+
+
+Lookup Throughput
+Query rate (Mpps) / 查詢吞吐量 (Mpps)
+
+
+Memory Usage
+Memory footprint (MB) / 記憶體占用 (MB)
+
+
+EnglishBenchmark results are exported as text reports for further analysis.
+中文測試結果以 txt 格式輸出，方便後續分析。
+
+Result / 結果
+main_c_acl2.txt (abridged):
+[Omitted for brevity; refer to the file for full details]
+
+
+References / 參考文獻
+
+Y.-K. Chang et al. "Efficient Hierarchical Hash-Based Multi-Field Packet Classification With Fast Update for Software Switches," IEEE Access, vol. 13, pp. 28962‑28978, 2025.
+Z. Liao et al. "PT‑Tree: A Cascading Prefix Tuple Tree for Packet Classification in Dynamic Scenarios," IEEE/ACM Transactions on Networking, vol. 32, no. 1, pp. 506‑519, 2024.
+Z. Liao et al. "DBTable: Leveraging Discriminative Bitsets for High‑Performance Packet Classification," IEEE/ACM Transactions on Networking, vol. 32, no. 6, pp. 5232‑5246, 2024.
+C. Zhang, G. Xie, X. Wang. "DynamicTuple: The Dynamic Adaptive Tuple for High‑Performance Packet Classification," Computer Networks, vol. 202, 2022.
+C. Zhang, G. Xie. "MultilayerTuple: A General, Scalable and High‑Performance Packet Classification Algorithm for SDN," IFIP Networking, 2021.
+
+
+License / 授權
+EnglishReleased under the MIT License. Contributions via pull requests are welcome!
+中文本專案採用 MIT 授權，歡迎提交 Pull Request 共同參與開發！
+
+
+EnglishFor more details, refer to the source code and scripts in this repository.**中文詳細內容請參考本專案原始碼與腳本。
 

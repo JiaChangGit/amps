@@ -113,8 +113,8 @@ class ComplementaryObjectsEnv(gym.Env):
         return np.concatenate([pt_field, pt_port, dbt_params, dt_params])
 
     def step(self, action):
-        """執行一個時間步，根據輸入的 action 建立 DBT 或 DT，並計算 reward（為負分數）"""
-        reward = -100000.0
+        """執行一個時間步，根據輸入的 action 建立 PT、DBT 或 DT，並計算 reward（為負分數）"""
+        reward = -10000000.0
         done = False
         truncated = False
 
@@ -150,9 +150,12 @@ class ComplementaryObjectsEnv(gym.Env):
         except Exception as e:
             return self._get_obs(), reward, True, True, {}
 
-        # 根據目前 step 進行 DBT 或 DT 建立
+        # 根據目前 step 進行 PT、DBT 或 DT 建立
         if self.current_step == 0:
             try:
+                # 計算 PT 的查詢速度 95 位數作為 reward
+                pt_score = self.builder.evaluate_pt(self.obj_pt)
+                reward = -pt_score  # 負值，目標是最小化查詢時間
                 self.obj_dbt = self.builder.create_dbt_object(
                     action_mapped["binth"],
                     action_mapped["end_bound"],
@@ -160,10 +163,12 @@ class ComplementaryObjectsEnv(gym.Env):
                     action_mapped["c_bound"],
                     self.obj_pt
                 )
-                reward = -self.builder.evaluate_dbt(self.obj_pt, self.obj_dbt)
+                print(f"PT reward：{reward}")
+                dbt_score = self.builder.evaluate_dbt(self.obj_pt, self.obj_dbt)
+                reward = reward + (-dbt_score)  # 結合 PT 和 DBT 的 reward
                 self.current_step += 1
             except Exception as e:
-                print(f"無法建立 DBT：{e}")
+                print(f"無法建立 DBT 或評估 PT：{e}")
                 return self._get_obs(), reward, True, True, {}
         else:
             try:
