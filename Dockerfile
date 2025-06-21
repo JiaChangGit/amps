@@ -38,6 +38,9 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     pip install --upgrade pip
 
 RUN pip install \
+    --retries=10 \
+    --timeout=60 \
+    --progress-bar off \
     pybind11 \
     gymnasium \
     "ray[rllib]" \

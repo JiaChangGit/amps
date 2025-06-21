@@ -216,8 +216,8 @@ bash ./scripts/per_run.sh
 # ipc2 cannot with part_0
 ```
 
-- **English**: This script auto-detects CPU instruction sets, enables `-march=native -O3 -flto` and BMI2/AVX2 options, builds the project, runs default benchmarks, and outputs results.
-- **中文**: 此腳本自動偵測 CPU 指令集，啟用 `-march=native -O3 -flto` 及 BMI2/AVX2 選項，完成建置後執行預設基準測試並輸出結果。
+- **English**: This script auto-detects CPU instruction sets, enables `-march=native -O3` and BMI2/AVX2 options, builds the project, runs default benchmarks, and outputs results.
+- **中文**: 此腳本自動偵測 CPU 指令集，啟用 `-march=native -O3` 及 BMI2/AVX2 選項，完成建置後執行預設基準測試並輸出結果。
 
 > **Note**: The `part_0` trace file is incompatible with `acl5` or `ipc2`. Use `./scripts/run.sh` to verify compatibility (`#define VALID # local trace_path="$TRACE_DIR/part_0"`).
 

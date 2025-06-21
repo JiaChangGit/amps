@@ -2,7 +2,7 @@ import re
 import pandas as pd
 
 # 讀取 TXT 檔案
-file_path = "./DBT_IndivResults"
+#file_path = "./DBT_IndivResults"
 #file_path = "./BloomResults"
 #file_path = "./Total_knn_result"
 file_path = "./Total_model_3_result"
