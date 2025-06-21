@@ -156,7 +156,7 @@ multiple_parallel_PC                      //
 ../                               // 上一層資料夾
 ../classbench_set/ipv4-ruleset/acl1_100k     //
 ../classbench_set/ipv4-trace/acl1_100k_trace //
-../classbench_set/ipv4-trace/part_0 //
+../classbench_set/ipv4-trace/part_0          //
 ```
 
 ---
@@ -248,6 +248,18 @@ Excerpt from `main_c_acl2.txt` (abridged):
 - Z. Liao et al., "DBTable: Leveraging Discriminative Bitsets for High-Performance Packet Classification," *IEEE/ACM Transactions on Networking*, vol. 32, no. 6, pp. 5232-5246, 2024.
 - C. Zhang, G. Xie, X. Wang, "DynamicTuple: The Dynamic Adaptive Tuple for High-Performance Packet Classification," *Computer Networks*, vol. 202, 2022.
 - C. Zhang, G. Xie, "MultilayerTuple: A General, Scalable and High-Performance Packet Classification Algorithm for SDN," *IFIP Networking*, 2021.
+
+
+- nanoflann
+
+```plaintext
+@misc{blanco2014nanoflann,
+  title        = {nanoflann: a {C}++ header-only fork of {FLANN}, a library for Nearest Neighbor ({NN}) with KD-trees},
+  author       = {Blanco, Jose Luis and Rai, Pranjal Kumar},
+  howpublished = {\url{https://github.com/jlblancoc/nanoflann}},
+  year         = {2014}
+}
+```
 
 ---
 
