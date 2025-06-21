@@ -1,7 +1,10 @@
 #!/bin/bash
 
-## 如何使用
-## bash ./scripts/run.sh
+## HOW to use
+# chmod +x ./scripts/run.sh
+# ./scripts/run.sh
+# Or
+# bash ./scripts/run.sh
 
 set -e
 set -o pipefail
@@ -63,6 +66,8 @@ run_test_for_ruleset() {
     local ruleset_name="$1"
     local ruleset_path="$RULESET_DIR/$ruleset_name"
     local trace_path="$TRACE_DIR/${ruleset_name}_trace"
+    # check part_0
+    # local trace_path="$TRACE_DIR/part_0"
     local output_file="$OUTPUT_DIR/${EXECUTABLE##*/}_c_${ruleset_name%%_*}.txt"
     local result_dir="./Results/$TIMESTAMP/$ruleset_name"
 

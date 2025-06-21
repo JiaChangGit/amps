@@ -57,6 +57,7 @@ multiple_parallel_PC                      //
 ├─ .editorconfig                          //
 ├─ .mailmap                               //
 ├─ CMakeLists.txt                         //
+├─ Dockerfile                             //
 ├─ INFO                                   //
 │  ├─ BloomResults.txt                    //
 │  ├─ DBT_IndivResults.txt                //
@@ -124,6 +125,7 @@ multiple_parallel_PC                      //
 │  ├─ pcap_to_5tuple.cpp                  //
 │  ├─ per_run.sh                          //
 │  ├─ run.sh                              //
+│  ├─ run_container.sh                    //
 │  ├─ trace_append_rows.cpp               //
 │  └─ trace_statics.py                    //
 ├─ src                                    //
@@ -212,7 +214,7 @@ bash ./scripts/per_run.sh
 
 > **Note**: The `part_0` trace file is incompatible with `acl5` or `ipc2`. Use `./scripts/run.sh` to verify compatibility (`#define VALID # local trace_path="$TRACE_DIR/part_0"`).
 
-> **注意**：`part_0` 追蹤檔案不支援 `acl5` 或 `ipc2`。請使用 `./scripts/run.sh` 確認檔案相容性（`#define VALID # local trace_path="$TRACE_DIR/part_0"`）。
+> **注意**：`part_0` 追蹤檔案不支援 `acl5` 或 `ipc2`。請使用 `./tests/main.cpp` 和 `./scripts/run.sh` 確認檔案相容性（`{#define VALID} {# local trace_path="$TRACE_DIR/part_0"}`）。
 
 ---
 
@@ -259,6 +261,6 @@ This project is released under the [MIT License](LICENSE). Contributions via pul
 
 ## Contact / 聯繫
 
-For questions or contributions, please open an issue or submit a pull request on [GitHub](https://github.com/your-repo/multiple_parallel_PC).
+For questions or contributions, please open an issue or submit a pull request on [GitHub](https://github.com/JiaChangGit/multiple_parallel_PC).
 
-如有問題或欲貢獻程式碼，請在 [GitHub](https://github.com/your-repo/multiple_parallel_PC) 上開啟 Issue 或提交 Pull Request。
+如有問題或欲貢獻程式碼，請在 [GitHub](https://github.com/JiaChangGit/multiple_parallel_PC) 上開啟 Issue 或提交 Pull Request。

@@ -1,7 +1,10 @@
 #!/bin/bash
 
 ## How to use
-## bash ./scripts/per_run.sh
+# chmod +x ./scripts/per_run.sh
+# ./scripts/per_run.sh
+# Or
+# bash ./scripts/per_run.sh
 
 # acl5 cannot with part_0
 # ipc2 cannot with part_0
