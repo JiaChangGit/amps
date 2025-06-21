@@ -2,7 +2,7 @@
 
 ## HOW to use
 # chmod +x ./scripts/run.sh
-# ./scripts/run.sh
+# bash ./scripts/run.sh
 # Or
 # bash ./scripts/run.sh
 

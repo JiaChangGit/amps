@@ -3,9 +3,16 @@
 **A High-Performance, Multi-Classifier Packet Classification Framework with Latency Prediction and Complementary Optimization**
 **高效能多分類器封包分類架構，結合延遲預測與互補性最佳化**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](https://opensource.org/licenses/MIT)
+[![C++17](https://img.shields.io/badge/C++-17-green.svg)](https://isocpp.org/)
+[![Cmake](https://img.shields.io/badge/Cmake-3.12-green.svg)](https://cmake.org/)
 [![Eigen3](https://img.shields.io/badge/Eigen-3-green.svg)](http://eigen.tuxfamily.org/)
+[![OpenMP](https://img.shields.io/badge/OpenMP-green.svg)](https://www.openmp.org/)
+[![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org)
+[![Torch](https://img.shields.io/badge/Torch-2.7.1-blue.svg)](https://pytorch.org/)
+[![Ray](https://img.shields.io/badge/Ray-2.46-blue.svg)](https://www.ray.io/)
+[![Gymnasium](https://img.shields.io/badge/Gymnasium-blue.svg)](https://gymnasium.farama.org/)
+[![Docker](https://img.shields.io/badge/Docker-Optional-yellow.svg)](https://www.docker.com/)
 
 ---
 
@@ -21,15 +28,15 @@
 
 ### 1. Latency-Aware Classifier Prediction / 延遲預測導向的分類器選擇
 
-The framework employs a multidimensional linear regression model to predict query latency for each classifier (**PT-Tree**, **DBTable**, **DynamicTuple**) based on a packet's five-tuple (source IP, destination IP, source port, destination port, transport protocol). It dynamically selects the classifier with the lowest predicted latency, improving average query performance and mitigating degradation under high-variability traffic.
+The framework employs a multidimensional linear regression model (KNN model also tested) to predict query latency for each classifier (**PT-Tree**, **DBTable**, **DynamicTuple**) based on a packet's five-tuple (source IP, destination IP, source port, destination port, transport protocol). It dynamically selects the classifier predicted to have the lowest latency, thereby improving average query performance.
 
-系統利用多維線性回歸模型，根據封包的五維欄位（來源 IP、目的 IP、來源 port、目的 port、傳輸層協定），預測各分類器（**PT-Tree**、**DBTable**、**DynamicTuple**）的查詢延遲，並動態選擇延遲最小的分類器。此機制提升平均查詢效能，避免高變異度流量下的效能劣化。
+系統利用多維線性回歸模型(也有測試KNN模型)，根據封包的五維欄位（來源 IP、目的 IP、來源 port、目的 port、傳輸層協定），預測各分類器（**PT-Tree**、**DBTable**、**DynamicTuple**）的查詢延遲，並動態選擇延遲最小的分類器，從而提升平均查詢效能。
 
 ### 2. Long-Tail-Aware Filtering / 長尾封包感知式過濾機制
 
-To address high-latency tail packets, each classifier identifies packets exceeding the 99th percentile latency threshold as "slow packets". Their five-tuple signatures are stored in a **Bloom Filter**, **Cuckoo Filter**, or **Elastic Bloom Filter**. Packets matching the long-tail filters of all classifiers are routed to the stable **KSet** classifier, reducing tail latency effectively.
+To address high-latency tail packets, each classifier identifies packets exceeding the 99th percentile latency threshold as "slow packets". Their five-tuple signatures are stored in a **Bloom Filter**, **Cuckoo Filter**, or **Elastic Bloom Filter**. Packets matching the long-tail filters of all classifiers are routed to the **KSet** classifier, reducing tail latency effectively.
 
-為處理高延遲的長尾封包，每個分類器（**PT-Tree**、**DBTable**、**DynamicTuple**、**MultilayerTuple**）將超過第 99 百分位延遲門檻的封包標記為「慢封包」，並將其五維欄位簽名儲存於 **Bloom Filter**、**Cuckoo Filter** 或 **Elastic Bloom Filter** 中。若封包同時命中所有分類器的長尾過濾器，則交由穩定的 **KSet** 分類器處理，以降低長尾延遲。
+為處理高延遲的長尾封包，每個分類器（**PT-Tree**、**DBTable**、**DynamicTuple**、**MultilayerTuple**）將超過第 99 百分位延遲門檻的封包標記為「慢封包」，並將其五維欄位簽名儲存於 **Bloom Filter**、**Cuckoo Filter** 或 **Elastic Bloom Filter** 中。若封包同時命中所有分類器的長尾過濾器，則交由 **KSet** 分類器處理，以降低長尾延遲。
 
 ### 3. RL-Based Multi-Classifier Parameter Optimization / 強化學習導向的分類器參數組合選擇
 
@@ -252,12 +259,23 @@ Excerpt from `main_c_acl2.txt` (abridged):
 
 - nanoflann
 
-```plaintext
+```
 @misc{blanco2014nanoflann,
   title        = {nanoflann: a {C}++ header-only fork of {FLANN}, a library for Nearest Neighbor ({NN}) with KD-trees},
   author       = {Blanco, Jose Luis and Rai, Pranjal Kumar},
   howpublished = {\url{https://github.com/jlblancoc/nanoflann}},
   year         = {2014}
+}
+```
+
+- gymnasium
+
+```
+@article{towers2024gymnasium,
+  title={Gymnasium: A Standard Interface for Reinforcement Learning Environments},
+  author={Towers, Mark and Kwiatkowski, Ariel and Terry, Jordan and Balis, John U and De Cola, Gianluca and Deleu, Tristan and Goul{\~a}o, Manuel and Kallinteris, Andreas and Krimmel, Markus and KG, Arjun and others},
+  journal={arXiv preprint arXiv:2407.17032},
+  year={2024}
 }
 ```
 

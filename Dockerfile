@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 ## HOW to use
-# docker build -t multiple_parallel_pc .
+# sudo docker build -t multiple_parallel_pc .
 # docker run --rm -it multiple_parallel_pc
 # docker run --rm -it \
 #     -v $(pwd)/../classbench_set:/workspace/classbench_set \

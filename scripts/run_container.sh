@@ -2,7 +2,7 @@
 
 ## HOW to use
 # chmod +x ./scripts/run_container.sh
-# ./scripts/run_container.sh
+# bash ./scripts/run_container.sh
 # Or
 # bash ./scripts/run_container.sh
 

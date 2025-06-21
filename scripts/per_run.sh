@@ -2,7 +2,7 @@
 
 ## How to use
 # chmod +x ./scripts/per_run.sh
-# ./scripts/per_run.sh
+# bash ./scripts/per_run.sh
 # Or
 # bash ./scripts/per_run.sh
 
