@@ -21,7 +21,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -157,16 +159,16 @@ class CommandLineParser {
           trace_file = optarg;
           break;
         case 'b':
-          BINTH = atoi(optarg);
+          _BINTH = atoi(optarg);
           break;
         case 'e':
-          END_BOUND = atof(optarg);
+          _END_BOUND = atof(optarg);
           break;
         case 'c':
-          C_BOUND = atoi(optarg);
+          _C_BOUND = atoi(optarg);
           break;
         case 'k':
-          TOP_K = atoi(optarg);
+          _TOP_K = atoi(optarg);
           break;
         case 'f': {
           std::vector<int> tmp_in_field;
@@ -181,11 +183,11 @@ class CommandLineParser {
           std::cout << "Set pTree field: ";
           for (i = 0; i < tmp_in_field.size() - 1; ++i) {
             std::cout << tmp_in_field[i] << " ";
-            set_field.emplace_back(tmp_in_field[i]);
+            _set_field.emplace_back(tmp_in_field[i]);
           }
-          set_field.shrink_to_fit();
+          _set_field.shrink_to_fit();
           std::cout << "\nSet aTree port field: " << tmp_in_field[i] << "\n";
-          set_port = tmp_in_field[i];
+          _set_port = tmp_in_field[i];
           break;
         }
         case 't':
@@ -198,7 +200,7 @@ class CommandLineParser {
           updateFlag = true;
           break;
         case 'd':  // prefix dim for DT MT
-          prefix_dims_num = atoi(optarg);
+          _prefix_dims_num = atoi(optarg);
           break;
         case 'h':
           show_help = true;
@@ -217,9 +219,24 @@ class CommandLineParser {
   bool isSearchMode() const { return classificationFlag; }
   bool isUpdMode() const { return updateFlag; }
   bool shouldShowHelp() const { return show_help; }
-  std::vector<uint8_t> getField() const { return set_field; }
-  int getPort() const { return set_port; }
-  int getPrefixDim() const { return prefix_dims_num; }
+
+  /// @brief PT param -> get_Field(), get_Port()
+  /// @return std::vector<uint8_t>, int
+  std::vector<uint8_t> get_Field() const { return _set_field; }
+  int get_Port() const { return _set_port; }
+
+  /// @brief DBT param -> get_BINTH(), get_C_BOUND(), get_TOP_K(),
+  /// get_END_BOUND()
+  /// @return int, int, int, double
+  int get_BINTH() const { return _BINTH; }
+  int get_C_BOUND() const { return _C_BOUND; }
+  int get_TOP_K() const { return _TOP_K; }
+  double get_END_BOUND() const { return _END_BOUND; }
+
+  /// @brief DT param -> get_PrefixDim(), get_DT_threshold()
+  /// @return int, int
+  int get_PrefixDim() const { return _prefix_dims_num; }
+  int get_DT_threshold() const { return _DT_threshold; }
 
   static void printHelp(const std::string& program_name) {
     std::cout << "****************************\n";
@@ -233,6 +250,51 @@ class CommandLineParser {
     std::cout << "  -h, --help            Show this help message\n";
     std::cout << "****************************\n";
   }
+  bool load_INFO_param(const char* param_path) {
+    std::ifstream infile(param_path);
+    if (!infile.is_open()) {
+      std::cerr << "Failed to open param: " << param_path << "\n";
+      return false;
+    }
+
+    std::string line;
+    while (std::getline(infile, line)) {
+      if (line.empty()) continue;
+
+      std::istringstream iss(line);
+      std::string key;
+      if (std::getline(iss, key, '=')) {
+        std::string val_str;
+        if (std::getline(iss, val_str)) {
+          std::istringstream val_stream(val_str);
+
+          if (key == "PT_set_field") {
+            int val;
+            while (val_stream >> val) {
+              _set_field.emplace_back(val);  // 全部讀進 vector
+            }
+          } else if (key == "PT_set_port") {
+            val_stream >> _set_port;
+          } else if (key == "DBT_binth") {
+            val_stream >> _BINTH;
+          } else if (key == "DBT_end_bound") {
+            val_stream >> _END_BOUND;
+          } else if (key == "DBT_top_k") {
+            val_stream >> _TOP_K;
+          } else if (key == "DBT_c_bound") {
+            val_stream >> _C_BOUND;
+          } else if (key == "DT_threshold") {
+            val_stream >> _DT_threshold;
+          } else if (key == "DT_is_prefix_5d") {
+            int is_prefix;
+            val_stream >> is_prefix;
+            _prefix_dims_num = (is_prefix == 1) ? 5 : 2;
+          }
+        }
+      }
+    }
+    return true;
+  }
 
  private:
   const char* ruleset_file;
@@ -243,17 +305,18 @@ class CommandLineParser {
   bool updateFlag = false;
   static struct option long_options[];
   /// PT ///
-  std::vector<uint8_t> set_field;
-  int set_port = 1;
+  std::vector<uint8_t> _set_field;
+  int _set_port = 1;
   /// PT ///
   //// DBT ////
-  int TOP_K = 4;
-  double END_BOUND = 0.8;
-  int C_BOUND = 32;
-  int BINTH = 4;
+  int _TOP_K = 4;
+  double _END_BOUND = 0.8;
+  int _C_BOUND = 32;
+  int _BINTH = 32;
   //// DBT ////
   //// DT MT ////
-  int prefix_dims_num = 2;
+  int _prefix_dims_num = 2;
+  int _DT_threshold = 7;
   //// DT MT ////
 };
 

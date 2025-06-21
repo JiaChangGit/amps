@@ -15,7 +15,6 @@ class PT_Object {
   std::vector<uint8_t> set_field;
   int set_port;
   int sampleNum;
-
   std::vector<PT_Rule> rules;
   std::vector<PT_Packet> packets;
   std::vector<int> slow_Packets;
@@ -39,24 +38,6 @@ class PT_Object {
   void build_pt();  // 新增方法
   int get_set_port() const { return set_port; }
   std::vector<uint8_t> get_set_field() const { return set_field; }
-  void set_all_params(std::vector<uint8_t> tmp_in_field, int tmp_port) {
-    set_field.clear();
-    std::cout << "Set pTree field: ";
-    for (int i = 0; i < tmp_in_field.size(); ++i) {
-      std::cout << static_cast<int>(tmp_in_field[i]) << " ";
-      set_field.emplace_back(tmp_in_field[i]);
-    }
-    set_field.shrink_to_fit();
-    std::cout << "\nSet aTree port field: " << tmp_port << std::endl;
-    set_port = tmp_port;
-    /*
-    Set the pTree and aTree used fields. The last on
-    is the port setting, 0 is source port, 1 is destination port. Using 0-3 to
-    express source ip 1-4 byte and 4-7 to express destination ip 1-4 byte.
-    (Example: set_field:[4,0,1,set_port] set_port:[1])
-    */
-    build_pt();
-  }
   std::vector<int> get_slow_Packets() const { return slow_Packets; }
 };
 
@@ -67,7 +48,6 @@ class DBT_Object {
   int top_k;
   int c_bound;
   int sampleNum;
-  double slow_time;
   std::vector<DBT::Rule> rules;
   std::vector<DBT::Packet> packets;
   std::vector<int> slow_Packets;
@@ -77,16 +57,16 @@ class DBT_Object {
   //   build_dbt();
   // }
   DBT_Object(int b, double eb, int tk, int cb, std::vector<DBT::Rule>& r,
-             const std::vector<DBT::Packet>& p)
+             const std::vector<DBT::Packet>& p, const double slow_time)
       : binth(b), end_bound(eb), top_k(tk), c_bound(cb), rules(r), packets(p) {
-    build_dbt();  // 在構造時自動構建
+    build_dbt(slow_time);  // 在構造時自動構建
   }
   ~DBT_Object() {
     rules.clear();
     packets.clear();
     slow_Packets.clear();
   }
-  void build_dbt();  // 新增方法
+  void build_dbt(const double slow_time);  // 新增方法
   int get_binth() const { return binth; }
   double get_end_bound() const { return end_bound; }
   int get_top_k() const { return top_k; }
@@ -103,7 +83,6 @@ class DT_Object {
   int threshold;  // triger port_hashtable ( .use_port_hash_table=true)
   bool is_prefix_5d;
   int sampleNum;
-  double slow_time;
   std::vector<Rule_DT_MT*> rules;
   std::vector<Trace*> packets;
   std::vector<int> slow_Packets;
@@ -113,12 +92,12 @@ class DT_Object {
   //   build_dt();
   // }
   DT_Object(int th, bool is_5d, std::vector<Rule_DT_MT*>& r,
-            const std::vector<Trace*>& p)
+            const std::vector<Trace*>& p, const double slow_time)
       : threshold(th), is_prefix_5d(is_5d), rules(r), packets(p) {
-    build_dt();
+    build_dt(slow_time);
   }
   ~DT_Object();
-  void build_dt();
+  void build_dt(const double slow_time);
   int get_threshold() const { return threshold; }
   int get_is_prefix_5d() const { return is_prefix_5d; }
   void set_th(int th) { threshold = th; }
@@ -140,7 +119,7 @@ class RLGym {
   double evaluate_dbt(const PT_Object& pt_obj, const DBT_Object& dbt_obj);
   double evaluate_dt(const PT_Object& pt_obj, const DBT_Object& dbt_obj,
                      const DT_Object& dt_obj);
-  PT_Object create_pt_first();
+  PT_Object create_pt_first(std::vector<uint8_t> tmp_in_field, int tmp_port);
   DBT_Object create_dbt_first();
   DT_Object create_dt_first();
 

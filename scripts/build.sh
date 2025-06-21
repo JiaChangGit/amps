@@ -4,7 +4,7 @@
 ## chmod +x scripts/build.sh
 ## bash ./scripts/build.sh
 ### Or
-### sudo bash ./scripts/build.sh
+### bash ./scripts/build.sh
 
 # 設定變數
 BUILD_DIR="./build"

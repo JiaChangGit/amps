@@ -1,52 +1,58 @@
 # multiple_parallel_PC
 
-A High-Performance, Multi-Classifier Packet Classification Framework with Latency Prediction and Complementary Optimization
-高效能多分類器封包分類架構，結合延遲預測與互補性最佳化
+**A High-Performance, Multi-Classifier Packet Classification Framework with Latency Prediction and Complementary Optimization**
+**高效能多分類器封包分類架構，結合延遲預測與互補性最佳化**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
+[![Eigen3](https://img.shields.io/badge/Eigen-3-green.svg)](http://eigen.tuxfamily.org/)
+
+---
 
 ## Overview / 專案概觀
 
-multiple_parallel_PC is a high-performance packet classification architecture implemented in C++17 and Eigen3. It is designed for multiclassifier collaboration and supports five heterogeneous and complementary packet classification data structures: KSet, PT-Tree, DBTable, DynamicTuple, and MultilayerTuple. The core design explores multiple classifier choices through two independent mechanisms.
+`multiple_parallel_PC` is a high-performance packet classification framework implemented in C++17 with Eigen3, designed for collaborative multi-classifier systems. It integrates five heterogeneous and complementary packet classification data structures: **KSet**, **PT-Tree**, **DBTable**, **DynamicTuple**, and **MultilayerTuple**. The framework leverages two independent mechanisms—latency-aware classifier selection and long-tail packet filtering—to optimize performance under diverse network traffic conditions. A reinforcement learning (RL)-based strategy further enhances classifier complementarity through parameter optimization.
 
-multiple_parallel_PC 是一套以 C++17 與 Eigen3 實作的高效能封包分類架構，專為多分類器協同運作設計，支持五種具異質性與互補性的封包分類資料結構：KSet、PT-Tree、DBTable、DynamicTuple 及 MultilayerTuple。其核心設計透過兩個獨立機制探討多分類器選擇。
+`multiple_parallel_PC` 是一套以 C++17 與 Eigen3 實作的高效能封包分類架構，專為多分類器協同運作設計。支援五種具異質性與互補性的資料結構：**KSet**、**PT-Tree**、**DBTable**、**DynamicTuple** 及 **MultilayerTuple**。透過延遲預測導向的分類器選擇、長尾封包感知式過濾機制，以及強化學習（RL）參數最佳化策略，系統能在多樣化的網路流量下實現高效能。
+
+---
 
 ## Key Mechanisms / 核心機制
 
-#### 1. Latency-Aware Classifier Prediction / 延遲預測導向的分類器選擇
+### 1. Latency-Aware Classifier Prediction / 延遲預測導向的分類器選擇
 
-The framework employs a multidimensional linear regression model that uses a packet's five-tuple (source IP, destination IP, source port, destination port, transport protocol) to predict the query latency for each classifier (PT-Tree, DBTable, DynamicTuple). It dynamically selects the classifier with the lowest predicted latency for each packet, improving average query performance and avoiding degradation under high-variability traffic.
+The framework employs a multidimensional linear regression model to predict query latency for each classifier (**PT-Tree**, **DBTable**, **DynamicTuple**) based on a packet's five-tuple (source IP, destination IP, source port, destination port, transport protocol). It dynamically selects the classifier with the lowest predicted latency, improving average query performance and mitigating degradation under high-variability traffic.
 
-本系統利用多維線性回歸模型，以封包的五維欄位（來源 IP、目的 IP、來源 port、目的 port、傳輸層協定）為輸入，預測該封包在各分類器（PT-Tree、DBTable、DynamicTuple）的查詢延遲，並動態選擇延遲預期最小者進行分類。此動態選擇機制可即時因應封包特徵，提升平均查詢效能，避免單一分類器在高變異度流量下的效能劣化。
+系統利用多維線性回歸模型，根據封包的五維欄位（來源 IP、目的 IP、來源 port、目的 port、傳輸層協定），預測各分類器（**PT-Tree**、**DBTable**、**DynamicTuple**）的查詢延遲，並動態選擇延遲最小的分類器。此機制提升平均查詢效能，避免高變異度流量下的效能劣化。
 
+### 2. Long-Tail-Aware Filtering / 長尾封包感知式過濾機制
 
-#### 2. Long-Tail-Aware Filtering / 長尾封包感知式過濾機制
+To address high-latency tail packets, each classifier identifies packets exceeding the 99th percentile latency threshold as "slow packets". Their five-tuple signatures are stored in a **Bloom Filter**, **Cuckoo Filter**, or **Elastic Bloom Filter**. Packets matching the long-tail filters of all classifiers are routed to the stable **KSet** classifier, reducing tail latency effectively.
 
-To handle high-latency tail packets, each classifier (PT-Tree, DBTable, DynamicTuple, MultilayerTuple) identifies packets exceeding the 99th percentile query latency threshold as slow packets. These packets' five-tuple signatures are stored in a Bloom Filter, Cuckoo Filter, or Elastic Bloom Filter. If a packet matches the long-tail filters of all classifiers, indicating high query latency across them, it is routed to the stable KSet classifier to mitigate tail latency.
+為處理高延遲的長尾封包，每個分類器（**PT-Tree**、**DBTable**、**DynamicTuple**、**MultilayerTuple**）將超過第 99 百分位延遲門檻的封包標記為「慢封包」，並將其五維欄位簽名儲存於 **Bloom Filter**、**Cuckoo Filter** 或 **Elastic Bloom Filter** 中。若封包同時命中所有分類器的長尾過濾器，則交由穩定的 **KSet** 分類器處理，以降低長尾延遲。
 
-為處理高查詢延遲的長尾封包（tail packets），每個分類器（PT-Tree、DBTable、DynamicTuple、MultilayerTuple）根據查詢行為特徵，將超過第 99 百分位查詢延遲門檻的封包識別為 slow packets，並將其五維欄位構成 signature，插入對應的 Bloom Filter、Cuckoo Filter 或 Elastic Bloom Filter。若某封包同時命中所有分類器的長尾過濾器，則表示其查詢延遲均偏高，此時會交由效能穩定的 KSet 處理，以降低長尾延遲。
+### 3. RL-Based Multi-Classifier Parameter Optimization / 強化學習導向的分類器參數組合選擇
 
+A three-stage reinforcement learning (RL) strategy optimizes classifier parameter configurations to maximize complementarity:
 
-#### 3. RL-Based Multi-Classifier Parameter Optimization / 強化學習導向的分類器參數組合選擇
+- **First Classifier**: The RL agent selects the best-performing classifier based on 99th percentile latency.
+- **Second Classifier**: The agent minimizes the intersection of slow packets (exceeding P99 latency) between the first and second classifiers, ensuring high complementarity.
+- **Third Classifier**: Extends the strategy to exclude slow packets from both prior classifiers, selecting a third classifier with minimal overlap.
 
-To enhance classifier complementarity, a three-stage reinforcement learning (RL) search strategy optimizes parameter configurations:
+Current implementation order: **PT-Tree → DBTable → DynamicTuple**. Future extensions can adjust ordering and combinations.
 
-First Classifier: The RL agent evaluates the 99th percentile latency to select the best-performing classifier.
+為提升分類器互補性，系統採用三階段強化學習（RL）搜尋策略最佳化參數配置：
+- **第一分類器**：以第 99 百分位延遲為指標，選出最佳主分類器。
+- **第二分類器**：針對第一分類器的慢封包（超過 P99 延遲），選擇與其慢封包交集最小的第二分類器，確保高互補性。
+- **第三分類器**：排除前兩分類器的慢封包，選擇與其交集最小的第三分類器。
 
-Second Classifier: Slow packets from the first classifier (exceeding P99 latency) are identified. The RL agent selects the second classifier by minimizing the intersection of slow packets with the first classifier, ensuring high complementarity.
+目前實作順序為 **PT-Tree → DBTable → DynamicTuple**，未來可拓展排序與組合。
 
-Third Classifier: Extends the strategy to exclude slow packets from both prior classifiers, selecting the third classifier with minimal intersection for optimal complementarity.Current implementation order: PT-Tree → DBTable → DynamicTuple. Future extensions can adjust ordering and combinations.
-
-為提升分類器參數組合的互補性，本架構導入三階段強化學習（RL）搜尋策略：
-
-第一分類器：以查詢延遲第 99 百分位為指標，RL agent 探索所有參數設定，挑選延遲表現最優者作為主分類器。
-
-第二分類器：將第一分類器查詢延遲高於 P99 門檻的 slow packets 視為需互補區間，根據第二分類器的 slow packets 記錄進行交集排除，產生 diff_first_vector。向量越小，互補性越高，作為 RL agent 的 reward signal，選出最佳第二參數。
-
-第三分類器：排除第一與第二分類器皆不擅長的 slow packets，與第三分類器的 slow packets 進行交集運算，得出 diff_second_vector。向量越小，互補效果越好，適合作為第三分類器。目前實作順序為 PT-Tree → DBTable → DynamicTuple，未來可依需求拓展排序與組合。
-
+---
 
 ## Directory Structure / 目錄結構
 
-```
+```plaintext
 multiple_parallel_PC                      //
 ├─ .editorconfig                          //
 ├─ .mailmap                               //
@@ -54,17 +60,10 @@ multiple_parallel_PC                      //
 ├─ INFO                                   //
 │  ├─ BloomResults.txt                    //
 │  ├─ DBT_IndivResults.txt                //
-│  ├─ DBT_buckets.txt                     //
-│  ├─ DBT_nodes.txt                       //
-│  ├─ DBT_prediction_3_result.txt         //
 │  ├─ DT_IndivResults.txt                 //
-│  ├─ DT_prediction_3_result.txt          //
 │  ├─ KSet_IndivResults.txt               //
-│  ├─ KSet_prediction_3_result.txt        //
 │  ├─ MT_IndivResults.txt                 //
-│  ├─ MT_prediction_3_result.txt          //
 │  ├─ PT_IndivResults.txt                 //
-│  ├─ PT_prediction_3_result.txt          //
 │  ├─ Total_knn_result.txt                //
 │  ├─ Total_model_11_result.txt           //
 │  ├─ Total_model_3_result.txt            //
@@ -77,12 +76,9 @@ multiple_parallel_PC                      //
 ├─ LICENSE                                //
 ├─ README.md                              //
 ├─ build                                  //
-│  ├─ main_c_acl1.txt                     //
-│  ├─ main_c_acl2.txt                     //
 │  ├─ src                                 //
 │  └─ tests                               //
 │     └─ main                             //
-├─ file_structure                         //
 ├─ include                                //
 │  ├─ DBT                                 //
 │  │  ├─ DBT_core.hpp                     //
@@ -151,99 +147,118 @@ multiple_parallel_PC                      //
 │  └─ elementary_DT_MT.cpp                //
 └─ tests                                  //
    ├─ CMakeLists.txt                      //
-   ├─ checkpoints                         //
-   │  ├─ algorithm_state.pkl              //
-   │  ├─ policies                         //
-   │  │  └─ default_policy                //
-   │  │     ├─ policy_state.pkl           //
-   │  │     └─ rllib_checkpoint.json      //
-   │  └─ rllib_checkpoint.json            //
    ├─ main.cpp                            //
-   ├─ ray_results                         //
-   │  └─ ppo_tensorboard                  //
-   │     ├─ params.json                   //
-   │     ├─ params.pkl                    //
-   │     ├─ progress.csv                  //
-   │     └─ result.json                   //
    ├─ rl_environment.py                   //
    ├─ rl_gym.cpp                          //
    └─ train.py                            //
-../
+../                               // 上一層資料夾
 ../classbench_set/ipv4-ruleset/acl1_100k     //
 ../classbench_set/ipv4-trace/acl1_100k_trace //
+../classbench_set/ipv4-trace/part_0 //
 ```
+
+---
 
 ## Build & Run / 編譯與執行
 
-#### Prerequisites / 先備套件
+### Prerequisites / 先備套件
 
+Install the required dependencies on a Linux system (e.g., Ubuntu):
+
+```bash
 sudo apt-get update
+sudo apt-get install -y build-essential cmake libeigen3-dev libomp-dev python3-dev python3-pip git pybind11-dev
+pip3 install --upgrade pip
 
-sudo apt-get install -y build-essential cmake libeigen3-dev libomp-dev
+pip3 install pybind11
+# -I/home/user/.local/lib/python3.10/site-packages/pybind11/include -I/usr/include/python3.10
+python3 -m pybind11 --includes
 
-## One-Shot Script / 一鍵執行
+pip3 install gymnasium
+# check
+python3 -c "import gymnasium; print(gymnasium.__version__)"
 
-#### In the project root directory
+pip3 install "ray[rllib]" torch
+# check
+python3 -c "import ray; print(ray.__version__)"
 
-sudo bash ./scripts/run.sh
+pip3 install numpy
 
-EnglishThis script auto-detects CPU instruction sets, enables -march=native -O3 -flto and BMI2/AVX2 options, builds the project, runs default benchmarks, and outputs results.
+# check
+pip3 list | grep -E "pybind11|gymnasium|ray|torch|numpy"
+# gymnasium                    1.0.0
+# numpy                        2.1.3
+# pybind11                     2.13.6
+# ray                          2.46.0
+# torch                        2.7.1
 
-中文此腳本自動偵測 CPU 指令集，啟用 -march=native -O3 -flto 及 BMI2/AVX2 選項，完成建置後執行預設基準測試並輸出結果。
+# Python 3.10.12
+```
 
-Noticepart_0 cannot use acl5 or ipc2. Use ./scripts/run.sh to verify if the trace file is compatible (#define VALID # local trace_path="$TRACE_DIR/part_0").您可以使用 ./scripts/run.sh 確認 trace file 是否可用 (#define VALID # local trace_path="$TRACE_DIR/part_0")。
+### One-Shot Script / 一鍵執行
+
+Run the following command in the project root directory to build and execute benchmarks:
+
+```bash
+bash ./scripts/run.sh
+# Or
+bash ./scripts/per_run.sh
+# acl5 cannot with part_0
+# ipc2 cannot with part_0
+```
+
+- **English**: This script auto-detects CPU instruction sets, enables `-march=native -O3 -flto` and BMI2/AVX2 options, builds the project, runs default benchmarks, and outputs results.
+- **中文**: 此腳本自動偵測 CPU 指令集，啟用 `-march=native -O3 -flto` 及 BMI2/AVX2 選項，完成建置後執行預設基準測試並輸出結果。
+
+> **Note**: The `part_0` trace file is incompatible with `acl5` or `ipc2`. Use `./scripts/run.sh` to verify compatibility (`#define VALID # local trace_path="$TRACE_DIR/part_0"`).
+
+> **注意**：`part_0` 追蹤檔案不支援 `acl5` 或 `ipc2`。請使用 `./scripts/run.sh` 確認檔案相容性（`#define VALID # local trace_path="$TRACE_DIR/part_0"`）。
+
+---
 
 ## Performance Evaluation / 效能評估指標
 
-#### Metric / 指標
+### Metrics / 指標
 
-###### Definition / 定義
+| Metric            | Definition / 定義                          |
+|-------------------|--------------------------------------------|
+| **Construction Time** | Time to build classifier (ms) / 建構分類器所需時間 (ms) |
+| **Lookup Time**   | Time to search (ns) / 查詢時間 (ns)        |
+| **Memory Usage**  | Memory footprint (MB) / 記憶體占用 (MB)    |
 
-Construction Time
+- **English**: Benchmark results are exported as text reports for further analysis.
+- **中文**: 測試結果以文字報表形式輸出，方便後續分析。
 
-Time to build classifier (ms) / 建構分類器所需時間 (ms)
+### Sample Result / 範例結果
 
+Excerpt from `main_c_acl2.txt` (abridged):
 
-Lookup time
+```
+[Omitted for brevity;]
+```
 
-Time to search (ns) / 查詢時間 (ns)
-
-
-Memory Usage
-
-Memory footprint (MB) / 記憶體占用 (MB)
-
-
-EnglishBenchmark results are exported as text reports for further analysis.
-
-中文測試結果以 txt 格式輸出，方便後續分析。
-
-## Result / 結果
-
-main_c_acl2.txt (abridged):
-
-[Omitted for brevity; refer to the file for full details]
-
+---
 
 ## References / 參考文獻
 
-Y.-K. Chang et al. "Efficient Hierarchical Hash-Based Multi-Field Packet Classification With Fast Update for Software Switches," IEEE Access, vol. 13, pp. 28962‑28978, 2025.
+- Y.-K. Chang et al., "Efficient Hierarchical Hash-Based Multi-Field Packet Classification With Fast Update for Software Switches," *IEEE Access*, vol. 13, pp. 28962-28978, 2025.
+- Z. Liao et al., "PT-Tree: A Cascading Prefix Tuple Tree for Packet Classification in Dynamic Scenarios," *IEEE/ACM Transactions on Networking*, vol. 32, no. 1, pp. 506-519, 2024.
+- Z. Liao et al., "DBTable: Leveraging Discriminative Bitsets for High-Performance Packet Classification," *IEEE/ACM Transactions on Networking*, vol. 32, no. 6, pp. 5232-5246, 2024.
+- C. Zhang, G. Xie, X. Wang, "DynamicTuple: The Dynamic Adaptive Tuple for High-Performance Packet Classification," *Computer Networks*, vol. 202, 2022.
+- C. Zhang, G. Xie, "MultilayerTuple: A General, Scalable and High-Performance Packet Classification Algorithm for SDN," *IFIP Networking*, 2021.
 
-Z. Liao et al. "PT‑Tree: A Cascading Prefix Tuple Tree for Packet Classification in Dynamic Scenarios," IEEE/ACM Transactions on Networking, vol. 32, no. 1, pp. 506‑519, 2024.
-
-Z. Liao et al. "DBTable: Leveraging Discriminative Bitsets for High‑Performance Packet Classification," IEEE/ACM Transactions on Networking, vol. 32, no. 6, pp. 5232‑5246, 2024.
-
-C. Zhang, G. Xie, X. Wang. "DynamicTuple: The Dynamic Adaptive Tuple for High‑Performance Packet Classification," Computer Networks, vol. 202, 2022.
-
-C. Zhang, G. Xie. "MultilayerTuple: A General, Scalable and High‑Performance Packet Classification Algorithm for SDN," IFIP Networking, 2021.
-
+---
 
 ## License / 授權
 
-EnglishReleased under the MIT License. Contributions via pull requests are welcome!
+This project is released under the [MIT License](LICENSE). Contributions via pull requests are welcome!
 
-中文本專案採用 MIT 授權，歡迎提交 Pull Request 共同參與開發！
+本專案採用 [MIT 授權](LICENSE)，歡迎透過 Pull Request 參與開發！
 
+---
 
-EnglishFor more details, refer to the source code and scripts in this repository.**中文詳細內容請參考本專案原始碼與腳本。
+## Contact / 聯繫
 
+For questions or contributions, please open an issue or submit a pull request on [GitHub](https://github.com/your-repo/multiple_parallel_PC).
+
+如有問題或欲貢獻程式碼，請在 [GitHub](https://github.com/your-repo/multiple_parallel_PC) 上開啟 Issue 或提交 Pull Request。

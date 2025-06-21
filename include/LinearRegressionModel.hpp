@@ -179,6 +179,10 @@ double computePercentile(const Eigen::VectorXd &v, double p) {
   // assert(p >= 0.0 && p <= 1.0 && "百分位數 p 必須介於 0.0 與 1.0 之間");
 
   // 將 Eigen 向量轉為 std::vector 以便排序
+  if (v.array().hasNaN()) {
+    std::cerr << "Error: Data contains NaN\n";
+    return 0.0;  // 或其他處理
+  }
   std::vector<double> data(v.data(), v.data() + n);
   std::sort(data.begin(), data.end());  // 遞增排序
 
@@ -243,6 +247,8 @@ std::tuple<double, double, double, double, double> printStatistics(
   std::cout << "|--- " << label << " 75th Percentile: " << p75 << "\n";
   std::cout << "|--- " << label << " 95th Percentile: " << p95 << "\n";
   std::cout << "|--- " << label << " 99th Percentile: " << p99 << "\n";
+  std::cout << "|--- " << label << " Max: " << data.maxCoeff() << "\n";
+  // std::cout << "|--- " << label << " Min: " << data.minCoeff() << "\n";
   std::cout << "|--- " << label << " StdDev: " << stddev << " (dispersity)"
             << "\n";
 

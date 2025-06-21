@@ -1,15 +1,18 @@
 #!/bin/bash
 
 ## How to use
-## chmod +x scripts/per_run.sh
 ## bash ./scripts/per_run.sh
-### Or
-### sudo bash ./scripts/per_run.sh
 
-# 設定變數
+# acl5 cannot with part_0
+# ipc2 cannot with part_0
+
+set -e
+set -o pipefail
+
 BUILD_DIR="./build"
 TEST_MAIN_EXEC="$BUILD_DIR/tests/main"
-
+TIMESTAMP=$(date +"%m%d_%H%M%S")
+# ✅ 單一資料集（可切換）
 # RULESET_PATH="../classbench_set/ipv4-ruleset/acl1_1k"
 # TRACE_PATH="../classbench_set/ipv4-trace/acl1_1k_trace"
 
@@ -52,40 +55,40 @@ TRACE_PATH="../classbench_set/ipv4-trace/acl2_100k_trace"
 ###
 # TRACE_PATH="../classbench_set/ipv4-trace/part_0"
 
-# 檢查並建立 build 目錄（如果不存在）
+# 檢查與建構
 if [ ! -d "$BUILD_DIR" ]; then
-    echo "Build directory not found. Creating one..."
+    echo "Build directory not found. Creating..."
     mkdir -p "$BUILD_DIR"
 fi
 
-# 檢查並執行 build.sh 來編譯
 if [ ! -f "$TEST_MAIN_EXEC" ]; then
-    echo "Test executable not found. Building the project..."
+    echo "Test executable not found. Building project..."
     chmod +x scripts/build.sh
     ./scripts/build.sh
 fi
 
-# 確保測試執行檔存在
-if [ ! -f "$TEST_MAIN_EXEC" ]; then
-    echo "Error: Test executable still not found after build. Exiting."
-    exit 1
-fi
-
-# 確保規則集與測試資料存在
 if [ ! -f "$RULESET_PATH" ] || [ ! -f "$TRACE_PATH" ]; then
     echo "Error: Ruleset or trace file not found!"
     exit 1
 fi
 
-# 執行測試
+RULESET_BASENAME=$(basename "$RULESET_PATH")  # e.g., acl2_100k
+OUTPUT_FILE="${TEST_MAIN_EXEC}_${RULESET_BASENAME}.txt"
+
+# 訓練與推論
 ulimit -s 81920
+echo "[param] Running RL: ${RULESET_BASENAME}"
+python3 ./tests/train.py --rules "$RULESET_PATH" --trace "$TRACE_PATH"
 
-echo "Running tests..."
-"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_acl2.txt
-# echo "Running Again..."
-# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_acl1.txt
+# 執行分類器測試
+echo "[run] Running C++ classifier on $RULESET_BASENAME ..."
+"$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s > "$OUTPUT_FILE"
 
-# echo "Running tests..."
-# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_ipc1.txt
-# echo "Running Again..."
-# "$TEST_MAIN_EXEC" -r "$RULESET_PATH" -p "$TRACE_PATH" -s >  "$TEST_MAIN_EXEC"_part0_ipc1.txt
+mkdir -p "./Results/$TIMESTAMP"
+echo "[CP] Copy ./INFO/*.txt ..."
+cp ./INFO/*.txt "./Results/$TIMESTAMP"
+
+echo "[CP] Copy $OUTPUT_FILE ..."
+cp "$OUTPUT_FILE" "./Results/$TIMESTAMP"
+
+echo "[done] Output saved to: $OUTPUT_FILE and ./Results/$TIMESTAMP"

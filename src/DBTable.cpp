@@ -1,5 +1,8 @@
 #include "DBT_core.hpp"
-
+int DBT::TOP_K = 4;
+double DBT::END_BOUND = 0.8;
+int DBT::C_BOUND = 32;
+int DBT::BINTH = 4;
 namespace DBT {
 uint64_t check_hash_cost = 5;
 uint64_t check_group_cost = 2;

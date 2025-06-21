@@ -2,8 +2,11 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,c++,cmake,visualstudio,visualstudiocode,powershell,git
 
 *.Identifier
-#INFO/*.txt
+INFO/*.txt
 #git update-index --assume-unchanged ./INFO/*.txt
+ray_results/*
+checkpoints/*
+Results/*/
 third_party/*
 # 忽略 tests 目錄下的 .so 檔案（僅限 tests 根層）
 tests/*.so

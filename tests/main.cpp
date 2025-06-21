@@ -23,10 +23,6 @@
 
 ///////// DBT /////////
 #include "DBT_core.hpp"
-int DBT::TOP_K = 4;
-double DBT::END_BOUND = 0.8;
-int DBT::C_BOUND = 32;
-int DBT::BINTH = 4;
 uint32_t DBT::maskBit[33] = {
     0,          0x80000000, 0xC0000000, 0xE0000000, 0xF0000000, 0xF8000000,
     0xFC000000, 0xFE000000, 0xFF000000, 0xFF800000, 0xFFC00000, 0xFFE00000,
@@ -46,7 +42,7 @@ uint32_t DBT::getBit[32] = {
 
 using namespace std;
 
-// #define VALID
+#define VALID
 // #define SAMPLE
 #define THREAD_NUM
 #define BIAS
@@ -79,6 +75,8 @@ using namespace std;
 
 // constexpr const char *LoadRule_test_path = "./INFO/loadRule_test.txt";
 // constexpr const char *LoadPacket_test_path = "./INFO/loadPacket_test.txt";
+constexpr const char *param_path = "./INFO/param.txt";
+
 // 靜態成員初始化
 struct option CommandLineParser::long_options[] = {
     {"ruleset", required_argument, NULL, 'r'},
@@ -624,8 +622,8 @@ void split_sample_test(vector<Packet> &data, vector<Packet> &sample,
 #endif
 /////////////////
 int main(int argc, char *argv[]) {
-  ios::sync_with_stdio(false);
-  cin.tie(nullptr);
+  // ios::sync_with_stdio(false);
+  // cin.tie(nullptr);
 
   CommandLineParser parser;
   parser.parseArguments(argc, argv);
@@ -650,6 +648,9 @@ int main(int argc, char *argv[]) {
   //   inputFile_test.loadPacket_test(packets, LoadPacket_test_path);
   //   cout << "Input packet test time(ns): " << timerTest.elapsed_ns() << "\n";
   // }
+  if (parser.load_INFO_param(param_path)) {
+    cout << "...Using RL to get params\n";
+  }
   const size_t number_rule = rule.size();
   cout << "The number of rules = " << number_rule << "\n";
 #ifdef SAMPLE
@@ -695,27 +696,21 @@ int main(int argc, char *argv[]) {
   auto &PT_samples = PT_packets;
 #endif
 
+  // PT construct
+  cout << ("\n**************** Construction(PT) ****************\n");
   setmaskHash();
-
   // search config
-  vector<uint8_t> set_field = parser.getField();
-  int set_port = parser.getPort();
+  vector<uint8_t> set_field = parser.get_Field();
+  int set_port = parser.get_Port();
   if (set_field.size() == 0) {
     timer.timeReset();
     CacuInfo cacu(PT_rules);
     cacu.read_fields();
     set_field = cacu.cacu_best_fields();
     set_port = 1;
-
     cout << "\nPT search config time: " << timer.elapsed_s() << " s" << "\n";
   }
-  for (size_t i = 0; i < set_field.size(); ++i)
-    cout << static_cast<int>(set_field[i]) << " ";
   PTtree tree(set_field, set_port);
-
-  // insert
-  // PT construct
-  cout << ("\n**************** Construction(PT) ****************\n");
   cout << "\nStart build for single thread...\n|- Using fields:     ";
   for (unsigned int x : set_field) cout << x << ",";
   cout << set_port << "\n";
@@ -738,12 +733,16 @@ int main(int argc, char *argv[]) {
 #else
   auto &DBT_samples = DBT_packets;
 #endif
-  cout << "binth=" << DBT::BINTH << " th_b=" << DBT::END_BOUND
-       << " K=" << DBT::TOP_K << " th_c=" << DBT::C_BOUND << "\n"
-       << "\n";
-  DBT::DBTable dbt(DBT_rules, DBT::BINTH);
+
   // DBT construct
-  cout << ("**************** Construction(DBT) ****************\n");
+  cout << ("\n**************** Construction(DBT) ****************\n");
+  DBT::BINTH = parser.get_BINTH();
+  DBT::END_BOUND = parser.get_END_BOUND();
+  DBT::TOP_K = parser.get_TOP_K();
+  DBT::C_BOUND = parser.get_C_BOUND();
+  cout << "binth=" << DBT::BINTH << " th_b=" << DBT::END_BOUND
+       << " K=" << DBT::TOP_K << " th_c=" << DBT::C_BOUND << "\n";
+  DBT::DBTable dbt(DBT_rules, DBT::BINTH);
   timer.timeReset();
   dbt.construct();
   cout << "Construction Time: " << timer.elapsed_ns() << " ns\n";
@@ -815,12 +814,19 @@ int main(int argc, char *argv[]) {
 #else
   auto &DT_MT_samples = traces_DT_MT;
 #endif
-  // if (command.prefix_dims_num == 5) rules_DT_MT =
-  // RulesPortPrefix(rules_DT_MT, true);
+
   cout << ("**************** Construction(DT) ****************\n");
+  if (parser.get_PrefixDim() == 5) {
+    cout << "...Using 5D to build DT and MT\n";
+    rules_DT_MT = RulesPortPrefix(rules_DT_MT, true);
+  }
   DynamicTuple dynamictuple;
-  dynamictuple.use_port_hash_table = 1;
-  dynamictuple.threshold = 7;
+  if (0 > parser.get_DT_threshold()) {
+    dynamictuple.use_port_hash_table = false;
+  } else {
+    dynamictuple.use_port_hash_table = true;
+    dynamictuple.threshold = parser.get_DT_threshold();
+  }
   timer.timeReset();
   dynamictuple.Create(rules_DT_MT, true);
   cout << "\tConstruction time: " << timer.elapsed_ns() << " ns\n";
@@ -2507,8 +2513,8 @@ int main(int argc, char *argv[]) {
       cout << "    KNN_acc (%): " << 100 * KNN_acc / (packetNum * 1.0) << "\n";
       cout << "    KNN_fail (%): " << 100 * KNN_fail / (packetNum * 1.0)
            << "\n";
-      cout << "    KNN_oth (%): " << 100 * KNN_oth / (packetNum * 1.0) << "\n";
-      cout << "**************** KNN(Acc and Fail) ****************\n";
+      cout << "    KNN_oth (%): " << 100 * KNN_oth / (packetNum * 1.0)
+           << "\n\n";
     }
     //// KNN ACC
 
@@ -3089,7 +3095,8 @@ int main(int argc, char *argv[]) {
             DBT_match_id_arr[i] != PT_match_id_arr[i] ||
             DT_match_id_arr[i] != PT_match_id_arr[i] ||
             MT_match_id_arr[i] != PT_match_id_arr[i])
-          cout << i << "-th WRONG\n";
+          cerr << i << "-th WRONG\n";
+        break;
       }
 #endif
       // free

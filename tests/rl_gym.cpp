@@ -18,10 +18,6 @@ using namespace std;
 
 ///////// DBT /////////
 #include "DBT_core.hpp"
-int DBT::TOP_K = 4;
-double DBT::END_BOUND = 0.8;
-int DBT::C_BOUND = 32;
-int DBT::BINTH = 4;
 uint32_t DBT::maskBit[33] = {
     0,          0x80000000, 0xC0000000, 0xE0000000, 0xF0000000, 0xF8000000,
     0xFC000000, 0xFE000000, 0xFF000000, 0xFF800000, 0xFFC00000, 0xFFE00000,
@@ -283,14 +279,15 @@ void PT_Object::build_pt() {
   // }
   auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
       printStatistics("PT", PT_y);
-  slow_time = per95_PT;
+  slow_time = per99_PT;
   slow_Packets.clear();
+  slow_Packets.reserve(sampleNum / 10);
   for (size_t i = 0; i < sampleNum; ++i) {
     if (PT_y(i) >= slow_time) slow_Packets.emplace_back(i);
   }
   slow_Packets.shrink_to_fit();
 }
-void DBT_Object::build_dbt() {
+void DBT_Object::build_dbt(const double slow_time) {
   sampleNum = packets.size();
   if (0 >= sampleNum) std::cerr << "\nDBT build WRONG(0 >= sampleNum)!!\n";
   DBT::TOP_K = top_k;
@@ -320,16 +317,15 @@ void DBT_Object::build_dbt() {
   // for (size_t i = 0; i < sampleNum; ++i) {
   //   DBT_y(i) = (DBT_y(i) / 2.0);
   // }
-  auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
-      printStatistics("DBT", DBT_y);
-  slow_time = per95_DBT;
+  printStatistics("DBT", DBT_y);
   slow_Packets.clear();
+  slow_Packets.reserve(sampleNum / 10);
   for (size_t i = 0; i < sampleNum; ++i) {
-    if (DBT_y(i) >= slow_time) slow_Packets.emplace_back(i);
+    if (DBT_y(i) >= (slow_time)) slow_Packets.emplace_back(i);
   }
   slow_Packets.shrink_to_fit();
 }
-void DT_Object::build_dt() {
+void DT_Object::build_dt(const double slow_time) {
   sampleNum = packets.size();
   if (0 >= sampleNum) std::cerr << "\nDT build WRONG(0 >= sampleNum)!!\n";
   if (is_prefix_5d == true) rules = RulesPortPrefix(rules, true);
@@ -357,12 +353,11 @@ void DT_Object::build_dt() {
   // for (size_t i = 0; i < sampleNum; ++i) {
   //   DT_y(i) = (DT_y(i) / 2.0);
   // }
-  auto [mean_DT, median_DT, per75_DT, per95_DT, per99_DT] =
-      printStatistics("DT", DT_y);
-  slow_time = per95_DT;
+  printStatistics("DT", DT_y);
   slow_Packets.clear();
+  slow_Packets.reserve(sampleNum / 10);
   for (size_t i = 0; i < sampleNum; ++i) {
-    if (DT_y(i) >= slow_time) slow_Packets.emplace_back(i);
+    if (DT_y(i) >= (slow_time)) slow_Packets.emplace_back(i);
   }
   slow_Packets.shrink_to_fit();
   dynamictuple.Free(false);  // JIA
@@ -446,7 +441,7 @@ DBT_Object RLGym::create_dbt_object(int binth, double end_bound, int top_k,
   //   cout << "adjusted_c_bound = 64\n";
   // }
   return DBT_Object(adjusted_binth, adjusted_end_bound, adjusted_top_k,
-                    adjusted_c_bound, dbt_rules, dbt_packets);
+                    adjusted_c_bound, dbt_rules, dbt_packets, pt_obj.slow_time);
 }
 
 DT_Object RLGym::create_dt_object(int threshold, bool is_prefix_5d,
@@ -466,7 +461,7 @@ DT_Object RLGym::create_dt_object(int threshold, bool is_prefix_5d,
   //   cout << "adjusted_threshold = 32\n";
   // }
   return DT_Object(adjusted_threshold, adjusted_is_prefix_5d, dt_rules,
-                   dt_packets);
+                   dt_packets, pt_obj.slow_time);
 }
 
 double RLGym::evaluate_pt(const PT_Object& pt_obj) {
@@ -491,20 +486,19 @@ void RLGym::load_KSet_rule_packets(const char* rule_filename,
     cerr << "\n0 >= KSet_packets size WRONG!!\n";
 }
 
-PT_Object RLGym::create_pt_first() {
+PT_Object RLGym::create_pt_first(std::vector<uint8_t> tmp_in_field,
+                                 int tmp_port) {
   if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
   auto pt_rules = convertToPTRules(this->KSet_rule);
   auto pt_packets = convertToPTPackets(this->KSet_packets);
-  std::vector<uint8_t> set_field;
-  int set_port;
-  if (set_field.size() == 0) {
+  if (tmp_in_field.size() == 0) {
     // CacuInfo cacu(pt_rules);
     // cacu.read_fields();
-    // set_field = cacu.cacu_best_fields();
-    set_field = {4, 0, 1};
-    set_port = 1;
+    // tmp_in_field = cacu.cacu_best_fields();
+    tmp_in_field = {4, 0, 1};
+    tmp_port = 1;
   }
-  return PT_Object(set_field, set_port, pt_rules, pt_packets);
+  return PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
 }
 
 DBT_Object RLGym::create_dbt_first() {
@@ -515,7 +509,8 @@ DBT_Object RLGym::create_dbt_first() {
   if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
   auto dbt_rules = convertToDBTRules(this->KSet_rule);
   auto dbt_packets = convertToDBTPackets(this->KSet_packets);
-  return DBT_Object(binth, end_bound, top_k, c_bound, dbt_rules, dbt_packets);
+  return DBT_Object(binth, end_bound, top_k, c_bound, dbt_rules, dbt_packets,
+                    30);
 }
 
 DT_Object RLGym::create_dt_first() {
@@ -524,7 +519,7 @@ DT_Object RLGym::create_dt_first() {
   if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
   auto dt_rules = convertRules_KSetToDTMT(this->KSet_rule);
   auto dt_packets = convertPackets_KSet2DTMT(this->KSet_packets);
-  return DT_Object(threshold, is_prefix_5d, dt_rules, dt_packets);
+  return DT_Object(threshold, is_prefix_5d, dt_rules, dt_packets, 30);
 }
 
 // pybind11 綁定
@@ -534,13 +529,12 @@ PYBIND11_MODULE(rl_gym, m) {
       .def(py::init<std::vector<uint8_t>, int, std::vector<PT_Rule>&,
                     const std::vector<PT_Packet>&>())
       .def("get_set_port", &PT_Object::get_set_port)
-      .def("get_set_field", &PT_Object::get_set_field)
-      .def("set_all_params", &PT_Object::set_all_params);
+      .def("get_set_field", &PT_Object::get_set_field);
 
   py::class_<DBT_Object>(m, "DBT_Object")
       //.def(py::init<>())
       .def(py::init<int, double, int, int, std::vector<DBT::Rule>&,
-                    const std::vector<DBT::Packet>&>())
+                    const std::vector<DBT::Packet>&, const double>())
       .def("get_binth", &DBT_Object::get_binth)
       .def("get_end_bound", &DBT_Object::get_end_bound)
       .def("get_top_k", &DBT_Object::get_top_k)
@@ -553,7 +547,7 @@ PYBIND11_MODULE(rl_gym, m) {
   py::class_<DT_Object>(m, "DT_Object")
       //.def(py::init<>())
       .def(py::init<int, bool, std::vector<Rule_DT_MT*>&,
-                    const std::vector<Trace*>&>())
+                    const std::vector<Trace*>&, const double>())
       .def("get_threshold", &DT_Object::get_threshold)
       .def("get_is_prefix_5d", &DT_Object::get_is_prefix_5d)
       .def("set_th", &DT_Object::set_th)

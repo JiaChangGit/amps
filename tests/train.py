@@ -12,23 +12,18 @@ os.environ["PYTHONWARNINGS"] = "ignore::DeprecationWarning"
 # 抑制 TensorFlow 日誌（僅在需要 TensorFlow 時保留）
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
+# ============================ [解析終端參數] ============================
+import argparse
+parser = argparse.ArgumentParser(description="RL PPO Training for Packet Classifier")
+parser.add_argument("--rules", required=True, help="Path to ruleset file")
+parser.add_argument("--trace", required=True, help="Path to packet trace file")
+args = parser.parse_args()
+
 # ============================ [必要套件導入] ============================
 import ray
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.tune.registry import register_env
 from rl_environment import ComplementaryObjectsEnv
-
-# ============================ [驗證環境與註冊] ============================
-try:
-    # 測試環境是否可正確初始化
-    test_env = ComplementaryObjectsEnv(
-        set_field_dim=3, max_binth=32, max_top_k=8,
-        max_c_bound=64, max_threshold=32
-    )
-    logging.info("✅ 自定義環境初始化成功")
-except Exception as e:
-    logging.error(f"❌ 自定義環境初始化失敗：{e}")
-    exit(1)
 
 # 註冊自定義環境，供 RLlib 使用
 register_env("ComplementaryObjectsEnv", lambda cfg: ComplementaryObjectsEnv(**cfg))
@@ -51,7 +46,6 @@ except Exception as e:
     exit(1)
 
 # ============================ [PPO 訓練設定] ============================
-
 config = PPOConfig()\
     .environment(
         env="ComplementaryObjectsEnv",
@@ -60,12 +54,14 @@ config = PPOConfig()\
             "max_binth": 32,
             "max_top_k": 8,
             "max_c_bound": 64,
-            "max_threshold": 32
+            "max_threshold": 32,
+            "rules_file": args.rules,
+            "packets_file": args.trace
         }
     )\
     .framework("torch")\
     .resources(num_gpus=0)\
-    .env_runners(num_env_runners=8)\
+    .env_runners(num_env_runners=2)\
     .training(
         lr=3e-4,
         train_batch_size=128,
@@ -75,16 +71,15 @@ config = PPOConfig()\
         enable_rl_module_and_learner=False,
         enable_env_runner_and_connector_v2=False
     )\
-    .experimental(_disable_preprocessor_api=True)  # ✅ 合法呼叫，放在最後面
+    .experimental(_disable_preprocessor_api=True)
 
-# ✅ 設定 TensorBoard logger
+# 設定 TensorBoard logger
 config.logger_config = {
     "type": "ray.tune.logger.UnifiedLogger",
     "logdir": log_dir,
 }
 
 # ============================ [建立 PPO 演算法實例] ============================
-
 try:
     algorithm = config.build()
 except Exception as e:
@@ -93,8 +88,7 @@ except Exception as e:
     exit(1)
 
 # ============================ [訓練流程（多輪）] ============================
-
-for i in range(8):
+for i in range(2):
     try:
         result = algorithm.train()
         print(f"\n[訓練迭代 {result['training_iteration']}]")
@@ -102,9 +96,7 @@ for i in range(8):
         print(f"❌ 訓練失敗：{e}")
         break
 
-
 # ============================ [儲存 PPO 模型 checkpoint] ============================
-
 checkpoint_dir = "./checkpoints"
 os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -115,17 +107,19 @@ except Exception as e:
     print(f"❌ 儲存失敗：{e}")
 
 # ============================ [推論測試流程] ============================
-
 env = ComplementaryObjectsEnv(
     set_field_dim=3,
     max_binth=32,
     max_top_k=8,
     max_c_bound=64,
-    max_threshold=32
+    max_threshold=32,
+    rules_file=args.rules,
+    packets_file=args.trace
 )
 
 obs, _ = env.reset()
 done = False
+step = 0
 
 print("\n--- 開始推論 ---")
 rewards = []
@@ -135,7 +129,8 @@ while not done:
         obs, reward, done, truncated, _ = env.step(action)
         rewards.append(reward)
         env.render()
-        print(f"➡️ reward (-score)：{reward:.2f}")
+        print(f"➡️ 第 {step+1} 步 reward：{reward:.2f}")
+        step += 1
         if done or truncated:
             break
     except Exception as e:
@@ -143,8 +138,8 @@ while not done:
         env.render()
         break
 
+print("\n推論結果（每步 reward）：")
 print(rewards)
 
 # ============================ [關閉 Ray] ============================
-
 ray.shutdown()
