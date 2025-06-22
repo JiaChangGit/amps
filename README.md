@@ -7,11 +7,11 @@
 [![C++17](https://img.shields.io/badge/C++-17-green.svg)](https://isocpp.org/)
 [![Cmake](https://img.shields.io/badge/Cmake-3.12-green.svg)](https://cmake.org/)
 [![Eigen3](https://img.shields.io/badge/Eigen-3-green.svg)](http://eigen.tuxfamily.org/)
-[![OpenMP](https://img.shields.io/badge/OpenMP-green.svg)](https://www.openmp.org/)
+[![OpenMP](https://img.shields.io/badge/OpenMP-Required-green.svg)](https://www.openmp.org/)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org)
 [![Torch](https://img.shields.io/badge/Torch-2.7.1-blue.svg)](https://pytorch.org/)
 [![Ray](https://img.shields.io/badge/Ray-2.46-blue.svg)](https://www.ray.io/)
-[![Gymnasium](https://img.shields.io/badge/Gymnasium-blue.svg)](https://gymnasium.farama.org/)
+[![Gymnasium](https://img.shields.io/badge/Gymnasium-Required-blue.svg)](https://gymnasium.farama.org/)
 [![Docker](https://img.shields.io/badge/Docker-Optional-yellow.svg)](https://www.docker.com/)
 
 ---
