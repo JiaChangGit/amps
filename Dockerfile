@@ -1,67 +1,41 @@
+## 如何使用
+# 在 multiple_parallel_PC 目錄下構建映像：
+#   docker build -t multiple_parallel_pc .
+# 運行容器：
+#   Windows (Git Bash): ./scripts/run_container.sh
+#   Ubuntu: chmod +x ./scripts/run_container.sh && ./scripts/run_container.sh
+
+# ------------------------------
+# Stage 1: 基礎環境與建置
+# ------------------------------
 FROM ubuntu:22.04
 
-## HOW to use
-# sudo docker build -t multiple_parallel_pc .
-# docker run --rm -it multiple_parallel_pc
-# docker run --rm -it \
-#     -v $(pwd)/../classbench_set:/workspace/classbench_set \
-#     multiple_parallel_pc
+# 基本套件
+RUN apt-get update && apt-get install -y \
+    build-essential cmake git curl wget \
+    libeigen3-dev libomp-dev \
+    python3 python3-pip python3-dev \
+    pybind11-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-
-
-# ====================
-# Basic Environment
-# ====================
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \
-    apt-get install -y \
-        build-essential \
-        cmake \
-        git \
-        wget \
-        curl \
-        libeigen3-dev \
-        libomp-dev \
-        python3.10 \
-        python3.10-dev \
-        python3-pip \
-        pybind11-dev \
-        && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# ====================
-# Python & Dependencies
-# ====================
-RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip && \
-    pip install --upgrade pip
-
-RUN pip install \
-    --retries=10 \
-    --timeout=60 \
-    --progress-bar off \
+# Python 套件（使用 retry 與快取）
+ENV PIP_CACHE_DIR=/root/.cache/pip
+RUN pip3 install --upgrade pip \
+ && pip3 install --retries=10 --timeout=60 --progress-bar off \
     pybind11 \
     gymnasium \
     "ray[rllib]" \
     torch \
     numpy
 
-# ====================
-# Copy Project
-# ====================
-WORKDIR /workspace
+# 建立工作目錄
+WORKDIR /workspace/scripts
+
+# 將整個專案複製進去（只包含 multiple_parallel_PC）
 COPY . /workspace
 
-# ====================
-# Build Project
-# ====================
-RUN chmod +x ./scripts/*.sh
-RUN bash ./scripts/run.sh
-# Or
-# RUN bash ./scripts/per_run.sh
+# 編譯（產生 build/tests/main）
+RUN cmake -S .. -B ../build && cmake --build ../build --target tests -j
 
-# ====================
-# Default Entry
-# ====================
-CMD ["bash"]
+# 預設進 container 就執行 run.sh
+CMD ["bash", "run.sh"]
