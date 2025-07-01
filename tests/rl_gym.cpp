@@ -13,6 +13,14 @@
 #include "input.hpp"
 
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
+#define TIMER_METHOD TIMER_RDTSCP
+///////// Shuffle /////////
+#define SHUFFLE
+#ifdef SHUFFLE
+#include <random>
+#endif
+///////// Shuffle /////////
+
 namespace py = pybind11;
 using namespace std;
 
@@ -207,33 +215,9 @@ vector<Rule_DT_MT*> convertRules_KSetToDTMT(
   return dtmtRules;
 }
 
-vector<Rule_KSet> convertRules_DTMTtoKSet(
-    const vector<Rule_DT_MT*>& dtmtRules) {
-  vector<Rule_KSet> ksetRules;
-  for (const auto& dtmtRule : dtmtRules) {
-    Rule_KSet ksetRule;
-    // Set dimension (assuming max 5 as per original conversion)
-    ksetRule.dim = 5;
-
-    // Copy range data for up to 5 dimensions
-    for (size_t i = 0; i < 5; ++i) {
-      ksetRule.range[i][LowDim] = dtmtRule->range[i][0];
-      ksetRule.range[i][HighDim] = dtmtRule->range[i][1];
-      ksetRule.prefix_length[i] = dtmtRule->prefix_len[i];
-    }
-
-    // Copy priority
-    ksetRule.priority = dtmtRule->priority;
-
-    ksetRules.emplace_back(ksetRule);
-  }
-  ksetRules.shrink_to_fit();
-  return ksetRules;
-}
-
 vector<int> getIntersection(const vector<int>& V1, const vector<int>& V2) {
-  if (0 >= V1.size()) cerr << "\n0>=V1 WRONG!!\n";
-  if (0 >= V2.size()) cerr << "\n0>=V2 WRONG!!\n";
+  if (0 >= V1.size()) cout << "\n0>=V1 WRONG!!\n";
+  if (0 >= V2.size()) cout << "\n0>=V2 WRONG!!\n";
   vector<int> result;
   size_t i = 0, j = 0;
   while (i < V1.size() && j < V2.size()) {
@@ -252,7 +236,13 @@ vector<int> getIntersection(const vector<int>& V1, const vector<int>& V2) {
 
 void PT_Object::build_pt() {
   sampleNum = packets.size();
-  if (0 >= sampleNum) std::cerr << "\nPT build WRONG(0 >= sampleNum)!!\n";
+  if (0 >= sampleNum) std::cout << "\nPT build WRONG(0 >= sampleNum)!!\n";
+  if (set_field.size() == 0) {
+    CacuInfo cacu(rules);
+    cacu.read_fields();
+    set_field = cacu.cacu_best_fields();
+    set_port = 1;
+  }
   PTtree tree(set_field, set_port);  // 建 PTtree
   for (auto&& r : rules) {
     tree.insert(r);  // 插入規則
@@ -289,7 +279,7 @@ void PT_Object::build_pt() {
 }
 void DBT_Object::build_dbt(const double slow_time) {
   sampleNum = packets.size();
-  if (0 >= sampleNum) std::cerr << "\nDBT build WRONG(0 >= sampleNum)!!\n";
+  if (0 >= sampleNum) std::cout << "\nDBT build WRONG(0 >= sampleNum)!!\n";
   DBT::TOP_K = top_k;
   DBT::END_BOUND = end_bound;
   DBT::C_BOUND = c_bound;
@@ -327,7 +317,7 @@ void DBT_Object::build_dbt(const double slow_time) {
 }
 void DT_Object::build_dt(const double slow_time) {
   sampleNum = packets.size();
-  if (0 >= sampleNum) std::cerr << "\nDT build WRONG(0 >= sampleNum)!!\n";
+  if (0 >= sampleNum) std::cout << "\nDT build WRONG(0 >= sampleNum)!!\n";
   if (is_prefix_5d == true) rules = RulesPortPrefix(rules, true);
   DynamicTuple dynamictuple;
   dynamictuple.threshold = threshold;
@@ -396,7 +386,7 @@ double compute_group_complementarity(const DT_Object& dt_obj,
 // RLGym 實現
 PT_Object RLGym::create_pt_object(std::vector<uint8_t> set_field,
                                   int set_port) {
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
+  if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto pt_rules = convertToPTRules(this->KSet_rule);
   auto pt_packets = convertToPTPackets(this->KSet_packets);
   if (set_field.size() == 0) {
@@ -411,7 +401,7 @@ PT_Object RLGym::create_pt_object(std::vector<uint8_t> set_field,
 
 DBT_Object RLGym::create_dbt_object(int binth, double end_bound, int top_k,
                                     int c_bound, const PT_Object& pt_obj) {
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
+  if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto dbt_rules = convertToDBTRules(this->KSet_rule);
   auto dbt_packets = convertToDBTPackets(this->KSet_packets);
 
@@ -447,7 +437,7 @@ DBT_Object RLGym::create_dbt_object(int binth, double end_bound, int top_k,
 DT_Object RLGym::create_dt_object(int threshold, bool is_prefix_5d,
                                   const PT_Object& pt_obj,
                                   const DBT_Object& dbt_obj) {
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
+  if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto dt_rules = convertRules_KSetToDTMT(this->KSet_rule);
   auto dt_packets = convertPackets_KSet2DTMT(this->KSet_packets);
 
@@ -481,14 +471,21 @@ void RLGym::load_KSet_rule_packets(const char* rule_filename,
   InputFile inputFile;
   inputFile.loadRule(this->KSet_rule, rule_filename);
   inputFile.loadPacket(this->KSet_packets, packet_filename);
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
+  if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   if (0 >= this->KSet_packets.size())
-    cerr << "\n0 >= KSet_packets size WRONG!!\n";
+    cout << "\n0 >= KSet_packets size WRONG!!\n";
+#ifdef SHUFFLE
+  // 初始化亂數生成器
+  random_device rd;
+  mt19937 gen(rd());
+  // 使用 shuffle 打亂整個 array 為單位的順序
+  shuffle(this->KSet_packets.begin(), this->KSet_packets.end(), gen);
+#endif
 }
 
 PT_Object RLGym::create_pt_first(std::vector<uint8_t> tmp_in_field,
                                  int tmp_port) {
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
+  if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto pt_rules = convertToPTRules(this->KSet_rule);
   auto pt_packets = convertToPTPackets(this->KSet_packets);
   if (tmp_in_field.size() == 0) {
@@ -499,27 +496,6 @@ PT_Object RLGym::create_pt_first(std::vector<uint8_t> tmp_in_field,
     tmp_port = 1;
   }
   return PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
-}
-
-DBT_Object RLGym::create_dbt_first() {
-  int binth = 4;
-  double end_bound = 0.8;
-  int top_k = 4;
-  int c_bound = 32;
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
-  auto dbt_rules = convertToDBTRules(this->KSet_rule);
-  auto dbt_packets = convertToDBTPackets(this->KSet_packets);
-  return DBT_Object(binth, end_bound, top_k, c_bound, dbt_rules, dbt_packets,
-                    30);
-}
-
-DT_Object RLGym::create_dt_first() {
-  int threshold = 7;
-  bool is_prefix_5d = false;
-  if (0 >= this->KSet_rule.size()) cerr << "\n0 >= KSet_rule size WRONG!!\n";
-  auto dt_rules = convertRules_KSetToDTMT(this->KSet_rule);
-  auto dt_packets = convertPackets_KSet2DTMT(this->KSet_packets);
-  return DT_Object(threshold, is_prefix_5d, dt_rules, dt_packets, 30);
 }
 
 // pybind11 綁定
@@ -562,7 +538,5 @@ PYBIND11_MODULE(rl_gym, m) {
       .def("evaluate_pt", &RLGym::evaluate_pt)
       .def("evaluate_dbt", &RLGym::evaluate_dbt)
       .def("evaluate_dt", &RLGym::evaluate_dt)
-      .def("create_pt_first", &RLGym::create_pt_first)
-      .def("create_dbt_first", &RLGym::create_dbt_first)
-      .def("create_dt_first", &RLGym::create_dt_first);
+      .def("create_pt_first", &RLGym::create_pt_first);
 }

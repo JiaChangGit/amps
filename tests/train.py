@@ -140,6 +140,9 @@ while not done:
 
 print("\n推論結果（每步 reward）：")
 print(rewards)
+with open("./INFO/rewards_values.txt", "w") as f:
+    for r in rewards:
+        f.write(f"{r}\n")
 
 # ============================ [關閉 Ray] ============================
 ray.shutdown()

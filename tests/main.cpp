@@ -42,10 +42,10 @@ uint32_t DBT::getBit[32] = {
 
 using namespace std;
 
-#define VALID
+// #define VALID
 // #define SAMPLE
+#define TIMER_METHOD TIMER_STEADY_CLOCK
 #define THREAD_NUM
-#define BIAS
 #define NORM
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
 // #define EIGEN_UNROLL_LOOP_LIMIT 64
@@ -622,9 +622,6 @@ void split_sample_test(vector<Packet> &data, vector<Packet> &sample,
 #endif
 /////////////////
 int main(int argc, char *argv[]) {
-  // ios::sync_with_stdio(false);
-  // cin.tie(nullptr);
-
   CommandLineParser parser;
   parser.parseArguments(argc, argv);
   float ip_bytes[4] = {0};
@@ -633,7 +630,7 @@ int main(int argc, char *argv[]) {
   InputFile inputFile;
   // InputFile_test inputFile_test;
   Timer timer;
-  constexpr int trials = 4;  // run 4 times circularly
+  constexpr int trials = 8;  // run 8 times circularly
 
   inputFile.loadRule(rule, parser.getRulesetFile());
   inputFile.loadPacket(packets, parser.getTraceFile());
@@ -995,8 +992,7 @@ int main(int argc, char *argv[]) {
       cout << "\tTotal samples run " << trials
            << " times circularly: " << sampleNum * trials << "\n";
 
-///////// Linear Model train ////////
-#ifdef BIAS
+      ///////// Linear Model train ////////
       Eigen::MatrixXd X3(sampleNum, 4); /* JIA 3 bias */
       Eigen::VectorXd PT_model_3(4);
       Eigen::VectorXd DBT_model_3(4);
@@ -1017,31 +1013,6 @@ int main(int argc, char *argv[]) {
       Eigen::VectorXd KSet_model_11(12);
       Eigen::VectorXd DT_model_11(12);
       Eigen::VectorXd MT_model_11(12);
-#else
-      // 3維模型
-      Eigen::MatrixXd X3(sampleNum, 3);  // 3 features
-      Eigen::VectorXd PT_model_3(3);
-      Eigen::VectorXd DBT_model_3(3);
-      Eigen::VectorXd KSet_model_3(3);
-      Eigen::VectorXd DT_model_3(3);
-      Eigen::VectorXd MT_model_3(3);
-
-      // 5維模型
-      Eigen::MatrixXd X5(sampleNum, 5);  // 5 features
-      Eigen::VectorXd PT_model_5(5);
-      Eigen::VectorXd DBT_model_5(5);
-      Eigen::VectorXd KSet_model_5(5);
-      Eigen::VectorXd DT_model_5(5);
-      Eigen::VectorXd MT_model_5(5);
-
-      // 11維模型
-      Eigen::MatrixXd X11(sampleNum, 11);  // 11 features
-      Eigen::VectorXd PT_model_11(11);
-      Eigen::VectorXd DBT_model_11(11);
-      Eigen::VectorXd KSet_model_11(11);
-      Eigen::VectorXd DT_model_11(11);
-      Eigen::VectorXd MT_model_11(11);
-#endif
 
       // double x_source_ip = 0, x_destination_ip = 0;
       double x_source_port = 0, x_destination_port = 0, x_protocol = 0;
@@ -1074,18 +1045,14 @@ int main(int argc, char *argv[]) {
         X3(i, 0) = x_source_ip_0;
         X3(i, 1) = x_source_ip_1;
         X3(i, 2) = x_destination_ip_0;
-#ifdef BIAS
         X3(i, 3) = 1.0;  // bias
-#endif
         // 填入5維特徵
         X5(i, 0) = x_source_ip_0;
         X5(i, 1) = x_source_ip_1;
         X5(i, 2) = x_destination_ip_0;
         X5(i, 3) = x_destination_ip_1;
         X5(i, 4) = x_destination_ip_2;
-#ifdef BIAS
         X5(i, 5) = 1.0;  // bias
-#endif
         // 填入11維特徵
         X11(i, 0) = x_source_ip_0;
         X11(i, 1) = x_source_ip_1;
@@ -1098,9 +1065,7 @@ int main(int argc, char *argv[]) {
         X11(i, 8) = x_source_port;
         X11(i, 9) = x_destination_port;
         X11(i, 10) = x_protocol;
-#ifdef BIAS
         X11(i, 11) = 1.0;  // bias
-#endif
       }
 #ifdef NORM
       Eigen::VectorXd mean_X3, std_X3;
@@ -1630,54 +1595,7 @@ int main(int argc, char *argv[]) {
       {
 #pragma omp parallel
         {
-#pragma omp for schedule(static)
-          for (size_t i = 0; i < 10; ++i) {
-            float ip_bytes[4];
-            // 提取 IP 特徵
-            extract_ip_bytes_to_float(PT_packets[i].source_ip, ip_bytes);
-            double x1 = static_cast<double>(ip_bytes[0]);
-            double x2 = static_cast<double>(ip_bytes[1]);
-            extract_ip_bytes_to_float(PT_packets[i].destination_ip, ip_bytes);
-            double x3 = static_cast<double>(ip_bytes[0]);
-#ifdef NORM
-            // 標準化
-            double x1n = toNormalized(x1, mean_X3[0], std_X3[0]);
-            double x2n = toNormalized(x2, mean_X3[1], std_X3[1]);
-            double x3n = toNormalized(x3, mean_X3[2], std_X3[2]);
-            // 模型預測
-            double t0 = predict3(PT_model_3, x1n, x2n, x3n);
-            double t1 = predict3(DBT_model_3, x1n, x2n, x3n);
-            double t2 = predict3(KSet_model_3, x1n, x2n, x3n);
-            double t3 = predict3(DT_model_3, x1n, x2n, x3n);
-            double t4 = predict3(MT_model_3, x1n, x2n, x3n);
-#else
-            // 模型預測（未標準化）
-            double t0 = predict3(PT_model_3, x1, x2, x3);
-            double t1 = predict3(DBT_model_3, x1, x2, x3);
-            double t2 = predict3(KSet_model_3, x1, x2, x3);
-            double t3 = predict3(DT_model_3, x1, x2, x3);
-            double t4 = predict3(MT_model_3, x1, x2, x3);
-#endif
-            // 找出預測最小的模型
-            int min_idx = 0;
-            double min_val = t0;
-            if (t1 < min_val) {
-              min_val = t1;
-              min_idx = 1;
-            }
-            if (t2 < min_val) {
-              min_val = t2;
-              min_idx = 2;
-            }
-            if (t3 < min_val) {
-              min_val = t3;
-              min_idx = 3;
-            }
-            if (t4 < min_val) {
-              min_val = t4;
-              min_idx = 4;
-            }
-          }
+          // 不執行任何事，只要觸發 thread pool 初始化即可
         }
 #if TIMER_METHOD == TIMER_RDTSCP
         Timer::warmup();
@@ -1914,6 +1832,10 @@ int main(int argc, char *argv[]) {
         Omp_predict_time = 0;
         Sig_predict_time = 0;
         Total_search_time = 0;
+#pragma omp parallel
+        {
+          // 不執行任何事，只要觸發 thread pool 初始化即可
+        }
 #if TIMER_METHOD == TIMER_RDTSCP
         Timer::warmup();
 #endif
@@ -2157,6 +2079,10 @@ int main(int argc, char *argv[]) {
         Omp_predict_time = 0;
         Sig_predict_time = 0;
         Total_search_time = 0;
+#pragma omp parallel
+        {
+          // 不執行任何事，只要觸發 thread pool 初始化即可
+        }
 #if TIMER_METHOD == TIMER_RDTSCP
         Timer::warmup();
 #endif
@@ -2194,7 +2120,7 @@ int main(int argc, char *argv[]) {
             double x11 = static_cast<double>(PT_packets[i].protocol);
 
 #ifdef NORM
-            // 標準化處理
+
             double x1n = toNormalized(x1, mean_X11[0], std_X11[0]);
             double x2n = toNormalized(x2, mean_X11[1], std_X11[1]);
             double x3n = toNormalized(x3, mean_X11[2], std_X11[2]);
@@ -2301,7 +2227,7 @@ int main(int argc, char *argv[]) {
           double x11 = static_cast<double>(PT_packets[i].protocol);
 
 #ifdef NORM
-          // 標準化處理
+
           double x1n = toNormalized(x1, mean_X11[0], std_X11[0]);
           double x2n = toNormalized(x2, mean_X11[1], std_X11[1]);
           double x3n = toNormalized(x3, mean_X11[2], std_X11[2]);
@@ -2524,6 +2450,10 @@ int main(int argc, char *argv[]) {
       Sig_predict_time = 0;
       int knn_counter_DBT = 0, knn_counter_PT = 0, knn_counter_KSet = 0,
           knn_counter_DT = 0, knn_counter_MT = 0;
+#pragma omp parallel
+      {
+        // 不執行任何事，只要觸發 thread pool 初始化即可
+      }
 #if TIMER_METHOD == TIMER_RDTSCP
       Timer::warmup();
 #endif
@@ -2725,6 +2655,10 @@ int main(int argc, char *argv[]) {
       int bloom_counter_KSet = 0;
       int bloom_counter_DT = 0;
       int bloom_counter_MT = 0;
+#pragma omp parallel
+      {
+        // 不執行任何事，只要觸發 thread pool 初始化即可
+      }
 #if TIMER_METHOD == TIMER_RDTSCP
       Timer::warmup();
 #endif
@@ -2919,80 +2853,213 @@ int main(int argc, char *argv[]) {
     /*************************************************************************/
     ///////// Individual /////////
     {
-      // Eigen::VectorXd PT_y(packetNum);
-      // Eigen::VectorXd DBT_y(packetNum);
-      // Eigen::VectorXd KSet_y(packetNum);
-      // Eigen::VectorXd DT_y(packetNum);
-      // Eigen::VectorXd MT_y(packetNum);
       vector<int> PT_match_id_arr(packetNum);
-      vector<uint32_t> DBT_match_id_arr(packetNum);
+      vector<int> DBT_match_id_arr(packetNum);
       vector<int> KSet_match_pri_arr(packetNum);
       vector<int> DT_match_id_arr(packetNum);
       vector<int> MT_match_id_arr(packetNum);
 
-      PT_search_time = 0;
-      DBT_search_time = 0;
       KSet_search_time = 0;
-      DT_search_time = 0;
       MT_search_time = 0;
-      cout << ("\n************** Classification(Individual) **************");
-      // PT classification
-      cout << ("\n**************** Classification(PT) ****************\n");
-      FILE *PT_res_fp = nullptr;
-      PT_res_fp = fopen("./INFO/PT_IndivResults.txt", "w");
+      cout
+          << ("\n\n************** Classification(Individual) "
+              "**************");
+      ///////////// indiv /////////////
+      {
+        ///////// DS Construct /////////
+        //// PT ////
+        auto PT_packets = convertToPTPackets(packets);
+        auto PT_rules = convertToPTRules(rule);
+#ifdef SAMPLE
+        auto PT_samples = convertToPTPackets(samples);
+#else
+        auto &PT_samples = PT_packets;
+#endif
 
-      // warmup_PT(tree, PT_packets, packetNum);
-      for (size_t t = 0; t < trials; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-          timer.timeReset();
-          (PT_match_id = tree.search(PT_packets[i]))--;
-          _PT_search_time = timer.elapsed_ns();
-          PT_search_time += _PT_search_time;
-
-          Total_y(i) = (static_cast<double>(_PT_search_time));
-          PT_match_id_arr[i] = PT_match_id;
+        // PT construct
+        cout
+            << ("\n**************** Construction(indiv PT) ****************\n");
+        setmaskHash();
+        // search config
+        vector<uint8_t> set_field;
+        int set_port = 1;
+        if (set_field.size() == 0) {
+          CacuInfo cacu(PT_rules);
+          cacu.read_fields();
+          set_field = cacu.cacu_best_fields();
         }
-      }
-
-      for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(PT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
-      }
-      fclose(PT_res_fp);
-      printStatistics("indiv_PT_y", Total_y);
-      cout << "|- Average search time: "
-           << PT_search_time / (packetNum * trials) << "ns\n";
-      //// PT ////
-
-      // DBT classification
-      cout << ("\n**************** Classification(DBT) ****************\n");
-      FILE *DBT_res_fp = nullptr;
-      DBT_res_fp = fopen("./INFO/DBT_IndivResults.txt", "w");
-
-      // warmup_DBT(dbt, DBT_packets, packetNum);
-      for (size_t t = 0; t < trials; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-          timer.timeReset();
-          (DBT_match_id = dbt.search(DBT_packets[i]))--;
-          _DBT_search_time = timer.elapsed_ns();
-          DBT_search_time += _DBT_search_time;
-          Total_y(i) = (static_cast<double>(_DBT_search_time));
-          DBT_match_id_arr[i] = DBT_match_id;
+        PTtree tree(set_field, set_port);
+        cout << "\nStart build for single thread...\n|- Using fields:     ";
+        for (unsigned int x : set_field) cout << x << ",";
+        cout << set_port << "\n";
+        timer.timeReset();
+        for (auto &&r : PT_rules) {
+          tree.insert(r);
         }
+        cout << "|- Construct time:   " << timer.elapsed_ns() << "ns\n";
+        cout << "|- tree.totalNodes: " << tree.totalNodes << "\n";
+
+        cout << "|- Memory footprint: " << (double)tree.mem() / 1024.0 / 1024.0
+             << "MB\n";
+        //// PT ////
+
+        //// DBT ////
+        auto DBT_packets = convertToDBTPackets(packets);
+        auto DBT_rules = convertToDBTRules(rule);
+#ifdef SAMPLE
+        auto DBT_samples = convertToDBTPackets(samples);
+#else
+        auto &DBT_samples = DBT_packets;
+#endif
+
+        // DBT construct
+        cout
+            << ("\n**************** Construction(indiv DBT) "
+                "****************\n");
+        DBT::BINTH = 4;
+        DBT::END_BOUND = 0.8;
+        DBT::TOP_K = 4;
+        DBT::C_BOUND = 32;
+        cout << "binth=" << DBT::BINTH << " th_b=" << DBT::END_BOUND
+             << " K=" << DBT::TOP_K << " th_c=" << DBT::C_BOUND << "\n";
+        DBT::DBTable dbt(DBT_rules, DBT::BINTH);
+        timer.timeReset();
+        dbt.construct();
+        cout << "Construction Time: " << timer.elapsed_ns() << " ns\n";
+        dbt.mem();
+        //// DBT ////
+
+        //// DT ////
+        auto traces_DT_MT = convertPackets_KSet2DTMT(packets);
+        auto rules_DT_MT = convertRules_KSetToDTMT(rule);
+#ifdef SAMPLE
+        auto DT_MT_samples = convertPackets_KSet2DTMT(samples);
+#else
+        auto &DT_MT_samples = traces_DT_MT;
+#endif
+        cout << ("**************** Construction(indiv DT) ****************\n");
+
+        DynamicTuple dynamictuple;
+        dynamictuple.use_port_hash_table = true;
+        dynamictuple.threshold = 7;
+
+        timer.timeReset();
+        dynamictuple.Create(rules_DT_MT, true);
+        cout << "\tConstruction time: " << timer.elapsed_ns() << " ns\n";
+        // memory
+        auto DT_data_memory_size =
+            sizeof(Rule_DT_MT) * rules_DT_MT.size() / 1024.0 / 1024.0;
+        auto DT_index_memory_size = dynamictuple.MemorySize() / 1024.0 / 1024.0;
+        cout << "DT_data_memory_size: " << DT_data_memory_size
+             << ", DT_index_memory_size: " << DT_index_memory_size << "\n"
+             << "Total(MB): " << DT_data_memory_size + DT_index_memory_size
+             << "\n";
+        cout << "DT tuples_num: " << dynamictuple.tuples_num << "\n";
+        //// DT ////
+        double PT_search_time = 0, _PT_search_time = 0;
+        double DBT_search_time = 0, _DBT_search_time = 0;
+        double DT_search_time = 0, _DT_search_time = 0;
+        int PT_match_id = 0;
+        uint32_t DBT_match_id = 0;
+        ///////// DS Construct /////////
+
+        // PT classification
+        cout
+            << ("\n**************** Classification(indiv PT) "
+                "****************\n");
+        FILE *PT_res_fp = nullptr;
+        PT_res_fp = fopen("./INFO/PT_IndivResults.txt", "w");
+
+        // warmup_PT(tree, PT_packets, packetNum);
+        for (size_t t = 0; t < trials; ++t) {
+          for (size_t i = 0; i < packetNum; ++i) {
+            timer.timeReset();
+            (PT_match_id = tree.search(PT_packets[i]))--;
+            _PT_search_time = timer.elapsed_ns();
+            PT_search_time += _PT_search_time;
+
+            Total_y(i) = (static_cast<double>(_PT_search_time));
+            PT_match_id_arr[i] = PT_match_id;
+          }
+        }
+
+        for (size_t i = 0; i < packetNum; ++i) {
+          fprintf(PT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
+        }
+        fclose(PT_res_fp);
+        printStatistics("indivi_PT_y", Total_y);
+        cout << "|- Average search time: "
+             << PT_search_time / (packetNum * trials) << "ns\n";
+        //// PT ////
+
+        // DBT classification
+        cout
+            << ("\n**************** Classification(indiv DBT) "
+                "****************\n");
+        FILE *DBT_res_fp = nullptr;
+        DBT_res_fp = fopen("./INFO/DBT_IndivResults.txt", "w");
+
+        // warmup_DBT(dbt, DBT_packets, packetNum);
+        for (size_t t = 0; t < trials; ++t) {
+          for (size_t i = 0; i < packetNum; ++i) {
+            timer.timeReset();
+            (DBT_match_id = dbt.search(DBT_packets[i]))--;
+            _DBT_search_time = timer.elapsed_ns();
+            DBT_search_time += _DBT_search_time;
+            Total_y(i) = (static_cast<double>(_DBT_search_time));
+            DBT_match_id_arr[i] = DBT_match_id;
+          }
+        }
+
+        for (size_t i = 0; i < packetNum; ++i) {
+          fprintf(DBT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
+        }
+        fclose(DBT_res_fp);
+        printStatistics("indivi_DBT_y", Total_y);
+
+        cout << "|- Average search time: "
+             << DBT_search_time / (packetNum * trials) << "ns\n";
+        dbt.search_with_log(DBT_packets);
+        //// DBT ////
+
+        //// DT ////
+        cout
+            << ("\n**************** Classification(indiv DT) "
+                "****************\n");
+        FILE *DT_res_fp = nullptr;
+        DT_res_fp = fopen("./INFO/DT_IndivResults.txt", "w");
+
+        for (size_t t = 0; t < trials; ++t) {
+          for (size_t i = 0; i < packetNum; ++i) {
+            timer.timeReset();
+            auto resID = (dynamictuple.Lookup(traces_DT_MT[i], 0));
+            _DT_search_time = timer.elapsed_ns();
+            DT_search_time += _DT_search_time;
+            Total_y(i) = (static_cast<double>(_DT_search_time));
+            DT_match_id_arr[i] = (number_rule - 1) - resID;
+          }
+        }
+
+        for (size_t i = 0; i < packetNum; ++i) {
+          fprintf(DT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
+        }
+        fclose(DT_res_fp);
+        printStatistics("indivi_DT_y", Total_y);
+        cout << fixed << setprecision(3) << "\tAverage search time: "
+             << (DT_search_time / (trials * packetNum)) << " ns\n";
+
+        //// DT ////
+
+        // free
+        dynamictuple.Free(false);
+        ///////// Individual /////////
+        /*************************************************************************/
       }
-
-      for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(DBT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
-      }
-      fclose(DBT_res_fp);
-      printStatistics("indiv_DBT_y", Total_y);
-
-      cout << "|- Average search time: "
-           << DBT_search_time / (packetNum * trials) << "ns\n";
-      dbt.search_with_log(DBT_packets);
-      //// DBT ////
-
+      ///////////// indiv /////////////
       //// KSet ////
-      cout << ("\n**************** Classification(KSet) ****************\n");
+      cout
+          << ("\n**************** Classification(indiv KSet) "
+              "****************\n");
       FILE *KSet_res_fp = nullptr;
       KSet_res_fp = fopen("./INFO/KSet_IndivResults.txt", "w");
 
@@ -3027,40 +3094,13 @@ int main(int argc, char *argv[]) {
         fprintf(KSet_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
       }
       fclose(KSet_res_fp);
-      printStatistics("indiv_KSet_y", Total_y);
+      printStatistics("indivi_KSet_y", Total_y);
 
       cout << fixed << setprecision(3) << "\tAverage search time: "
            << (KSet_search_time / (trials * packetNum)) << " ns\n";
-
-      //// DT ////
-      cout << ("\n**************** Classification(DT) ****************\n");
-      FILE *DT_res_fp = nullptr;
-      DT_res_fp = fopen("./INFO/DT_IndivResults.txt", "w");
-
-      warmup_DT(dynamictuple, traces_DT_MT);
-      for (size_t t = 0; t < trials; ++t) {
-        for (size_t i = 0; i < packetNum; ++i) {
-          timer.timeReset();
-          auto resID = (dynamictuple.Lookup(traces_DT_MT[i], 0));
-          _DT_search_time = timer.elapsed_ns();
-          DT_search_time += _DT_search_time;
-          Total_y(i) = (static_cast<double>(_DT_search_time));
-          DT_match_id_arr[i] = (number_rule - 1) - resID;
-        }
-      }
-
-      for (size_t i = 0; i < packetNum; ++i) {
-        fprintf(DT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
-      }
-      fclose(DT_res_fp);
-      printStatistics("indiv_DT_y", Total_y);
-      cout << fixed << setprecision(3) << "\tAverage search time: "
-           << (DT_search_time / (trials * packetNum)) << " ns\n";
-
-      //// DT ////
-
       //// MT ////
-      cout << ("\n**************** Classification(MT) ****************\n");
+      cout
+          << ("\n**************** Classification(indiv MT) ****************\n");
       FILE *MT_res_fp = nullptr;
       MT_res_fp = fopen("./INFO/MT_IndivResults.txt", "w");
 
@@ -3083,10 +3123,9 @@ int main(int argc, char *argv[]) {
         fprintf(MT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
       }
       fclose(MT_res_fp);
-      printStatistics("indiv_MT_y", Total_y);
+      printStatistics("indivi_MT_y", Total_y);
       cout << fixed << setprecision(3) << "\tAverage search time: "
            << (MT_search_time / (trials * packetNum)) << " ns\n";
-
       //// MT ////
 
 #ifdef VALID
@@ -3106,5 +3145,6 @@ int main(int argc, char *argv[]) {
       /*************************************************************************/
     }
   }
+
   return 0;
 }

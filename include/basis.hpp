@@ -33,9 +33,9 @@
 
 // #define TIMER_METHOD TIMER_RDTSCP
 // #define TIMER_METHOD TIMER_STEADY_CLOCK
-#ifndef TIMER_METHOD
-#define TIMER_METHOD TIMER_STEADY_CLOCK
-#endif
+// #ifndef TIMER_METHOD
+// #define TIMER_METHOD TIMER_STEADY_CLOCK
+// #endif
 
 class Timer {
  private:
