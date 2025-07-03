@@ -64,7 +64,7 @@ class ComplementaryObjectsEnv(gym.Env):
         # 第 2 步：DBT 參數
         self.action_space_dbt = spaces.Dict({
             "binth": spaces.Discrete(max_binth - 3),  # [4, max_binth]
-            "end_bound": spaces.Box(low=0.1, high=0.9, shape=(1,), dtype=np.float32),
+            "end_bound": spaces.Box(low=0.2, high=0.9, shape=(1,), dtype=np.float32),
             "top_k": spaces.Discrete(max_top_k),  # [1, max_top_k]
             "c_bound": spaces.Discrete(max_c_bound - 6)  # [7, max_c_bound]
         })
@@ -112,7 +112,7 @@ class ComplementaryObjectsEnv(gym.Env):
             random.seed(seed)
 
         # 初始化物件
-        self.obj_pt = None
+        self.obj_pt = self.builder.create_pt_first()
         self.obj_dbt = None
         self.obj_dt = None
         self.current_step = 0
@@ -192,7 +192,7 @@ class ComplementaryObjectsEnv(gym.Env):
         if self.current_step == 0:
             # 第 1 步：設置 PT
             try:
-                self.obj_pt = self.builder.create_pt_first(action_mapped["set_field"], action_mapped["set_port"])
+                self.obj_pt = self.builder.create_pt_object(action_mapped["set_field"], action_mapped["set_port"])
                 print(f"步驟 1 PT 物件：set_field={action_mapped['set_field']}, set_port={action_mapped['set_port']}")
                 pt_score = self.builder.evaluate_pt(self.obj_pt)
                 reward = -pt_score  # 負值，最小化 99th 分位數

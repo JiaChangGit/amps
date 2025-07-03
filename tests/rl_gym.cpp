@@ -13,7 +13,7 @@
 #include "input.hpp"
 
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
-#define TIMER_METHOD TIMER_RDTSCP
+
 ///////// Shuffle /////////
 #define SHUFFLE
 #ifdef SHUFFLE
@@ -384,21 +384,16 @@ double compute_group_complementarity(const DT_Object& dt_obj,
 }
 
 // RLGym 實現
-PT_Object RLGym::create_pt_object(std::vector<uint8_t> set_field,
-                                  int set_port) {
+PT_Object RLGym::create_pt_object(std::vector<uint8_t> tmp_in_field,
+                                  int tmp_port) {
   if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto pt_rules = convertToPTRules(this->KSet_rule);
   auto pt_packets = convertToPTPackets(this->KSet_packets);
-  if (set_field.size() == 0) {
-    // CacuInfo cacu(pt_rules);
-    // cacu.read_fields();
-    // set_field = cacu.cacu_best_fields();
-    set_field = {4, 0, 1};
-    set_port = 1;
+  if (tmp_in_field.size() != 3) {
+    cout << "\ntmp_in_field.size() != 3 WRONG!!\n";
   }
-  return PT_Object(set_field, set_port, pt_rules, pt_packets);
+  return PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
 }
-
 DBT_Object RLGym::create_dbt_object(int binth, double end_bound, int top_k,
                                     int c_bound, const PT_Object& pt_obj) {
   if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
@@ -483,16 +478,17 @@ void RLGym::load_KSet_rule_packets(const char* rule_filename,
 #endif
 }
 
-PT_Object RLGym::create_pt_first(std::vector<uint8_t> tmp_in_field,
-                                 int tmp_port) {
+PT_Object RLGym::create_pt_first() {
   if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto pt_rules = convertToPTRules(this->KSet_rule);
   auto pt_packets = convertToPTPackets(this->KSet_packets);
+  std::vector<uint8_t> tmp_in_field;
+  int tmp_port;
   if (tmp_in_field.size() == 0) {
-    // CacuInfo cacu(pt_rules);
-    // cacu.read_fields();
-    // tmp_in_field = cacu.cacu_best_fields();
-    tmp_in_field = {4, 0, 1};
+    CacuInfo cacu(pt_rules);
+    cacu.read_fields();
+    tmp_in_field = cacu.cacu_best_fields();
+    // tmp_in_field = {4, 0, 1};
     tmp_port = 1;
   }
   return PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);

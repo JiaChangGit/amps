@@ -31,7 +31,7 @@
 #define TIMER_STEADY_CLOCK 1
 #define TIMER_RDTSCP 2
 
-// #define TIMER_METHOD TIMER_RDTSCP
+#define TIMER_METHOD TIMER_RDTSCP
 // #define TIMER_METHOD TIMER_STEADY_CLOCK
 // #ifndef TIMER_METHOD
 // #define TIMER_METHOD TIMER_STEADY_CLOCK
@@ -73,7 +73,7 @@ class Timer {
   }
 
   // 回傳奈秒(有無小數)
-  __attribute__((always_inline)) inline unsigned long long /*double*/
+  __attribute__((always_inline)) inline /* unsigned long long */ double
   elapsed_ns() const {
 #if TIMER_METHOD == TIMER_STEADY_CLOCK
     return std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() -
@@ -81,10 +81,10 @@ class Timer {
         .count();
 #elif TIMER_METHOD == TIMER_RDTSCP
     ensure_cpu_freq_hz();
-    return static_cast<unsigned long long>((perf_counter() - m_beg) *
-                                           (1e9 / cpu_freq_hz.load()));
-    // return static_cast<double>(perf_counter() - m_beg) *
-    //        (1e9 / cpu_freq_hz.load());
+/*     return static_cast<unsigned long long>((perf_counter() - m_beg) *
+                                           (1e9 / cpu_freq_hz.load())); */
+     return static_cast<double>(perf_counter() - m_beg) *
+            (1e9 / cpu_freq_hz.load());
 #endif
   }
 

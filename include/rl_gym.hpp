@@ -119,7 +119,7 @@ class RLGym {
   double evaluate_dbt(const PT_Object& pt_obj, const DBT_Object& dbt_obj);
   double evaluate_dt(const PT_Object& pt_obj, const DBT_Object& dbt_obj,
                      const DT_Object& dt_obj);
-  PT_Object create_pt_first(std::vector<uint8_t> tmp_in_field, int tmp_port);
+  PT_Object create_pt_first();
 
  private:
   vector<Rule_KSet> KSet_rule;

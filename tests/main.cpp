@@ -44,7 +44,6 @@ using namespace std;
 
 // #define VALID
 // #define SAMPLE
-#define TIMER_METHOD TIMER_STEADY_CLOCK
 #define THREAD_NUM
 #define NORM
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
