@@ -237,12 +237,14 @@ vector<int> getIntersection(const vector<int>& V1, const vector<int>& V2) {
 void PT_Object::build_pt() {
   sampleNum = packets.size();
   if (0 >= sampleNum) std::cout << "\nPT build WRONG(0 >= sampleNum)!!\n";
+
   if (set_field.size() == 0) {
     CacuInfo cacu(rules);
     cacu.read_fields();
     set_field = cacu.cacu_best_fields();
     set_port = 1;
   }
+
   PTtree tree(set_field, set_port);  // 建 PTtree
   for (auto&& r : rules) {
     tree.insert(r);  // 插入規則
@@ -270,6 +272,7 @@ void PT_Object::build_pt() {
   auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
       printStatistics("PT", PT_y);
   slow_time = per99_PT;
+
   slow_Packets.clear();
   slow_Packets.reserve(sampleNum / 10);
   for (size_t i = 0; i < sampleNum; ++i) {
@@ -392,7 +395,16 @@ PT_Object RLGym::create_pt_object(std::vector<uint8_t> tmp_in_field,
   if (tmp_in_field.size() != 3) {
     cout << "\ntmp_in_field.size() != 3 WRONG!!\n";
   }
-  return PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
+  _tmp_PT_Object = PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
+  auto slow_time = _PT_Object.slow_time;
+  auto tmp_slow_time = _tmp_PT_Object.slow_time;
+
+  if (slow_time > tmp_slow_time) {
+    _PT_Object = _tmp_PT_Object;
+    cout << "\n=== slow_time > tmp_slow_time ===: " << slow_time << ", "
+         << tmp_slow_time << "\n";
+  }
+  return _PT_Object;
 }
 DBT_Object RLGym::create_dbt_object(int binth, double end_bound, int top_k,
                                     int c_bound, const PT_Object& pt_obj) {
@@ -461,14 +473,14 @@ double RLGym::evaluate_dt(const PT_Object& pt_obj, const DBT_Object& dbt_obj,
                           const DT_Object& dt_obj) {
   return compute_group_complementarity(dt_obj, pt_obj, dbt_obj);
 }
-void RLGym::load_KSet_rule_packets(const char* rule_filename,
-                                   const char* packet_filename) {
+int RLGym::load_KSet_rule_packets(const char* rule_filename,
+                                  const char* packet_filename) {
   InputFile inputFile;
   inputFile.loadRule(this->KSet_rule, rule_filename);
   inputFile.loadPacket(this->KSet_packets, packet_filename);
   if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
-  if (0 >= this->KSet_packets.size())
-    cout << "\n0 >= KSet_packets size WRONG!!\n";
+  int packet_size = this->KSet_packets.size();
+  if (0 >= packet_size) cout << "\n0 >= KSet_packets size WRONG!!\n";
 #ifdef SHUFFLE
   // 初始化亂數生成器
   random_device rd;
@@ -476,6 +488,7 @@ void RLGym::load_KSet_rule_packets(const char* rule_filename,
   // 使用 shuffle 打亂整個 array 為單位的順序
   shuffle(this->KSet_packets.begin(), this->KSet_packets.end(), gen);
 #endif
+  return packet_size;
 }
 
 PT_Object RLGym::create_pt_first() {
@@ -491,7 +504,11 @@ PT_Object RLGym::create_pt_first() {
     // tmp_in_field = {4, 0, 1};
     tmp_port = 1;
   }
-  return PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
+  cout << "create_pt_first, tmp_in_field: " << static_cast<int>(tmp_in_field[0])
+       << static_cast<int>(tmp_in_field[1]) << static_cast<int>(tmp_in_field[2])
+       << "\n";
+  _PT_Object = PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
+  return _PT_Object;
 }
 
 // pybind11 綁定

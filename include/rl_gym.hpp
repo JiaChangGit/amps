@@ -9,7 +9,12 @@
 #include "PT_tree.hpp"
 #include "dynamictuple.h"
 #include "multilayertuple.h"
-
+class Slow_Time {
+ public:
+  double slow_time;
+  double get_slow_time() const { return slow_time; }
+  void set_slow_time(double _slow_time) { slow_time = _slow_time; }
+};
 class PT_Object {
  private:
   std::vector<uint8_t> set_field;
@@ -21,6 +26,7 @@ class PT_Object {
 
  public:
   double slow_time;
+  PT_Object() {}
   // PT_Object() {
   //   build_pt();
   // }
@@ -29,6 +35,7 @@ class PT_Object {
       : set_field(fields), set_port(port), rules(r), packets(p) {
     build_pt();
   }
+
   ~PT_Object() {
     rules.clear();
     packets.clear();
@@ -107,8 +114,8 @@ class DT_Object {
 
 class RLGym {
  public:
-  void load_KSet_rule_packets(const char* rule_filename,
-                              const char* packet_filename);
+  int load_KSet_rule_packets(const char* rule_filename,
+                             const char* packet_filename);
   PT_Object create_pt_object(std::vector<uint8_t> set_field, int set_port);
   DBT_Object create_dbt_object(int binth, double end_bound, int top_k,
                                int c_bound, const PT_Object& pt_obj);
@@ -122,8 +129,13 @@ class RLGym {
   PT_Object create_pt_first();
 
  private:
+  PT_Object _PT_Object;
+  PT_Object _tmp_PT_Object;
+  // DBT_Object _DBT_Object;
+  // DT_Object _DT_Object;
   vector<Rule_KSet> KSet_rule;
   vector<Packet> KSet_packets;
+  int packet_size;
 };
 
 #endif

@@ -35,8 +35,15 @@ TIMESTAMP=$(date +"%m%d_%H%M%S")
   #fw3_10k fw4_10k fw5_10k ipc1_10k ipc2_10k
 #)
 RULESET_NAMES=(
+     acl1_1k acl2_1k acl3_1k acl4_1k acl5_1k
+  fw1_1k fw2_1k fw3_1k fw4_1k fw5_1k ipc1_1k ipc2_1k
+  acl1_10k acl2_10k acl3_10k acl4_10k acl5_10k fw1_10k fw2_10k
+  fw3_10k fw4_10k fw5_10k ipc1_10k ipc2_10k
+    acl1_5k acl2_5k acl3_5k
+  acl4_5k acl5_5k fw1_5k fw2_5k fw3_5k
+  fw4_5k fw5_5k ipc1_5k ipc2_5k
   acl1_100k acl2_100k
-  acl3_100k 
+  acl3_100k
   acl4_100k
   acl5_100k
   fw1_100k

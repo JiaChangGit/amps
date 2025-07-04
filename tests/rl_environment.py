@@ -11,7 +11,7 @@ class ComplementaryObjectsEnv(gym.Env):
     - 第 1 步：設置 PT，reward 為 PT 的 99th 分位數（負值）。
     - 第 2 步：設置 DBT，reward 為 PT 與 DBT 慢速封包交集大小（負值）。
     - 第 3 步：設置 DT，reward 為 PT、DBT 和 DT 三者慢速封包交集大小（負值）。
-    - 若第三步 reward 達到 -5 或更好，提前結束 episode。
+    - 若第三步 reward 達到 -(self.packet_size/100) 或更好，提前結束 episode。
     - 目標：最小化分類成本（負 reward）。
     """
 
@@ -49,7 +49,7 @@ class ComplementaryObjectsEnv(gym.Env):
 
         # 載入規則與封包檔案
         try:
-            self.builder.load_KSet_rule_packets(self.rules_file, self.packets_file)
+            self.packet_size = self.builder.load_KSet_rule_packets(self.rules_file, self.packets_file)
             print(f"成功載入檔案：rules={self.rules_file}, packets={self.packets_file}")
         except Exception as e:
             print(f"錯誤：無法載入規則或封包檔案 - {e}")
@@ -146,7 +146,7 @@ class ComplementaryObjectsEnv(gym.Env):
     def step(self, action):
         """
         執行一步，根據 current_step 處理 PT、DBT 或 DT 的設置，並計算對應 reward。
-        若第三步 reward 達到 -5 或更好，提前結束 episode。
+        若第三步 reward 達到 -(self.packet_size/100) 或更好，提前結束 episode。
 
         參數：
         - action：動作字典，包含當前步驟的參數。
@@ -193,7 +193,10 @@ class ComplementaryObjectsEnv(gym.Env):
             # 第 1 步：設置 PT
             try:
                 self.obj_pt = self.builder.create_pt_object(action_mapped["set_field"], action_mapped["set_port"])
-                print(f"步驟 1 PT 物件：set_field={action_mapped['set_field']}, set_port={action_mapped['set_port']}")
+                print(f"步驟 1 tmp PT 物件：set_field={action_mapped['set_field']}, set_port={action_mapped['set_port']}")
+                real_set_field = self.obj_pt.get_set_field()
+                real_set_port = self.obj_pt.get_set_port()
+                print(f"步驟 1 real PT 物件：set_field={real_set_field}, set_port={real_set_port}")
                 pt_score = self.builder.evaluate_pt(self.obj_pt)
                 reward = -pt_score  # 負值，最小化 99th 分位數
                 print(f"PT reward (99th)：{reward}")
@@ -233,9 +236,9 @@ class ComplementaryObjectsEnv(gym.Env):
                 reward = -dt_score  # 負值，最小化三者交集大小
                 print(f"PT ∩ DBT ∩ DT reward：{reward}")
 
-                # 檢查 reward 是否達到 -5 或更好
-                if reward >= -5:
-                    print(f"Reward {reward} >= -5，提前結束 episode")
+                # 檢查 reward 是否達到 -(self.packet_size/100) 或更好
+                if reward >= -(self.packet_size/100):
+                    print(f"Reward {reward} >= -(self.packet_size/100)，提前結束 episode")
                     done = True
                 else:
                     done = True  # 第三步總是結束 episode
