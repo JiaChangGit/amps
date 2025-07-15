@@ -504,9 +504,9 @@ PT_Object RLGym::create_pt_first() {
     // tmp_in_field = {4, 0, 1};
     tmp_port = 1;
   }
-  cout << "create_pt_first, tmp_in_field: " << static_cast<int>(tmp_in_field[0])
+  /* cout << "create_pt_first, tmp_in_field: " << static_cast<int>(tmp_in_field[0])
        << static_cast<int>(tmp_in_field[1]) << static_cast<int>(tmp_in_field[2])
-       << "\n";
+       << "\n"; */
   _PT_Object = PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
   return _PT_Object;
 }

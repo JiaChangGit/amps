@@ -1,63 +1,79 @@
-# 匯入必要的 Python 庫
-import pandas as pd        # 用於讀取和處理 Excel 檔案
-import numpy as np         # 用於數值計算，例如生成累積概率
-import matplotlib.pyplot as plt  # 用於繪製圖表
+# 匯入必要的 Python 套件
+import pandas as pd                    # 用於讀取 Excel 檔案
+import numpy as np                     # 用於數值計算與陣列操作
+import matplotlib.pyplot as plt        # 用於繪圖顯示 CDF
 
-# 定義 Excel 檔案的路徑
-file_path = "Cache_search_analyz.xlsx"  # 檔案名稱，假設與程式碼位於同一目錄
+# Excel 檔案路徑（假設與程式位於相同資料夾）
+file_path = "Cache_search_analyz.xlsx"
 
-# 讀取 Excel 檔案中的 "Sheet1" 工作表
-# 使用 pandas 的 read_excel 函數讀取指定檔案和工作表
+# 讀取 Excel 中的 "Sheet1"
 df = pd.read_excel(file_path, sheet_name="Sheet1")
 
-# 提取 "Time (ns)" 列的資料
-# 從 DataFrame 中選取 "Time (ns)" 列，並存入 PT_time_data 變數
-# PT	DBT	KSet	DT	MT
-# PT_time_data = df["PT"]
-# PT_time_data = df["DBT"]
-# PT_time_data = df["KSet"]
-# PT_time_data = df["DT"]
-PT_time_data = df["MT"]
+# 定義要處理的五種分類器欄位名稱
+columns = ["PT", "DBT", "KSet", "DT", "MT"]
 
-# 對時間資料進行排序
-# 使用 sort_values 方法將 PT_time_data 從小到大排序，以便計算 CDF
-PT_sorted_time = PT_time_data.sort_values()
+# 為每個分類器指定顏色與圖例標籤
+colors = ['blue', 'green', 'red', 'purple', 'orange']
+labels = ["PT", "DBT", "KSet", "DT", "MT"]
 
-# 計算資料的總數量
-# 使用 len 函數計算 PT_sorted_time 中的資料點數量
-n = len(PT_sorted_time)
+# 建立畫布，設定圖表大小
+plt.figure(figsize=(10, 6))
 
-# 計算累積分佈函數 (CDF) 的 Y 軸值（累積概率）
-# np.arange(1, n + 1) 創建一個從 1 到 n 的數組，除以 n 得到每個資料點的累積概率
-cdf_y = np.arange(1, n + 1) / n
+# 儲存各分類器中 CDF >= 0.9 對應的最大時間值，用來決定 X 軸上限
+x_max_candidates = []
 
-# 找到累積概率 >= 0.9 的資料索引
-# 使用 np.where 找出 cdf_y 中大於等於 0.9 的位置，以便限制 Y 軸範圍
-index = np.where(cdf_y >= 0.9)[0]
+# 逐一處理每個分類器的搜尋時間資料
+for col, color, label in zip(columns, colors, labels):
+    # 取得並清洗該分類器欄位資料（去除 NaN）
+    time_data = df[col].dropna()
 
-# 提取對應的時間值和累積概率
-# 根據 index 從 PT_sorted_time 和 cdf_y 中提取對應的部分資料
-x = PT_sorted_time.iloc[index]  # X 軸：時間 (ns)
-y = cdf_y[index]             # Y 軸：累積概率
+    # 將資料從小到大排序
+    sorted_time = time_data.sort_values()
 
-# 繪製 CDF 圖
-# 使用 matplotlib 的 plot 函數繪製散點圖，marker='.' 表示用點表示資料，linestyle='none' 表示不連接線條
-plt.plot(x, y, marker='.', linestyle='none')
+    # 計算資料總數
+    n = len(sorted_time)
 
-# plt.xlabel("PT Search time (ns)")      # 設置 X 軸標籤為 "時間 (ns)"
-# plt.xlabel("DBT Search time (ns)")
-# plt.xlabel("KSet Search time (ns)")
-# plt.xlabel("DT Search time (ns)")
-plt.xlabel("MT Search time (ns)")
+    # 建立對應的累積機率 CDF（Y 軸）：第 i 個數據對應 i/n
+    cdf_y = np.arange(1, n + 1) / n
 
-plt.ylabel("CDF")  # 設置 Y 軸標籤為 "累積分佈函數 (CDF)"
+    # 找出累積機率大於等於 0.9 的資料索引
+    index = np.where(cdf_y >= 0.9)[0]
 
-# plt.title("PT Search time (ns) with CDF")  # 設置圖表標題
-# plt.title("DBT Search time (ns) with CDF")
-# plt.title("KSet Search time (ns) with CDF")
-# plt.title("DT Search time (ns) with CDF")
-plt.title("MT Search time (ns) with CDF")
+    # 取得對應的 X（時間）與 Y（累積機率）資料
+    x = sorted_time.iloc[index]
+    y = cdf_y[index]
 
-plt.ylim(0.9, 1.0)          # 限制 Y 軸範圍為 0.9 到 1.0
-plt.grid(True)              # 加入網格線，提升圖表可讀性
-plt.show()                  # 顯示繪製完成的圖表
+    # 記錄最大時間，用於設定 X 軸範圍
+    x_max_candidates.append(x.max())
+
+    # 畫出該分類器的 CDF（點狀線）
+    plt.plot(x, y, marker='.', linestyle='none', color=color, label=label, markersize = 0.4)
+
+# 決定所有分類器中 CDF ≥ 0.9 部分的最大時間
+x_upper_limit = max(x_max_candidates)
+
+# 設定圖表標題與 X/Y 軸標籤
+plt.title("CDF of Search Time for All Classifiers (Zoomed: Top 10%)")  # 圖表標題
+plt.xlabel("Search time with log base=2 (ns)")        # X 軸：搜尋時間（單位為 ns）
+plt.ylabel("CDF")                     # Y 軸：累積分佈機率
+
+# 限制 Y 軸只顯示 CDF >= 0.9 的部分
+plt.ylim(0.9, 1.0)
+
+## 限制 X 軸範圍為 0 到（最大搜尋時間 * 1.05），避免右邊空白太大
+#plt.xlim(0, x_upper_limit * 1.05)
+plt.xlim(128, 57000)
+
+# 對數軸
+plt.xscale('log', base=2) 
+# 顯示圖例（標註各分類器）
+plt.legend(loc='lower right',markerscale = 20)
+
+# 顯示網格線，幫助讀取數據位置
+plt.grid(True)
+
+# 儲存圖表為 PNG 圖片，解析度為 600 dpi
+plt.savefig("search_time_cdf.png", dpi=600)
+
+# 顯示圖表
+plt.show()

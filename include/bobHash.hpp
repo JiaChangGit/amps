@@ -285,7 +285,7 @@ class Hash {
       a += tmp[0];
       b += tmp[1];
       c += tmp[2];
-      mix64(a, b, c);
+      mix64_simple(a, b, c);
       str += 24;
       len -= 24;
     }

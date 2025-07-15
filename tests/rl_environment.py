@@ -236,8 +236,8 @@ class ComplementaryObjectsEnv(gym.Env):
                 reward = -dt_score  # 負值，最小化三者交集大小
                 print(f"PT ∩ DBT ∩ DT reward：{reward}")
 
-                # 檢查 reward 是否達到 -(self.packet_size/100) 或更好
-                if reward >= -(self.packet_size/100):
+                # 檢查 reward 是否達到 -(self.packet_size/10000) 或更好
+                if reward >= -(self.packet_size/10000):
                     print(f"Reward {reward} >= -(self.packet_size/100)，提前結束 episode")
                     done = True
                 else:

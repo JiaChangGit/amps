@@ -42,7 +42,7 @@ uint32_t DBT::getBit[32] = {
 
 using namespace std;
 
-// #define VALID
+#define VALID
 // #define SAMPLE
 #define THREAD_NUM
 #define NORM
@@ -536,20 +536,20 @@ vector<Rule_KSet> convertRules_DTMTtoKSet(
 
 /* JIA */ __attribute__((always_inline)) inline void warmup_PT(
     PT::PTtree &tree, const vector<PT::PT_Packet> &PT_packets) {
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     tree.search(PT_packets[i]);
   }
 }
 /* JIA */ __attribute__((always_inline)) inline void warmup_DBT(
     DBT::DBTable &dbt, const vector<DBT::Packet> &DBT_packets) {
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     dbt.search(DBT_packets[i]);
   }
 }
 /* JIA */ __attribute__((always_inline)) inline void warmup_KSet(
     vector<KSet> &set, const vector<Packet> &packets, const int num_set[],
     const int max_pri_set[4]) {
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     int kset_match_pri = -1;
     if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
     if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
@@ -562,13 +562,13 @@ vector<Rule_KSet> convertRules_DTMTtoKSet(
 }
 /* JIA */ __attribute__((always_inline)) inline void warmup_DT(
     DynamicTuple &dynamictuple, const vector<Trace *> &traces_DT_MT) {
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     (dynamictuple.Lookup(traces_DT_MT[i], 0));
   }
 }
 /* JIA */ __attribute__((always_inline)) inline void warmup_MT(
     MultilayerTuple &multilayertuple, const vector<Trace *> &traces_DT_MT) {
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     (multilayertuple.Lookup(traces_DT_MT[i], 0));
   }
 }
@@ -2595,8 +2595,8 @@ int main(int argc, char *argv[]) {
     {
       cout << ("\n**************** Classification(BLOOM) ****************\n");
       LONG::BloomFilter<uint64_t> bloom_filter_mt(sampleNum * 0.5, 0.01);
-      LONG::BloomFilter<uint64_t> bloom_filter_dt(sampleNum * 0.5, 0.01);
       LONG::BloomFilter<uint64_t> bloom_filter_pt(sampleNum * 0.5, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_dt(sampleNum * 0.5, 0.01);
       LONG::BloomFilter<uint64_t> bloom_filter_dbt(sampleNum * 0.5, 0.01);
 
       auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
@@ -2623,7 +2623,7 @@ int main(int argc, char *argv[]) {
                 static_cast<uint64_t>(DBT_samples[i].Port[1]))
                << 17));
         }
-        if (DT_y(i) >= per99_DT) {
+        if (DT_y(i) > per99_DT) {
           bloom_filter_dt.insert(
               (DT_MT_samples[i]->dst_src_ip) ^
               (((static_cast<uint64_t>(DT_MT_samples[i]->key[2]) << 16) |
@@ -2781,8 +2781,8 @@ int main(int argc, char *argv[]) {
       // warmup_KSet(set, packets, packetNum, num_set,max_pri_set);
       // warmup_MT(multilayertuple, traces_DT_MT);
       // warmup_PT(tree, PT_packets);
-      warmup_DBT(dbt, DBT_packets);
       warmup_DT(dynamictuple, traces_DT_MT);
+      warmup_DBT(dbt, DBT_packets);
 #if TIMER_METHOD == TIMER_RDTSCP
       Timer::warmup();
 #endif
@@ -2880,17 +2880,17 @@ int main(int argc, char *argv[]) {
             << ("\n**************** Construction(indiv PT) ****************\n");
         setmaskHash();
         // search config
-        vector<uint8_t> set_field;
-        int set_port = 1;
-        if (set_field.size() == 0) {
+        vector<uint8_t> real_set_field;
+        int real_set_port = 1;
+        if (real_set_field.size() == 0) {
           CacuInfo cacu(PT_rules);
           cacu.read_fields();
-          set_field = cacu.cacu_best_fields();
+          real_set_field = cacu.cacu_best_fields();
         }
-        PTtree tree(set_field, set_port);
+        PTtree tree(real_set_field, real_set_port);
         cout << "\nStart build for single thread...\n|- Using fields:     ";
-        for (unsigned int x : set_field) cout << x << ",";
-        cout << set_port << "\n";
+        for (unsigned int x : real_set_field) cout << x << ",";
+        cout << real_set_port << "\n";
         timer.timeReset();
         for (auto &&r : PT_rules) {
           tree.insert(r);
@@ -2969,15 +2969,15 @@ int main(int argc, char *argv[]) {
         FILE *PT_res_fp = nullptr;
         PT_res_fp = fopen("./INFO/PT_IndivResults.txt", "w");
 
-        // warmup_PT(tree, PT_packets, packetNum);
+        warmup_PT(tree, PT_packets);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
             timer.timeReset();
-            (PT_match_id = tree.search(PT_packets[i]))--;
+            PT_match_id = tree.search(PT_packets[i]);
             _PT_search_time = timer.elapsed_ns();
             PT_search_time += _PT_search_time;
-
             Total_y(i) = (static_cast<double>(_PT_search_time));
+            --PT_match_id;
             PT_match_id_arr[i] = PT_match_id;
           }
         }
@@ -2998,15 +2998,16 @@ int main(int argc, char *argv[]) {
         FILE *DBT_res_fp = nullptr;
         DBT_res_fp = fopen("./INFO/DBT_IndivResults.txt", "w");
 
-        // warmup_DBT(dbt, DBT_packets, packetNum);
+        warmup_DBT(dbt, DBT_packets);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
             timer.timeReset();
-            (DBT_match_id = dbt.search(DBT_packets[i]))--;
+            DBT_match_id = dbt.search(DBT_packets[i]);
             _DBT_search_time = timer.elapsed_ns();
             DBT_search_time += _DBT_search_time;
             Total_y(i) = (static_cast<double>(_DBT_search_time));
-            DBT_match_id_arr[i] = DBT_match_id;
+            --DBT_match_id;
+            DBT_match_id_arr[i] = (DBT_match_id);
           }
         }
 
@@ -3028,6 +3029,7 @@ int main(int argc, char *argv[]) {
         FILE *DT_res_fp = nullptr;
         DT_res_fp = fopen("./INFO/DT_IndivResults.txt", "w");
 
+        warmup_DT(dynamictuple, traces_DT_MT);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
             timer.timeReset();
@@ -3097,6 +3099,7 @@ int main(int argc, char *argv[]) {
 
       cout << fixed << setprecision(3) << "\tAverage search time: "
            << (KSet_search_time / (trials * packetNum)) << " ns\n";
+           
       //// MT ////
       cout
           << ("\n**************** Classification(indiv MT) ****************\n");
