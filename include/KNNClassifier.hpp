@@ -2,7 +2,7 @@
 #define _KNNCLASSIFIER_HPP_
 // #include <algorithm>
 // #include <array>
-// #include <cstdint>
+#include <cstdint>
 // #include <vector>
 #include <map>
 
@@ -112,6 +112,17 @@ class KNNClassifier {
         adaptor{samples},
         index(5, adaptor, nanoflann::KDTreeSingleIndexAdaptorParams(50)) {
     index.buildIndex();  // 實際建立 KD-Tree 索引
+  }
+  /// 返回 nanoflann KD-tree index 使用的位元組數 (bytes)
+  size_t indexMemoryBytes() {
+    // 注意：KDTreeBaseClass::usedMemory 要傳入 non-const Derived&；
+    // 在這個非 const 成員函式中直接呼叫即可。
+    return index.usedMemory(index);
+  }
+
+  /// 方便的 MB 顯示
+  double indexMemoryMB() {
+    return static_cast<double>(indexMemoryBytes()) / 1024.0 / 1024.0;
   }
 
   // 預測函式：給定一筆 6 維輸入資料，使用 KNN 找到最近鄰投票

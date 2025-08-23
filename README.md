@@ -1,7 +1,7 @@
-# Co-Complementary Packet Classifier (CCPC)
+# Adaptive Multi-Classifier Packet System (AMPS)
 
-**A High-Performance, Multi-Classifier Packet Classification Framework with Latency Prediction and Complementary Optimization**
-**協同互補封包分類器架構：結合查詢時間預測與互補性最佳化之多分類器封包分類架構**
+**An Efficient Packet Classification Framework Using Model-Based Selection Scheme and Reinforcement Learning**
+**基於模型導向選擇機制與強化學習的高效封包分類框架**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](https://opensource.org/licenses/MIT)
 [![C++17](https://img.shields.io/badge/C++-17-green.svg)](https://isocpp.org/)
@@ -18,9 +18,9 @@
 
 ## Overview / 專案概觀
 
-`Co-Complementary Packet Classifier (CCPC)` is a high-performance packet classification framework implemented in C++17 with Eigen3 and Ray RLlib, designed for collaborative multi-classifier systems. It integrates five complementary data structures: **KSet**, **PT-Tree**, **DBTable**, **DynamicTuple**, and **MultilayerTuple**. The framework addresses long-tail latency issues caused by workload skew through two key mechanisms: **query time prediction** and **long-tail-aware filtering**. Additionally, reinforcement learning (RL) optimizes classifier parameters to maximize complementarity, ensuring robust performance across diverse network traffic conditions.
+`Adaptive Multi-Classifier Packet System (AMPS)` is a high-performance packet classification framework implemented in C++17 with Eigen3 and Ray RLlib, designed for collaborative multi-classifier systems. It integrates five complementary data structures: **KSet**, **PT-Tree**, **DBTable**, **DynamicTuple**, and **MultilayerTuple**. The framework addresses long-tail latency issues caused by workload skew through two key mechanisms: **query time prediction** and **long-tail-aware filtering**. Additionally, reinforcement learning (RL) optimizes classifier parameters to maximize complementarity, ensuring robust performance across diverse network traffic conditions.
 
-`協同互補封包分類器架構 (CCPC)` 是一套以 C++17、Eigen3 及 Ray RLlib 實作的高效能封包分類架構，專為多分類器協同運作設計。支援五種互補性資料結構：**KSet**、**PT-Tree**、**DBTable**、**DynamicTuple** 及 **MultilayerTuple**。本系統透過查詢時間預測與長尾封包感知式過濾機制，解決工作負載偏斜導致的長尾延遲問題，並利用強化學習（RL）最佳化分類器參數組合，以在多樣化網路流量下實現穩健效能。
+`AMPS` 是一套以 C++17、Eigen3 及 Ray RLlib 實作的高效能封包分類架構，專為多分類器協同運作設計。支援五種互補性資料結構：**KSet**、**PT-Tree**、**DBTable**、**DynamicTuple** 及 **MultilayerTuple**。本系統透過查詢時間預測與長尾封包感知式過濾機制，解決工作負載偏斜導致的長尾延遲問題，並利用強化學習（RL）最佳化分類器參數組合，以在多樣化網路流量下實現穩健效能。
 
 ---
 
@@ -66,7 +66,7 @@ Current implementation order: **PT-Tree → DBTable → DynamicTuple**. This app
 ## Directory Structure / 目錄結構
 
 ```
-ccpc                                            //
+AMPS                                            //
 ├─ .editorconfig                                //
 ├─ .mailmap                                     //
 ├─ CMakeLists.txt                               //

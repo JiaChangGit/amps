@@ -1,6 +1,6 @@
-// #include <stdio.h>  // JIA remove printf
-// #include <stdlib.h>
-// #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "LinearRegressionModel.hpp"
 #include "basis.hpp"
@@ -47,7 +47,6 @@ using namespace std;
 #define THREAD_NUM
 #define NORM
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
-// #define EIGEN_UNROLL_LOOP_LIMIT 64
 #define PERLOOKUPTIME_MODEL
 #define PERLOOKUPTIME_KNN
 ///////// Shuffle /////////
@@ -554,9 +553,9 @@ vector<Rule_KSet> convertRules_DTMTtoKSet(
     if (num_set[0] > 0) kset_match_pri = set[0].ClassifyAPacket(packets[i]);
     if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
       kset_match_pri = max(kset_match_pri, set[1].ClassifyAPacket(packets[i]));
-    if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+    if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
       kset_match_pri = max(kset_match_pri, set[2].ClassifyAPacket(packets[i]));
-    if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+    if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
       kset_match_pri = max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
   }
 }
@@ -626,6 +625,7 @@ int main(int argc, char *argv[]) {
   float ip_bytes[4] = {0};
   vector<Rule_KSet> rule;
   vector<Packet> packets;
+
   InputFile inputFile;
   // InputFile_test inputFile_test;
   Timer timer;
@@ -670,6 +670,8 @@ int main(int argc, char *argv[]) {
   cout << "The number of packets = " << packetNum << "\n";
   cout << "The number of samples = " << sampleNum << "\n";
 
+  vector<int> match_id_arr(packetNum);
+
 #ifdef SHUFFLE
   // 初始化亂數生成器
   random_device rd;
@@ -677,6 +679,7 @@ int main(int argc, char *argv[]) {
   // 使用 shuffle 打亂整個 array 為單位的順序
   shuffle(packets.begin(), packets.end(), gen);
 #endif
+
 #if TIMER_METHOD == TIMER_RDTSCP
   // 手動預熱，避免第一次調用 elapsed_ns() 時的額外延遲
   Timer::warmup();
@@ -910,29 +913,21 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < sampleNum; ++i) {
       // 搜尋時間量測 (KSet)
       kset_match_pri = -1;
-      if (__builtin_expect(num_set[0] > 0, 1))
-        kset_match_pri = set0.ClassifyAPacket(samples[i]);
-      if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
-                           1))
+      if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(samples[i]);
+      if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
         kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(samples[i]));
-      if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0,
-                           1))
+      if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
         kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(samples[i]));
-      if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
-                           0))
+      if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
 
         kset_match_pri = -1;
       timer.timeReset();
-      if (__builtin_expect(num_set[0] > 0, 1))
-        kset_match_pri = set0.ClassifyAPacket(samples[i]);
-      if (__builtin_expect(kset_match_pri < max_pri_set[1] && num_set[1] > 0,
-                           1))
+      if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(samples[i]);
+      if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
         kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(samples[i]));
-      if (__builtin_expect(kset_match_pri < max_pri_set[2] && num_set[2] > 0,
-                           1))
+      if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
         kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(samples[i]));
-      if (__builtin_expect(kset_match_pri < max_pri_set[3] && num_set[3] > 0,
-                           0))
+      if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
         kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(samples[i]));
       _KSet_search_time = timer.elapsed_ns();
       KSet_y(i) = static_cast<double>(_KSet_search_time);
@@ -1126,15 +1121,15 @@ int main(int argc, char *argv[]) {
       ///////// Linear Model train ////////
 
       /////// -th ///////
-      /* auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] = */
+      /* auto [mean_PT,   per95_PT, per99_PT] = */
       printStatistics(PT_y);
-      /* auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] = */
+      /* auto [mean_DBT,   per95_DBT, per99_DBT] = */
       printStatistics(DBT_y);
-      /* auto [mean_KSet, median_KSet, per75_KSet, per95_KSet, per99_KSet] = */
+      /* auto [mean_KSet,  per95_KSet, per99_KSet] = */
       printStatistics(KSet_y);
-      /* auto [mean_DT, median_DT, per75_DT, per95_DT, per99_DT] = */
+      /* auto [mean_DT,  per95_DT, per99_DT] = */
       printStatistics(DT_y);
-      /* auto [mean_MT, median_MT, per75_MT, per95_MT, per99_MT] = */
+      /* auto [mean_MT,   per95_MT, per99_MT] = */
       printStatistics(MT_y);
       /////// -th ///////
 
@@ -1596,9 +1591,6 @@ int main(int argc, char *argv[]) {
         {
           // 不執行任何事，只要觸發 thread pool 初始化即可
         }
-#if TIMER_METHOD == TIMER_RDTSCP
-        Timer::warmup();
-#endif
         timer.timeReset();
 #pragma omp parallel
         {
@@ -1753,11 +1745,11 @@ int main(int argc, char *argv[]) {
         // warmup_PT(tree, PT_packets);
         warmup_DBT(dbt, DBT_packets);
         warmup_DT(dynamictuple, traces_DT_MT);
-#if TIMER_METHOD == TIMER_RDTSCP
-        Timer::warmup();
-#endif
+        __builtin_prefetch(&Total_y[0], 1, 3);
+        __builtin_prefetch(&match_id_arr[0], 1, 3);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
+            __builtin_prefetch(&predict_choose[i], 0, 3);
             timer.timeReset();
             switch (predict_choose[i]) {
               case 0:
@@ -1767,18 +1759,16 @@ int main(int argc, char *argv[]) {
                 dbt.search(DBT_packets[i]);
                 break;
               case 2:
-                if (__builtin_expect(num_set[0] > 0, 1))
+                kset_match_pri = -1;
+                if (num_set[0] > 0)
                   kset_match_pri = set0.ClassifyAPacket(packets[i]);
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+                if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+                if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+                if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
                 break;
@@ -1794,6 +1784,7 @@ int main(int argc, char *argv[]) {
 #ifdef PERLOOKUPTIME_MODEL
             Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
+            match_id_arr[i] = kset_match_pri;
           }
         }
         cout << "\n|=== AVG predict time(Model-3  Single): "
@@ -1835,9 +1826,6 @@ int main(int argc, char *argv[]) {
         {
           // 不執行任何事，只要觸發 thread pool 初始化即可
         }
-#if TIMER_METHOD == TIMER_RDTSCP
-        Timer::warmup();
-#endif
         timer.timeReset();
 #pragma omp parallel
         {
@@ -2000,11 +1988,12 @@ int main(int argc, char *argv[]) {
         // warmup_PT(tree, PT_packets);
         warmup_DBT(dbt, DBT_packets);
         warmup_DT(dynamictuple, traces_DT_MT);
-#if TIMER_METHOD == TIMER_RDTSCP
-        Timer::warmup();
-#endif
+
+        __builtin_prefetch(&Total_y[0], 1, 3);
+        __builtin_prefetch(&match_id_arr[0], 1, 3);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
+            __builtin_prefetch(&predict_choose[i], 0, 3);
             timer.timeReset();
             switch (predict_choose[i]) {
               case 0:
@@ -2014,18 +2003,16 @@ int main(int argc, char *argv[]) {
                 dbt.search(DBT_packets[i]);
                 break;
               case 2:
-                if (__builtin_expect(num_set[0] > 0, 1))
+                kset_match_pri = -1;
+                if (num_set[0] > 0)
                   kset_match_pri = set0.ClassifyAPacket(packets[i]);
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+                if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+                if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+                if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
                 break;
@@ -2041,6 +2028,7 @@ int main(int argc, char *argv[]) {
 #ifdef PERLOOKUPTIME_MODEL
             Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
+            match_id_arr[i] = kset_match_pri;
           }
         }
         cout << "\n|=== AVG predict time(Model-5  Single): "
@@ -2082,9 +2070,6 @@ int main(int argc, char *argv[]) {
         {
           // 不執行任何事，只要觸發 thread pool 初始化即可
         }
-#if TIMER_METHOD == TIMER_RDTSCP
-        Timer::warmup();
-#endif
         timer.timeReset();
 #pragma omp parallel
         {
@@ -2288,11 +2273,11 @@ int main(int argc, char *argv[]) {
         // warmup_PT(tree, PT_packets);
         warmup_DBT(dbt, DBT_packets);
         warmup_DT(dynamictuple, traces_DT_MT);
-#if TIMER_METHOD == TIMER_RDTSCP
-        Timer::warmup();
-#endif
+        __builtin_prefetch(&Total_y[0], 1, 3);
+        __builtin_prefetch(&match_id_arr[0], 1, 3);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
+            __builtin_prefetch(&predict_choose[i], 0, 3);
             timer.timeReset();
             switch (predict_choose[i]) {
               case 0:
@@ -2302,18 +2287,16 @@ int main(int argc, char *argv[]) {
                 dbt.search(DBT_packets[i]);
                 break;
               case 2:
-                if (__builtin_expect(num_set[0] > 0, 1))
+                kset_match_pri = -1;
+                if (num_set[0] > 0)
                   kset_match_pri = set0.ClassifyAPacket(packets[i]);
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+                if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+                if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-                if (__builtin_expect(
-                        kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+                if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
                   kset_match_pri =
                       max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
                 break;
@@ -2329,6 +2312,7 @@ int main(int argc, char *argv[]) {
 #ifdef PERLOOKUPTIME_MODEL
             Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
+            match_id_arr[i] = kset_match_pri;
           }
         }
         cout << "\n|=== AVG predict time(Model-11  Single): "
@@ -2381,6 +2365,8 @@ int main(int argc, char *argv[]) {
                               static_cast<DataStructure>(knnLable[i])};
     }
     KNNClassifier knn_classifier(knn_training_data);
+    cout << "\n\n|***KD-tree index memory (MB): "
+         << knn_classifier.indexMemoryMB() << " MB\n";
     vector<uint8_t>().swap(knnLable);
     // vector<LabeledSample>().swap(knn_training_data); // WRONG!! (core dumped)
     ///////// KNN Construct /////////
@@ -2453,9 +2439,6 @@ int main(int argc, char *argv[]) {
       {
         // 不執行任何事，只要觸發 thread pool 初始化即可
       }
-#if TIMER_METHOD == TIMER_RDTSCP
-      Timer::warmup();
-#endif
       timer.timeReset();
 #pragma omp parallel
       {
@@ -2518,11 +2501,11 @@ int main(int argc, char *argv[]) {
       // warmup_PT(tree, PT_packets);
       warmup_DBT(dbt, DBT_packets);
       warmup_DT(dynamictuple, traces_DT_MT);
-#if TIMER_METHOD == TIMER_RDTSCP
-      Timer::warmup();
-#endif
+      __builtin_prefetch(&Total_y[0], 1, 3);
+      __builtin_prefetch(&match_id_arr[0], 1, 3);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
+          __builtin_prefetch(&predict_choose[i], 0, 3);
           timer.timeReset();
           switch (predict_choose[i]) {
             case 0:
@@ -2532,18 +2515,16 @@ int main(int argc, char *argv[]) {
               dbt.search(DBT_packets[i]);
               break;
             case 2:
-              if (__builtin_expect(num_set[0] > 0, 1))
+              kset_match_pri = -1;
+              if (num_set[0] > 0)
                 kset_match_pri = set0.ClassifyAPacket(packets[i]);
-              if (__builtin_expect(
-                      kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+              if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-              if (__builtin_expect(
-                      kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+              if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-              if (__builtin_expect(
-                      kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+              if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
                 kset_match_pri =
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
@@ -2559,6 +2540,7 @@ int main(int argc, char *argv[]) {
 #ifdef PERLOOKUPTIME_KNN
           Total_y(i) = (static_cast<double>(_Total_search_time));
 #endif
+          match_id_arr[i] = kset_match_pri;
         }
       }
       cout << "\n|=== AVG predict time(KNN  Single): " << (Sig_predict_time)
@@ -2594,19 +2576,20 @@ int main(int argc, char *argv[]) {
 #ifdef BLOOM
     {
       cout << ("\n**************** Classification(BLOOM) ****************\n");
-      LONG::BloomFilter<uint64_t> bloom_filter_mt(sampleNum * 0.5, 0.01);
-      LONG::BloomFilter<uint64_t> bloom_filter_pt(sampleNum * 0.5, 0.01);
-      LONG::BloomFilter<uint64_t> bloom_filter_dt(sampleNum * 0.5, 0.01);
-      LONG::BloomFilter<uint64_t> bloom_filter_dbt(sampleNum * 0.5, 0.01);
+      // 0.1% 誤報率
+      LONG::BloomFilter<uint64_t> bloom_filter_mt(sampleNum * 0.2, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_pt(sampleNum * 0.2, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_dt(sampleNum * 0.2, 0.01);
+      LONG::BloomFilter<uint64_t> bloom_filter_dbt(sampleNum * 0.2, 0.01);
+      cout << "\n\n|*** Bloom index memory (MB): "
+           << (bloom_filter_mt.memoryMB() + bloom_filter_pt.memoryMB() +
+               bloom_filter_dt.memoryMB() + bloom_filter_dbt.memoryMB())
+           << " MB\n";
 
-      auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
-          printStatistics(PT_y);
-      auto [mean_DBT, median_DBT, per75_DBT, per95_DBT, per99_DBT] =
-          printStatistics(DBT_y);
-      auto [mean_DT, median_DT, per75_DT, per95_DT, per99_DT] =
-          printStatistics(DT_y);
-      auto [mean_MT, median_MT, per75_MT, per95_MT, per99_MT] =
-          printStatistics(MT_y);
+      auto [mean_PT, per95_PT, per99_PT] = printStatistics(PT_y);
+      auto [mean_DBT, per95_DBT, per99_DBT] = printStatistics(DBT_y);
+      auto [mean_DT, per95_DT, per99_DT] = printStatistics(DT_y);
+      auto [mean_MT, per95_MT, per99_MT] = printStatistics(MT_y);
 
       for (size_t i = 0; i < sampleNum; ++i) {
         if (PT_y(i) >= per99_PT) {
@@ -2658,9 +2641,6 @@ int main(int argc, char *argv[]) {
       {
         // 不執行任何事，只要觸發 thread pool 初始化即可
       }
-#if TIMER_METHOD == TIMER_RDTSCP
-      Timer::warmup();
-#endif
       timer.timeReset();
 #pragma omp parallel
       {
@@ -2783,11 +2763,11 @@ int main(int argc, char *argv[]) {
       // warmup_PT(tree, PT_packets);
       warmup_DT(dynamictuple, traces_DT_MT);
       warmup_DBT(dbt, DBT_packets);
-#if TIMER_METHOD == TIMER_RDTSCP
-      Timer::warmup();
-#endif
+      __builtin_prefetch(&Total_y[0], 1, 3);
+      __builtin_prefetch(&match_id_arr[0], 1, 3);
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
+          __builtin_prefetch(&predict_choose[i], 0, 3);
           timer.timeReset();
           switch (predict_choose[i]) {
             case 0:
@@ -2798,18 +2778,15 @@ int main(int argc, char *argv[]) {
               break;
             case 2:
               kset_match_pri = -1;
-              if (__builtin_expect(num_set[0] > 0, 1))
+              if (num_set[0] > 0)
                 kset_match_pri = set0.ClassifyAPacket(packets[i]);
-              if (__builtin_expect(
-                      kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+              if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
                 kset_match_pri =
                     max(kset_match_pri, set1.ClassifyAPacket(packets[i]));
-              if (__builtin_expect(
-                      kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+              if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
                 kset_match_pri =
                     max(kset_match_pri, set2.ClassifyAPacket(packets[i]));
-              if (__builtin_expect(
-                      kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+              if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
                 kset_match_pri =
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
@@ -2823,6 +2800,7 @@ int main(int argc, char *argv[]) {
           _Total_search_time = timer.elapsed_ns();
           Total_search_time += _Total_search_time;
           Total_y(i) = (static_cast<double>(_Total_search_time));
+          match_id_arr[i] = kset_match_pri;
         }
       }
       cout << "\n|=== AVG predict time(BloomFilter  Single): "
@@ -2968,7 +2946,8 @@ int main(int argc, char *argv[]) {
                 "****************\n");
         FILE *PT_res_fp = nullptr;
         PT_res_fp = fopen("./INFO/PT_IndivResults.txt", "w");
-
+        __builtin_prefetch(&Total_y[0], 1, 3);
+        __builtin_prefetch(&PT_match_id_arr[0], 1, 3);
         warmup_PT(tree, PT_packets);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
@@ -2977,11 +2956,11 @@ int main(int argc, char *argv[]) {
             _PT_search_time = timer.elapsed_ns();
             PT_search_time += _PT_search_time;
             Total_y(i) = (static_cast<double>(_PT_search_time));
-            --PT_match_id;
-            PT_match_id_arr[i] = PT_match_id;
+            PT_match_id_arr[i] = (--PT_match_id);
+            //_mm_stream_si32(&PT_match_id_arr[i], (--PT_match_id));
           }
         }
-
+        //_mm_sfence();
         for (size_t i = 0; i < packetNum; ++i) {
           fprintf(PT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
         }
@@ -2997,7 +2976,8 @@ int main(int argc, char *argv[]) {
                 "****************\n");
         FILE *DBT_res_fp = nullptr;
         DBT_res_fp = fopen("./INFO/DBT_IndivResults.txt", "w");
-
+        __builtin_prefetch(&Total_y[0], 1, 3);
+        __builtin_prefetch(&DBT_match_id_arr[0], 1, 3);
         warmup_DBT(dbt, DBT_packets);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
@@ -3006,11 +2986,11 @@ int main(int argc, char *argv[]) {
             _DBT_search_time = timer.elapsed_ns();
             DBT_search_time += _DBT_search_time;
             Total_y(i) = (static_cast<double>(_DBT_search_time));
-            --DBT_match_id;
-            DBT_match_id_arr[i] = (DBT_match_id);
+            DBT_match_id_arr[i] = (--DBT_match_id);
+            //_mm_stream_si32(&DBT_match_id_arr[i], (--DBT_match_id));
           }
         }
-
+        //_mm_sfence();
         for (size_t i = 0; i < packetNum; ++i) {
           fprintf(DBT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
         }
@@ -3028,7 +3008,8 @@ int main(int argc, char *argv[]) {
                 "****************\n");
         FILE *DT_res_fp = nullptr;
         DT_res_fp = fopen("./INFO/DT_IndivResults.txt", "w");
-
+        __builtin_prefetch(&Total_y[0], 1, 3);
+        __builtin_prefetch(&DT_match_id_arr[0], 1, 3);
         warmup_DT(dynamictuple, traces_DT_MT);
         for (size_t t = 0; t < trials; ++t) {
           for (size_t i = 0; i < packetNum; ++i) {
@@ -3037,10 +3018,12 @@ int main(int argc, char *argv[]) {
             _DT_search_time = timer.elapsed_ns();
             DT_search_time += _DT_search_time;
             Total_y(i) = (static_cast<double>(_DT_search_time));
-            DT_match_id_arr[i] = (number_rule - 1) - resID;
+            DT_match_id_arr[i] = ((number_rule - 1) - resID);
+            // _mm_stream_si32(&DT_match_id_arr[i], ((number_rule - 1) -
+            // resID));
           }
         }
-
+        //_mm_sfence();
         for (size_t i = 0; i < packetNum; ++i) {
           fprintf(DT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
         }
@@ -3063,34 +3046,30 @@ int main(int argc, char *argv[]) {
               "****************\n");
       FILE *KSet_res_fp = nullptr;
       KSet_res_fp = fopen("./INFO/KSet_IndivResults.txt", "w");
-
+      __builtin_prefetch(&Total_y[0], 1, 3);
+      __builtin_prefetch(&KSet_match_pri_arr[0], 1, 3);
       warmup_KSet(set, packets, num_set, max_pri_set);
-#if TIMER_METHOD == TIMER_RDTSCP
-      Timer::warmup();
-#endif
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           const auto &ptk = packets[i];
           kset_match_pri = -1;
           timer.timeReset();
-          if (__builtin_expect(num_set[0] > 0, 1))
-            kset_match_pri = set0.ClassifyAPacket(ptk);
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[1] && num_set[1] > 0, 1))
+          if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(ptk);
+          if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
             kset_match_pri = max(kset_match_pri, set1.ClassifyAPacket(ptk));
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[2] && num_set[2] > 0, 1))
+          if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
             kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(ptk));
-          if (__builtin_expect(
-                  kset_match_pri < max_pri_set[3] && num_set[3] > 0, 0))
+          if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
             kset_match_pri = max(kset_match_pri, set3.ClassifyAPacket(ptk));
           _KSet_search_time = timer.elapsed_ns();
           KSet_search_time += _KSet_search_time;
           Total_y(i) = (static_cast<double>(_KSet_search_time));
-          KSet_match_pri_arr[i] = (number_rule - 1) - kset_match_pri;
+          KSet_match_pri_arr[i] = ((number_rule - 1) - kset_match_pri);
+          //_mm_stream_si32(&KSet_match_pri_arr[i],
+          //              ((number_rule - 1) - kset_match_pri));
         }
       }
-
+      //_mm_sfence();
       for (size_t i = 0; i < packetNum; ++i) {
         fprintf(KSet_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
       }
@@ -3099,17 +3078,15 @@ int main(int argc, char *argv[]) {
 
       cout << fixed << setprecision(3) << "\tAverage search time: "
            << (KSet_search_time / (trials * packetNum)) << " ns\n";
-           
+
       //// MT ////
       cout
           << ("\n**************** Classification(indiv MT) ****************\n");
       FILE *MT_res_fp = nullptr;
       MT_res_fp = fopen("./INFO/MT_IndivResults.txt", "w");
-
+      __builtin_prefetch(&Total_y[0], 1, 3);
+      __builtin_prefetch(&MT_match_id_arr[0], 1, 3);
       warmup_MT(multilayertuple, traces_DT_MT);
-#if TIMER_METHOD == TIMER_RDTSCP
-      Timer::warmup();
-#endif
       for (size_t t = 0; t < trials; ++t) {
         for (size_t i = 0; i < packetNum; ++i) {
           timer.timeReset();
@@ -3117,10 +3094,11 @@ int main(int argc, char *argv[]) {
           _MT_search_time = timer.elapsed_ns();
           MT_search_time += _MT_search_time;
           Total_y(i) = (static_cast<double>(_MT_search_time));
-          MT_match_id_arr[i] = (number_rule - 1) - resID;
+          MT_match_id_arr[i] = ((number_rule - 1) - resID);
+          //_mm_stream_si32(&MT_match_id_arr[i], ((number_rule - 1) - resID));
         }
       }
-
+      //_mm_sfence();
       for (size_t i = 0; i < packetNum; ++i) {
         fprintf(MT_res_fp, "Packet %ld \t Time(ns) %f\n", i, Total_y(i));
       }

@@ -269,8 +269,7 @@ void PT_Object::build_pt() {
   // for (size_t i = 0; i < sampleNum; ++i) {
   //   PT_y(i) = (PT_y(i) / 2.0);
   // }
-  auto [mean_PT, median_PT, per75_PT, per95_PT, per99_PT] =
-      printStatistics("PT", PT_y);
+  auto [mean_PT, per95_PT, per99_PT] = printStatistics("PT", PT_y);
   slow_time = per99_PT;
 
   slow_Packets.clear();
@@ -411,32 +410,10 @@ DBT_Object RLGym::create_dbt_object(int binth, double end_bound, int top_k,
   if (0 >= this->KSet_rule.size()) cout << "\n0 >= KSet_rule size WRONG!!\n";
   auto dbt_rules = convertToDBTRules(this->KSet_rule);
   auto dbt_packets = convertToDBTPackets(this->KSet_packets);
-
   int adjusted_binth = (binth);
   double adjusted_end_bound = (end_bound);
   int adjusted_top_k = (top_k);
   int adjusted_c_bound = (c_bound);
-
-  // int adjusted_binth = (++binth);
-  // double adjusted_end_bound = (0.1 + end_bound);
-  // int adjusted_top_k = (++top_k);
-  // int adjusted_c_bound = (++c_bound);
-  // if (adjusted_binth >= 33) {
-  //   adjusted_binth = 32;
-  //   cout << "adjusted_binth = 32\n";
-  // }
-  // if (adjusted_end_bound >= 1.0) {
-  //   adjusted_end_bound = 0.9;
-  //   cout << "adjusted_end_bound = 0.9\n";
-  // }
-  // if (adjusted_top_k >= 9) {
-  //   adjusted_top_k = 8;
-  //   cout << "adjusted_top_k = 8\n";
-  // }
-  // if (adjusted_c_bound >= 65) {
-  //   adjusted_c_bound = 64;
-  //   cout << "adjusted_c_bound = 64\n";
-  // }
   return DBT_Object(adjusted_binth, adjusted_end_bound, adjusted_top_k,
                     adjusted_c_bound, dbt_rules, dbt_packets, pt_obj.slow_time);
 }
@@ -504,7 +481,8 @@ PT_Object RLGym::create_pt_first() {
     // tmp_in_field = {4, 0, 1};
     tmp_port = 1;
   }
-  /* cout << "create_pt_first, tmp_in_field: " << static_cast<int>(tmp_in_field[0])
+  /* cout << "create_pt_first, tmp_in_field: " <<
+     static_cast<int>(tmp_in_field[0])
        << static_cast<int>(tmp_in_field[1]) << static_cast<int>(tmp_in_field[2])
        << "\n"; */
   _PT_Object = PT_Object(tmp_in_field, tmp_port, pt_rules, pt_packets);
@@ -517,6 +495,7 @@ PYBIND11_MODULE(rl_gym, m) {
       //.def(py::init<>())
       .def(py::init<std::vector<uint8_t>, int, std::vector<PT_Rule>&,
                     const std::vector<PT_Packet>&>())
+      .def("get_slow_Packets", &PT_Object::get_slow_Packets)
       .def("get_set_port", &PT_Object::get_set_port)
       .def("get_set_field", &PT_Object::get_set_field);
 
@@ -528,6 +507,7 @@ PYBIND11_MODULE(rl_gym, m) {
       .def("get_end_bound", &DBT_Object::get_end_bound)
       .def("get_top_k", &DBT_Object::get_top_k)
       .def("get_c_bound", &DBT_Object::get_c_bound)
+      .def("get_slow_Packets", &DBT_Object::get_slow_Packets)
       .def("set_binth", &DBT_Object::set_binth)
       .def("set_end_bound", &DBT_Object::set_end_bound)
       .def("set_top_k", &DBT_Object::set_top_k)
@@ -539,6 +519,7 @@ PYBIND11_MODULE(rl_gym, m) {
                     const std::vector<Trace*>&, const double>())
       .def("get_threshold", &DT_Object::get_threshold)
       .def("get_is_prefix_5d", &DT_Object::get_is_prefix_5d)
+      .def("get_slow_Packets", &DT_Object::get_slow_Packets)
       .def("set_th", &DT_Object::set_th)
       .def("set_is_prefix_5d", &DT_Object::set_is_prefix_5d);
 

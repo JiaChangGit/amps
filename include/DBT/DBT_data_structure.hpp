@@ -25,7 +25,7 @@
 #ifndef __DBT_DATA_STRUCTURE_HPP__
 #define __DBT_DATA_STRUCTURE_HPP__
 // #include <math.h>
-// #include <stdint.h>
+#include <stdint.h>
 // #include <time.h>
 
 #include <algorithm>

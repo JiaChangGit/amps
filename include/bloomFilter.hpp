@@ -1,7 +1,7 @@
 #ifndef _BLOOM_FILTER_HPP_
 #define _BLOOM_FILTER_HPP_
 
-// #include <cstdint>
+#include <cstdint>
 // #include <iostream>
 // #include <stdexcept>
 #include <random>
@@ -84,6 +84,25 @@ class BloomFilter {
         (static_cast<double>(size_) / expected_items) * std::log(2.0)));
     num_hashes_ = std::max<size_t>(
         1, std::min<size_t>(num_hashes_, 16));  // 限制 k 在合理範圍
+  }
+  /// 回傳 BloomFilter 常駐記憶體（bytes）。估算項目：bits_ 的 heap 配置、vector
+  /// 物件本體、以及其他 primitive 成員。
+  size_t memoryBytes() const {
+    // bits_ 在 heap 上實際分配的 bytes（capacity 表示已配置的元素數）
+    size_t bits_heap = bits_.capacity() * sizeof(uint8_t);
+
+    // std::vector<T> 物件本體（通常包含 3 個指標/size）
+    size_t vector_obj = sizeof(bits_);
+
+    // 其他成員變數（size_, num_hashes_, seed_base_）
+    size_t members = sizeof(size_) + sizeof(num_hashes_) + sizeof(seed_base_);
+
+    return bits_heap + vector_obj + members;
+  }
+
+  /// 方便以 MB 顯示
+  double memoryMB() const {
+    return static_cast<double>(memoryBytes()) / 1024.0 / 1024.0;
   }
 
   /**

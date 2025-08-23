@@ -6,7 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
-// #include <cstdio>  // JIA remove printf
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <string>
