@@ -43,7 +43,6 @@ uint32_t DBT::getBit[32] = {
 using namespace std;
 
 #define VALID
-// #define SAMPLE
 #define THREAD_NUM
 #define NORM
 #define EIGEN_NO_DEBUG  // 關閉 Eigen assert
@@ -585,39 +584,6 @@ void convert_packets_to_datas(const vector<Packet> &packets,
   }
   datas.shrink_to_fit();
 }
-#ifdef SAMPLE
-// 每 N 組資料中，有 K 組進 sample，其餘進 test（留在原 data）
-// data: 原始資料，在函式結束後只保留 test 資料；
-// sample: 存放取出的樣本。
-// group_size: 每幾筆資料為一組（例如每 5 筆為一組）；
-// sample_count: 每組中前幾筆進入 sample；
-void split_sample_test(vector<Packet> &data, vector<Packet> &sample,
-                       size_t group_size, size_t sample_count) {
-  sample.clear();
-  if (group_size == 0 || sample_count > group_size) {
-    throw std::invalid_argument("Invalid group_size or sample_count");
-  }
-
-  size_t write_idx = 0;
-  const size_t total = data.size();
-
-  for (size_t i = 0; i < total; i += group_size) {
-    // 拿前 sample_count 筆進 sample（若不足也盡量拿）
-    for (size_t j = 0; j < sample_count && i + j < total; ++j) {
-      sample.push_back(std::move(data[i + j]));
-    }
-
-    // 其餘進 test（覆蓋 data）
-    for (size_t j = sample_count; j < group_size && i + j < total; ++j) {
-      data[write_idx++] = std::move(data[i + j]);
-    }
-  }
-
-  data.resize(write_idx);  // 移除已移出的 sample 空間
-  data.shrink_to_fit();
-  sample.shrink_to_fit();
-}
-#endif
 /////////////////
 int main(int argc, char *argv[]) {
   CommandLineParser parser;
@@ -649,24 +615,9 @@ int main(int argc, char *argv[]) {
   }
   const size_t number_rule = rule.size();
   cout << "The number of rules = " << number_rule << "\n";
-#ifdef SAMPLE
-  vector<Packet> samples;
-  // // 每 2 筆資料中，前 1 筆進 samples，剩下 1 筆留在 packets
-  // split_sample_test(packets, samples, 2, 1);
-  // 每 5 筆資料中，前 4 筆進 samples，剩下 1 筆留在 packets
-  // split_sample_test(packets, samples, 5, 4);
-  // // 每 10 筆資料中，前 1 筆進 samples，剩下 9 筆留在 packets
-  // split_sample_test(packets, samples, 10, 1);
-  // // 每 20 筆資料中，前 1 筆進 samples，剩下 19 筆留在 packets
-  split_sample_test(packets, samples, 20, 1);
-  const size_t packetNum = packets.size();
-  const size_t sampleNum = samples.size();
-#else
-  // 若未定義 SAMPLE，samples 即為原始 packets（不拆分）
   vector<Packet> &samples = packets;
   const size_t packetNum = packets.size();
   const size_t &sampleNum = packetNum;
-#endif
   cout << "The number of packets = " << packetNum << "\n";
   cout << "The number of samples = " << sampleNum << "\n";
 
@@ -689,11 +640,7 @@ int main(int argc, char *argv[]) {
   //// PT ////
   auto PT_packets = convertToPTPackets(packets);
   auto PT_rules = convertToPTRules(rule);
-#ifdef SAMPLE
-  auto PT_samples = convertToPTPackets(samples);
-#else
   auto &PT_samples = PT_packets;
-#endif
 
   // PT construct
   cout << ("\n**************** Construction(PT) ****************\n");
@@ -727,11 +674,7 @@ int main(int argc, char *argv[]) {
   //// DBT ////
   auto DBT_packets = convertToDBTPackets(packets);
   auto DBT_rules = convertToDBTRules(rule);
-#ifdef SAMPLE
-  auto DBT_samples = convertToDBTPackets(samples);
-#else
   auto &DBT_samples = DBT_packets;
-#endif
 
   // DBT construct
   cout << ("\n**************** Construction(DBT) ****************\n");
@@ -754,6 +697,7 @@ int main(int argc, char *argv[]) {
   int SetBits[3] = {8, 8, 8};
   int max_pri_set[4] = {-1, -1, -1, -1};
   int kset_match_pri = -1;
+  int id;
 
   vector<Rule_KSet> set_4[4];
   anaK(number_rule, rule, SetBits, set_4, pre_K, max_pri_set);
@@ -808,11 +752,7 @@ int main(int argc, char *argv[]) {
   //// DT MT ////
   auto traces_DT_MT = convertPackets_KSet2DTMT(packets);
   auto rules_DT_MT = convertRules_KSetToDTMT(rule);
-#ifdef SAMPLE
-  auto DT_MT_samples = convertPackets_KSet2DTMT(samples);
-#else
   auto &DT_MT_samples = traces_DT_MT;
-#endif
 
   cout << ("**************** Construction(DT) ****************\n");
   if (parser.get_PrefixDim() == 5) {
@@ -919,8 +859,9 @@ int main(int argc, char *argv[]) {
       if (kset_match_pri < max_pri_set[2] && num_set[2] > 0)
         kset_match_pri = max(kset_match_pri, set2.ClassifyAPacket(samples[i]));
       if (kset_match_pri < max_pri_set[3] && num_set[3] > 0)
-
-        kset_match_pri = -1;
+        kset_match_pri =
+            max(kset_match_pri, set[3].ClassifyAPacket(packets[i]));
+      kset_match_pri = -1;
       timer.timeReset();
       if (num_set[0] > 0) kset_match_pri = set0.ClassifyAPacket(samples[i]);
       if (kset_match_pri < max_pri_set[1] && num_set[1] > 0)
@@ -1753,10 +1694,10 @@ int main(int argc, char *argv[]) {
             timer.timeReset();
             switch (predict_choose[i]) {
               case 0:
-                tree.search(PT_packets[i]);
+                id = tree.search(PT_packets[i]);
                 break;
               case 1:
-                dbt.search(DBT_packets[i]);
+                id = static_cast<int>(dbt.search(DBT_packets[i]));
                 break;
               case 2:
                 kset_match_pri = -1;
@@ -1773,10 +1714,10 @@ int main(int argc, char *argv[]) {
                       max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
                 break;
               case 3:
-                (dynamictuple.Lookup(traces_DT_MT[i], 0));
+                id = (dynamictuple.Lookup(traces_DT_MT[i], 0));
                 break;
               case 4:
-                (multilayertuple.Lookup(traces_DT_MT[i], 0));
+                id = (multilayertuple.Lookup(traces_DT_MT[i], 0));
                 break;
             }
             _Total_search_time = timer.elapsed_ns();
@@ -1997,10 +1938,10 @@ int main(int argc, char *argv[]) {
             timer.timeReset();
             switch (predict_choose[i]) {
               case 0:
-                tree.search(PT_packets[i]);
+                id = tree.search(PT_packets[i]);
                 break;
               case 1:
-                dbt.search(DBT_packets[i]);
+                id = static_cast<int>(dbt.search(DBT_packets[i]));
                 break;
               case 2:
                 kset_match_pri = -1;
@@ -2017,10 +1958,10 @@ int main(int argc, char *argv[]) {
                       max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
                 break;
               case 3:
-                (dynamictuple.Lookup(traces_DT_MT[i], 0));
+                id = (dynamictuple.Lookup(traces_DT_MT[i], 0));
                 break;
               case 4:
-                (multilayertuple.Lookup(traces_DT_MT[i], 0));
+                id = (multilayertuple.Lookup(traces_DT_MT[i], 0));
                 break;
             }
             _Total_search_time = timer.elapsed_ns();
@@ -2281,10 +2222,10 @@ int main(int argc, char *argv[]) {
             timer.timeReset();
             switch (predict_choose[i]) {
               case 0:
-                tree.search(PT_packets[i]);
+                id = tree.search(PT_packets[i]);
                 break;
               case 1:
-                dbt.search(DBT_packets[i]);
+                id = static_cast<int>(dbt.search(DBT_packets[i]));
                 break;
               case 2:
                 kset_match_pri = -1;
@@ -2301,10 +2242,10 @@ int main(int argc, char *argv[]) {
                       max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
                 break;
               case 3:
-                (dynamictuple.Lookup(traces_DT_MT[i], 0));
+                id = (dynamictuple.Lookup(traces_DT_MT[i], 0));
                 break;
               case 4:
-                (multilayertuple.Lookup(traces_DT_MT[i], 0));
+                id = (multilayertuple.Lookup(traces_DT_MT[i], 0));
                 break;
             }
             _Total_search_time = timer.elapsed_ns();
@@ -2349,13 +2290,8 @@ int main(int argc, char *argv[]) {
     ///////// KNN Construct /////////
     vector<uint8_t> knnLable(sampleNum);
     vector<LabeledSample> knn_training_data(sampleNum);
-#ifdef SAMPLE
-    vector<Packet> knn_packets = packets;
-    vector<Packet> knn_samples = samples;
-#else
     vector<Packet> knn_packets = packets;
     vector<Packet> &knn_samples = packets;
-#endif
     for (size_t i = 0; i < sampleNum; ++i) {
       array<double, 5> real_values = {PT_y(i), DBT_y(i), KSet_y(i), DT_y(i),
                                       MT_y(i)};
@@ -2384,8 +2320,9 @@ int main(int argc, char *argv[]) {
       int KNN_acc = 0, KNN_fail = 0, KNN_oth = 0;
       for (size_t i = 0; i < packetNum; ++i) {
         // knn_classifier.predict_vote
-        // knn_classifier.predict
-        int min_id_predict = static_cast<int>(knn_classifier.predict(datas[i]));
+        // knn_classifier.predict_one
+        int min_id_predict =
+            static_cast<int>(knn_classifier.predict_vote(datas[i]));
         //// acc
         // 建立實際值陣列，方便比較與存取
         array<double, 5> real_values = {PT_y(i), DBT_y(i), KSet_y(i), DT_y(i),
@@ -2454,7 +2391,7 @@ int main(int argc, char *argv[]) {
 #pragma omp for schedule(static)
         for (size_t i = 0; i < packetNum; ++i) {
           // 根據最小索引累加 local 計數器
-          switch (static_cast<int>(knn_classifier.predict(datas[i]))) {
+          switch (static_cast<int>(knn_classifier.predict_vote(datas[i]))) {
             case 0:
               ++local_PT;
               break;
@@ -2488,7 +2425,8 @@ int main(int argc, char *argv[]) {
 
       timer.timeReset();
       for (size_t i = 0; i < packetNum; ++i) {
-        predict_choose[i] = static_cast<int>(knn_classifier.predict(datas[i]));
+        predict_choose[i] =
+            static_cast<int>(knn_classifier.predict_vote(datas[i]));
       }
       Sig_predict_time = ((timer.elapsed_ns() / packetNum));
 
@@ -2509,10 +2447,10 @@ int main(int argc, char *argv[]) {
           timer.timeReset();
           switch (predict_choose[i]) {
             case 0:
-              tree.search(PT_packets[i]);
+              id = tree.search(PT_packets[i]);
               break;
             case 1:
-              dbt.search(DBT_packets[i]);
+              id = static_cast<int>(dbt.search(DBT_packets[i]));
               break;
             case 2:
               kset_match_pri = -1;
@@ -2529,10 +2467,10 @@ int main(int argc, char *argv[]) {
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
             case 3:
-              (dynamictuple.Lookup(traces_DT_MT[i], 0));
+              id = (dynamictuple.Lookup(traces_DT_MT[i], 0));
               break;
             case 4:
-              (multilayertuple.Lookup(traces_DT_MT[i], 0));
+              id = (multilayertuple.Lookup(traces_DT_MT[i], 0));
               break;
           }
           _Total_search_time = timer.elapsed_ns();
@@ -2771,10 +2709,10 @@ int main(int argc, char *argv[]) {
           timer.timeReset();
           switch (predict_choose[i]) {
             case 0:
-              tree.search(PT_packets[i]);
+              id = tree.search(PT_packets[i]);
               break;
             case 1:
-              dbt.search(DBT_packets[i]);
+              id = static_cast<int>(dbt.search(DBT_packets[i]));
               break;
             case 2:
               kset_match_pri = -1;
@@ -2791,10 +2729,10 @@ int main(int argc, char *argv[]) {
                     max(kset_match_pri, set3.ClassifyAPacket(packets[i]));
               break;
             case 3:
-              (dynamictuple.Lookup(traces_DT_MT[i], 0));
+              id = (dynamictuple.Lookup(traces_DT_MT[i], 0));
               break;
             case 4:
-              (multilayertuple.Lookup(traces_DT_MT[i], 0));
+              id = (multilayertuple.Lookup(traces_DT_MT[i], 0));
               break;
           }
           _Total_search_time = timer.elapsed_ns();
@@ -2847,11 +2785,7 @@ int main(int argc, char *argv[]) {
         //// PT ////
         auto PT_packets = convertToPTPackets(packets);
         auto PT_rules = convertToPTRules(rule);
-#ifdef SAMPLE
-        auto PT_samples = convertToPTPackets(samples);
-#else
         auto &PT_samples = PT_packets;
-#endif
 
         // PT construct
         cout
@@ -2883,11 +2817,7 @@ int main(int argc, char *argv[]) {
         //// DBT ////
         auto DBT_packets = convertToDBTPackets(packets);
         auto DBT_rules = convertToDBTRules(rule);
-#ifdef SAMPLE
-        auto DBT_samples = convertToDBTPackets(samples);
-#else
         auto &DBT_samples = DBT_packets;
-#endif
 
         // DBT construct
         cout
@@ -2909,11 +2839,7 @@ int main(int argc, char *argv[]) {
         //// DT ////
         auto traces_DT_MT = convertPackets_KSet2DTMT(packets);
         auto rules_DT_MT = convertRules_KSetToDTMT(rule);
-#ifdef SAMPLE
-        auto DT_MT_samples = convertPackets_KSet2DTMT(samples);
-#else
         auto &DT_MT_samples = traces_DT_MT;
-#endif
         cout << ("**************** Construction(indiv DT) ****************\n");
 
         DynamicTuple dynamictuple;
@@ -3114,7 +3040,7 @@ int main(int argc, char *argv[]) {
             DBT_match_id_arr[i] != PT_match_id_arr[i] ||
             DT_match_id_arr[i] != PT_match_id_arr[i] ||
             MT_match_id_arr[i] != PT_match_id_arr[i])
-          cerr << i << "-th WRONG\n";
+          cout << i << "-th WRONG\n";
         break;
       }
 #endif

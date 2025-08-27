@@ -79,33 +79,6 @@ Eigen::VectorXd linearRegressionFit(const Eigen::MatrixXd &X,
           a(10) * x11 + a(11)); /* + a(12) JIA bias */
 }
 
-// /* JIA */ __attribute__((always_inline)) inline double predict3_poly2(const
-// Eigen::VectorXd &a, double x1, double x2,
-//                              double x3) {
-//   // assert(a.size() == 3);
-//   return  std::abs(a(0) * (x1 + x1 * x1) + a(1) * (x2 + x2 * x2) + a(2) * (x3
-//   + x3 * x3));
-// }
-
-// /* JIA */ __attribute__((always_inline)) inline double computeMean(const
-// Eigen::VectorXd &v) { return v.mean(); }
-
-// /* JIA */ __attribute__((always_inline)) inline double
-// computeMedian(Eigen::VectorXd v) {
-//   const int n = v.size();
-//   // assert(n > 0);
-
-//   std::vector<double> data(v.data(), v.data() + n);
-//   std::nth_element(data.begin(), data.begin() + n / 2, data.end());
-
-//   if (n % 2 == 1) {
-//     return data[n / 2];
-//   } else {
-//     std::nth_element(data.begin(), data.begin() + n / 2 - 1, data.end());
-//     return (data[n / 2] + data[n / 2 - 1]) / 2.0;
-//   }
-// }
-
 // -----------------------------------------------------------------------------
 // 計算 Eigen 向量中的指定百分位數（Percentile）
 //

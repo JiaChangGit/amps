@@ -17,18 +17,18 @@ EXECUTABLE="$BUILD_DIR/tests/main"
 TIMESTAMP=$(date +"%m%d_%H%M%S")
 # 定義規則集名稱列表（不含路徑）
 RULESET_NAMES=(
-  acl1_1k
-  acl2_100k
-  acl3_100k
-  acl4_100k
-  acl5_100k
-  fw1_100k
-  fw2_100k
-  fw3_100k
-  fw4_100k
-  fw5_100k
-  ipc1_100k
-  ipc2_100k
+  acl1_100k
+  # acl2_100k
+  # acl3_100k
+  # acl4_100k
+  # acl5_100k
+  # fw1_100k
+  # fw2_100k
+  # fw3_100k
+  # fw4_100k
+  # fw5_100k
+  # ipc1_100k
+  # ipc2_100k
 )
 RULESET_DIR="../classbench_set/ipv4-ruleset"
 TRACE_DIR="../classbench_set/ipv4-trace"
@@ -92,7 +92,7 @@ run_test_for_ruleset() {
     python3 ./tests/train.py --rules "$ruleset_path" --trace "$trace_path"
 
 
-    sleep 20
+    sleep 200
     ulimit -s 81920
     # 執行測試程式並儲存輸出
     echo "[Info] Running test for ruleset: ${ruleset_name}"
