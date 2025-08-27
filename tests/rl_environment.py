@@ -64,7 +64,7 @@ class ComplementaryObjectsEnv(gym.Env):
         # 第 2 步：DBT 參數
         self.action_space_dbt = spaces.Dict({
             "binth": spaces.Discrete(max_binth - 3),  # [4, max_binth]
-            "end_bound": spaces.Box(low=0.2, high=0.9, shape=(1,), dtype=np.float32),
+            "end_bound": spaces.Box(low=0.1, high=0.9, shape=(1,), dtype=np.float32),
             "top_k": spaces.Discrete(max_top_k),  # [1, max_top_k]
             "c_bound": spaces.Discrete(max_c_bound - 6)  # [7, max_c_bound]
         })
