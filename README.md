@@ -207,6 +207,10 @@ AMPS                                            //
    ├─ rl_environment.py                         //
    ├─ rl_gym.cpp                                //
    └─ train.py                                  //
+../                               // 上一層資料夾
+../classbench_set/ipv4-ruleset/acl1_100k     //
+../classbench_set/ipv4-trace/acl1_100k_trace //
+../classbench_set/ipv4-trace/part_0          //
 
 ```
 
@@ -242,7 +246,11 @@ bash ./scripts/per_run.sh
 
 > **Note**: The `part_0` trace file is incompatible with `acl5` or `ipc2`. Verify compatibility using `./scripts/run.sh` (`#define VALID # local trace_path="$TRACE_DIR/part_0"`).
 
+> **Note**: Do not delete `./INFO/*.txt`. Instead, use `sudo truncate -s 0 ./INFO/*.txt` to clear the contents of the .txt file.
+
 > **注意**：`part_0` 追蹤檔案不支援 `acl5` 或 `ipc2`。請使用 `./scripts/run.sh` 確認相容性（`{#define VALID} {# local trace_path="$TRACE_DIR/part_0"}`）。
+
+> **注意**：請勿刪除 `./INFO/*.txt` 改用 `sudo truncate -s 0 ./INFO/*.txt` 進行 .txt 檔案內容清除。
 
 ---
 
